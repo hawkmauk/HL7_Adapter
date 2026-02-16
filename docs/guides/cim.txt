@@ -1,0 +1,225 @@
+When creating a CIM we should have the following atrifacts:
+example:
+```
+package CIM {
+    package Domain;
+    package Stakeholders;
+    package Context;
+    package Operations;
+    package Mission;
+    package Assumptions;
+}
+```
+[Domain Ontology]
+In SysML v2 you can model a domain ontology directly using:
+- conceptual part defs
+- item defs / value types
+- taxonomies
+- relationships
+example:
+```
+package Domain {
+
+    part def Parcel;
+    part def DeliveryLocation;
+    part def AirspaceZone;
+
+    part def WeatherCondition;
+
+    part def UrbanAirspace : AirspaceZone;
+    part def RestrictedAirspace : AirspaceZone;
+
+    association ParcelDeliveredTo {
+        end parcel : Parcel;
+        end location : DeliveryLocation;
+    }
+
+}
+```
+
+[Concept of Operations (ConOps)]
+1. Mission & goals
+- Why the system exists.
+- problem statement
+- objectives
+- success criteria
+2. Stakeholders & actors
+- Who interacts with the system.
+- primary users
+- external systems
+- operators / maintainers
+- regulators
+3. Operational context
+- Where and under what conditions.
+- environment
+- constraints
+- external dependencies
+- lifecycle phases
+4. Operational scenarios
+- Narrative of use in real life.
+- normal operation
+- degraded modes
+- edge cases
+- lifecycle scenarios
+This is the heart of ConOps.
+5. High-level activities
+- What happens conceptually (not functions yet).
+- user activities
+- system responsibilities (black-box)
+- interactions
+6. Assumptions & constraints
+- Non-design constraints.
+- policy
+- regulatory
+- physical context
+- organisational rules
+
+Typical diagrams for ConOps:
+- stakeholder diagram
+- context diagram
+- activity diagrams (operational)
+- high-level use case diagram
+- mission requirements
+All still black-box.
+
+Example:
+```
+package ConOps {
+
+    import Domain::*;
+    import Stakeholders::*;
+    import Operations::*;
+
+}
+package Stakeholders {
+
+    part def Customer;
+    part def LogisticsOperator;
+    part def AviationRegulator;
+    part def CityAuthority;
+
+}
+package Context {
+
+    part def DroneDeliveryService;
+
+    part customer : Customer;
+    part operator : LogisticsOperator;
+    part regulator : AviationRegulator;
+
+    connect customer to DroneDeliveryService;
+    connect operator to DroneDeliveryService;
+    connect regulator to DroneDeliveryService;
+
+}
+package Operations {
+
+    action def RequestDelivery;
+    action def DispatchDrone;
+    action def TransportParcel;
+    action def ReleaseParcel;
+    action def ConfirmDelivery;
+
+    action def NormalDeliveryScenario {
+        flow {
+            first RequestDelivery;
+            then DispatchDrone;
+            then TransportParcel;
+            then ReleaseParcel;
+            then ConfirmDelivery;
+        }
+    }
+}
+package Mission {
+
+    requirement <M1> RapidDelivery {
+        text = "Parcels are delivered within 30 minutes in the service zone.";
+    }
+
+    requirement <M2> PublicSafety {
+        text = "Delivery operations do not endanger the public.";
+    }
+
+}
+package Assumptions {
+
+    constraint def DesignatedDropZonesExist;
+    constraint def UrbanAirspaceAccessible;
+
+}
+
+```
+[Stakeholder Needs]
+
+example:
+```
+package Stakeholders {
+
+    part def Customer;
+    part def LogisticsOperator;
+    part def AviationRegulator;
+
+}
+```
+
+1. Mission Outcomes
+What success looks like to stakeholders.
+- achieve objective
+- deliver capability
+- operational effect
+
+2. Operational expectations
+How the system behaves in use.
+timeliness
+usability
+availability
+safety perception
+
+3. Constraints from stakeholders
+Externally imposed limits.
+- regulatory
+- environmental
+- organisational
+- policy
+
+4. Quality expectations
+Non-functional from stakeholder view.
+- safe
+- reliable
+- quiet
+- affordable
+
+5. Lifecycle expectations
+Operation & support concerns.
+- maintainability
+- serviceability
+- operability
+
+example:
+```
+package StakeholderNeeds {
+
+    requirement <SN1> FastDelivery {
+        text = "Customers receive parcels quickly after requesting delivery.";
+    }
+
+    requirement <SN2> SafeOperations {
+        text = "Delivery operations do not endanger the public.";
+    }
+
+    requirement <SN3> AirspaceCompliance {
+        text = "Delivery flights respect restricted and regulated airspace.";
+    }
+
+    requirement <SN4> OperatorEfficiency {
+        text = "Operators can supervise multiple concurrent deliveries.";
+    }
+    
+    import Stakeholders::*;
+
+    satisfy FastDelivery by Customer;
+    satisfy SafeOperations by AviationRegulator;
+    satisfy AirspaceCompliance by AviationRegulator;
+    satisfy OperatorEfficiency by LogisticsOperator;
+}
+```

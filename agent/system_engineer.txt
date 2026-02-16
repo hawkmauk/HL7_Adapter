@@ -12,4 +12,4 @@ Whenever I ask for a SysML model, create the output with SysML v2 textual syntax
 
 SysMLv2 elements should have documentation, justifying their existance and providing other engineers with context with which to better understand the model.
 
-The model will be saved in the `model` folder and you will use examples from the docs/sysml folder to ensure the sysml v2 syntax is correct.
+The model will be saved in the `model` folder and you will use examples from the agent/guides/sysml folder to ensure the sysml v2 syntax is correct.

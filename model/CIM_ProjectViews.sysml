@@ -1,6 +1,7 @@
-package 'CIM-Views' {
+package 'CIM-ProjectViews' {
     private import Views::*;
     private import CIM::*;
+    private import 'CIM-ViewLibrary'::*;
 
     package StakeholderCatalog {
         doc /* Stakeholder catalog for CIM-level documentation products. */
@@ -44,17 +45,17 @@ package 'CIM-Views' {
         concern CON_002_ClinicalSemanticPreservation : CON_002_ClinicalSemanticPreservation_Def;
 
         concern def CON_003_InterfaceBoundaryClarity_Def {
-            doc /* External context shall clearly define HL7 ingress and REST egress boundaries. Evidence source: CIM::Context::HL7AdapterService, CIM::Context::NetworkBoundary, CIM::Domain::RESTEndpoint. */
+            doc /* External context shall clearly define ingress and egress boundaries. Evidence source: CIM::Context::**, CIM::Domain::**. */
         }
         concern CON_003_InterfaceBoundaryClarity : CON_003_InterfaceBoundaryClarity_Def;
 
         concern def CON_004_DownstreamDeliveryExpectation_Def {
-            doc /* Conceptual contract shall identify intended JSON handoff and delivery outcomes. Evidence source: CIM::Domain::JSONPayload, CIM::Operations::PostPayloadToAPI, CIM::Mission::SecureInteroperability. */
+            doc /* Conceptual contract shall identify intended payload handoff and delivery outcomes. Evidence source: CIM::Domain::**, CIM::Operations::PostPayloadToAPI, CIM::Mission::SecureInteroperability. */
         }
         concern CON_004_DownstreamDeliveryExpectation : CON_004_DownstreamDeliveryExpectation_Def;
 
         concern def CON_005_ComplianceObligations_Def {
-            doc /* PHI handling and transport obligations shall be explicit at context level. Evidence source: CIM::Assumptions::PHIHandlingPolicy, CIM::Assumptions::HTTPSForwardingRequired. */
+            doc /* Data handling and transport obligations shall be explicit at context level. Evidence source: CIM::Assumptions::**, CIM::Mission::**. */
         }
         concern CON_005_ComplianceObligations : CON_005_ComplianceObligations_Def;
 
@@ -65,46 +66,40 @@ package 'CIM-Views' {
     }
 
     package ViewpointDefinitions {
-        doc /* Reusable CIM viewpoints that frame concern clusters for document generation. */
+        doc /* Project viewpoints realized against reusable CIM view library patterns. */
 
         viewpoint VP_001_StakeholderNeeds {
-            doc /* Framing rules for stakeholder intent, mission outcomes, and concern traceability. Level: CIM. */
             frame ConcernMapping::CON_001_IngestionReliability;
             frame ConcernMapping::CON_002_ClinicalSemanticPreservation;
             frame ConcernMapping::CON_006_DegradedModeTransparency;
         }
 
         viewpoint VP_002_ConOps {
-            doc /* Framing rules for operational context, actors, mission, and assumptions. Level: CIM. */
             frame ConcernMapping::CON_001_IngestionReliability;
             frame ConcernMapping::CON_003_InterfaceBoundaryClarity;
             frame ConcernMapping::CON_005_ComplianceObligations;
         }
 
         viewpoint VP_003_OperationalScenarios {
-            doc /* Framing rules for nominal/degraded scenario narratives and activity sequencing. Level: CIM. */
             frame ConcernMapping::CON_001_IngestionReliability;
             frame ConcernMapping::CON_006_DegradedModeTransparency;
         }
 
         viewpoint VP_004_InterfaceContext {
-            doc /* Framing rules for external boundaries, exchanged conceptual artifacts, and interaction responsibilities. Level: CIM. */
             frame ConcernMapping::CON_003_InterfaceBoundaryClarity;
             frame ConcernMapping::CON_004_DownstreamDeliveryExpectation;
         }
 
         viewpoint VP_005_ComplianceAndSafety {
-            doc /* Framing rules for obligations, constraints, and safety-oriented operational concerns. Level: CIM with cross-level trace intent. */
             frame ConcernMapping::CON_005_ComplianceObligations;
             frame ConcernMapping::CON_006_DegradedModeTransparency;
         }
     }
 
     package Viewports {
-        doc /* View instances that apply viewpoints to CIM model scope. */
+        doc /* Concrete project viewports; structured only by standard CIM packages for reuse. */
 
         view VPT_001_StakeholderNeedsMatrix {
-            doc /* Viewport for stakeholder-to-concern-to-mission mapping used in SNRS. */
             satisfy ViewpointDefinitions::VP_001_StakeholderNeeds;
             expose StakeholderCatalog::**;
             expose ConcernMapping::**;
@@ -113,7 +108,6 @@ package 'CIM-Views' {
         }
 
         view VPT_002_ConOpsContext {
-            doc /* Viewport for ConOps context with stakeholders, domain concepts, and operational setting. */
             satisfy ViewpointDefinitions::VP_002_ConOps;
             expose CIM::Stakeholders::**;
             expose CIM::Context::**;
@@ -123,34 +117,24 @@ package 'CIM-Views' {
         }
 
         view VPT_003_OperationalFlows {
-            doc /* Viewport for nominal and degraded operational scenario definitions. */
             satisfy ViewpointDefinitions::VP_003_OperationalScenarios;
-            expose CIM::Operations::NominalFlow;
-            expose CIM::Operations::DegradedFlow;
+            expose CIM::Operations::**;
             render asTextualNotation;
         }
 
         view VPT_004_ExternalInterfaceContext {
-            doc /* Viewport for boundary-level ingress/egress interfaces and exchanged concepts. */
             satisfy ViewpointDefinitions::VP_004_InterfaceContext;
-            expose CIM::Domain::HL7Message;
-            expose CIM::Domain::MLLPFrame;
-            expose CIM::Domain::JSONPayload;
-            expose CIM::Domain::RESTEndpoint;
-            expose CIM::Context::HL7AdapterService;
-            expose CIM::Context::NetworkBoundary;
+            expose CIM::Domain::**;
+            expose CIM::Context::**;
             render asElementTable;
         }
 
         view VPT_005_ComplianceAndSafety {
-            doc /* Viewport for assumptions, constraints, and degraded operations relevant to compliance and hazard posture. */
             satisfy ViewpointDefinitions::VP_005_ComplianceAndSafety;
             expose CIM::Assumptions::**;
-            expose CIM::Mission::OperationalTransparency;
-            expose CIM::Operations::DegradedFlow;
-            expose CIM::Domain::IntegrationError;
-            expose CIM::Domain::ParseError;
-            expose CIM::Domain::DeliveryError;
+            expose CIM::Mission::**;
+            expose CIM::Operations::**;
+            expose CIM::Domain::**;
             render asElementTable;
         }
     }
@@ -187,7 +171,7 @@ package 'CIM-Views' {
         doc /* CIM document composition blueprints represented as model views bound to viewports. */
 
         view DOC_CIM_SNRS {
-            doc /* Stakeholder Needs and Requirements Specification. Audience: engineering + clinical ownership. Sections: S1 Scope and Stakeholders, S2 Needs and Mission Outcomes, S3 Concern Traceability, S4 Acceptance Checks. */
+            doc /* Stakeholder Needs and Requirements Specification. */
             satisfy ViewpointDefinitions::VP_001_StakeholderNeeds;
             expose Viewports::VPT_001_StakeholderNeedsMatrix;
             expose CoverageMatrix::CM_001;
@@ -196,7 +180,7 @@ package 'CIM-Views' {
         }
 
         view DOC_CIM_ConOps {
-            doc /* Concept of Operations. Audience: cross-functional stakeholders. Sections: S1 Mission and Goals, S2 Operational Context, S3 Actors and Interactions, S4 Assumptions and Constraints. */
+            doc /* Concept of Operations. */
             satisfy ViewpointDefinitions::VP_002_ConOps;
             expose Viewports::VPT_002_ConOpsContext;
             expose CIM::Mission::**;
@@ -204,31 +188,30 @@ package 'CIM-Views' {
         }
 
         view DOC_CIM_OperationalScenarios {
-            doc /* Operational Scenarios and Use Case Specification. Audience: engineering + operations. Sections: S1 Nominal Scenario, S2 Degraded Scenario, S3 Operational Responsibilities, S4 Acceptance Checks. */
+            doc /* Operational Scenarios and Use Case Specification. */
             satisfy ViewpointDefinitions::VP_003_OperationalScenarios;
             expose Viewports::VPT_003_OperationalFlows;
             render asTextualNotation;
         }
 
         view DOC_CIM_EICD {
-            doc /* External Interface Context Document. Audience: upstream/downstream system owners. Sections: S1 Boundary Definition, S2 Exchanged Concepts, S3 Interaction Expectations, S4 Assumptions. */
+            doc /* External Interface Context Document. */
             satisfy ViewpointDefinitions::VP_004_InterfaceContext;
             expose Viewports::VPT_004_ExternalInterfaceContext;
             render asElementTable;
         }
 
         view DOC_CIM_RSCM {
-            doc /* Regulatory and Standards Compliance Matrix (context-level obligations). Audience: compliance and governance. Sections: S1 Obligation Catalog, S2 Constraint Mapping, S3 Traceability to Mission/Operations. */
+            doc /* Regulatory and Standards Compliance Matrix (context-level obligations). */
             satisfy ViewpointDefinitions::VP_005_ComplianceAndSafety;
             expose Viewports::VPT_005_ComplianceAndSafety;
             render asElementTable;
         }
 
         view DOC_CIM_SCHA {
-            doc /* Safety Case and Hazard Analysis Summary (concept/operational). Audience: safety and operations. Sections: S1 Hazard Context, S2 Safety-Relevant Constraints, S3 Degraded Outcome Summary, S4 Open Risks/Gaps. */
+            doc /* Safety Case and Hazard Analysis Summary (concept/operational). */
             satisfy ViewpointDefinitions::VP_005_ComplianceAndSafety;
             expose Viewports::VPT_005_ComplianceAndSafety;
-            expose CIM::Operations::DegradedFlow;
             render asElementTable;
         }
     }

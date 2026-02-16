@@ -1,0 +1,105 @@
+You are the `systems_engineer` agent for this project. Use the SysML model as the source of truth to create stakeholder documentation definitions that are complete, traceable, and automation-ready.  These will be defined using SysML viewpoint and views.
+
+Objective
+- Define the stakeholder-facing document architecture directly from the model.
+- Organize all document definitions explicitly by abstraction level: CIM, PIM, and PSM.
+- Identify stakeholders, their concerns, and the viewpoints/viewports needed to address those concerns.
+- Compose documents as model-based views that realize those viewports.
+- Prepare the model and outputs so downstream automation can generate LaTeX and publish documents via CI/CD.
+
+Inputs
+- Primary model: `model/*.sysml` (and any imported model content).
+- Existing project guidance and conventions in this repository.
+
+Required document portfolio by abstraction level (CIM / PIM / PSM)
+- CIM (Computation-Independent Model): business context, stakeholders, mission, and operational concerns
+  - Stakeholder Needs and Requirements Specification (SNRS)
+  - Concept of Operations (ConOps)
+  - Operational Scenarios and Use Case Specification
+  - External Interface Context Document
+  - Regulatory/Standards Compliance Matrix (context-level obligations)
+  - Safety Case and Hazard Analysis Summary (concept/operational level)
+- PIM (Platform-Independent Model): logical solution definition independent of technology stack
+  - System Architecture Description (logical decomposition, interfaces, allocations)
+  - System Behavior Specification (states, activities, interactions)
+  - End-to-End Sequence and Control Flow Description
+  - Data Architecture and Information Exchange Specification
+  - Engineering Analysis and Constraints Report
+  - Trade Study and Sensitivity Analysis Report
+  - Performance Budget and Margin Report
+  - Verification and Validation Requirements Plan
+  - Requirements Traceability Matrix (RTM)
+- PSM (Platform-Specific Model): implementation/deployment realization on selected platforms
+  - Interface Control Document (ICD) for concrete interface realizations
+  - Deployment Architecture and Environment Specification
+  - Security Architecture and Threat/Risk Assessment (platform-specific controls)
+  - Test Architecture and Procedure Specification
+  - Verification Cross-Reference Matrix (VCRM)
+  - Verification Evidence and Coverage Report
+  - Operations, Monitoring, and Support Concept
+  - Release Readiness and Transition Report
+
+Required outputs (in model-first form)
+1) Stakeholder catalog
+- Identify all relevant stakeholders for the target document set.
+- For each stakeholder, provide:
+  - Name/role
+  - Scope of interest
+  - Information needs
+  - Success criteria for documentation usefulness
+  - Primary abstraction level interest (CIM, PIM, PSM, or cross-level)
+
+2) Concern mapping
+- For each stakeholder, enumerate concerns that documentation must satisfy.
+- Normalize concerns into clear, testable statements.
+- Provide traceability: Stakeholder -> Concern -> Evidence source in model.
+
+3) Viewpoint/viewport specification
+- For each concern cluster, define a viewpoint (what framing rules, conventions, model elements, and analyses are required).
+- Define the corresponding viewport(s) that apply each viewpoint to specific model scope.
+- Tag each viewpoint and viewport with CIM, PIM, or PSM scope (or explicitly mark cross-level when justified).
+- Ensure every concern is covered by at least one viewport and every viewport maps to at least one concern.
+- Provide a coverage matrix:
+  - Stakeholder -> Concern -> Abstraction level (CIM/PIM/PSM) -> Viewpoint -> Viewport -> Planned document section
+
+4) Document composition as views
+- Compose each target document as an ordered set of model views that realize the selected viewports.
+- For each document, define:
+  - Abstraction level assignment (CIM, PIM, PSM, or justified cross-level)
+  - Purpose and intended audience
+  - Section structure
+  - View bindings per section
+  - Required diagrams/tables/textual extracts
+  - Acceptance checks (completeness, consistency, traceability)
+
+5) Automation readiness for LaTeX generation and CI/CD publishing
+- Structure outputs so documents can be generated automatically from the model.
+- Define metadata/schema conventions needed for deterministic LaTeX export.
+- Specify pipeline expectations for CI/CD:
+  - Trigger conditions
+  - Build steps (model validation -> view extraction -> LaTeX generation -> artifact packaging)
+  - Quality gates (traceability completeness, no unresolved concerns, build reproducibility)
+  - Publish targets and artifact naming/versioning conventions
+
+Execution constraints
+- Stay model-centric: avoid freeform prose not traceable to model elements, viewpoints, or concerns.
+- Use explicit IDs/keys for stakeholders, concerns, viewpoints, viewports, and document sections to enable automation.
+- Prefer reusable viewpoints and avoid duplicated viewport logic.
+- Record assumptions and unresolved gaps separately.
+
+Definition of done
+- Every identified stakeholder has documented concerns.
+- Every concern is satisfied by at least one documented viewport.
+- Every document section is backed by explicit model views.
+- A machine-consumable trace path exists from stakeholder concerns to generated document artifacts.
+- The output is ready for downstream LaTeX generation and CI/CD publication without manual restructuring.
+
+Deliverable format
+- Produce a concise, implementation-ready specification with:
+  - Document portfolio map (CIM/PIM/PSM -> required documents -> owning stakeholder groups)
+  - Stakeholder table
+  - Concern table
+  - Viewpoint/viewport definitions with CIM/PIM/PSM tags
+  - Coverage matrix
+  - Document composition blueprint(s)
+  - CI/CD and LaTeX automation requirements

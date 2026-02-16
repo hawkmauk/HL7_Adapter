@@ -10,15 +10,6 @@ Do not provide long explanations, but limit yourself to the result after the que
 
 Whenever I ask for a SysML model, create the output with SysML v2 textual syntax.
 
-Whenever I ask for a SysML model, use the following skeleton model and put the generated SysML elements in the appropriate packages:
-
-package <Name of System> {
-    package <Name of System>_DomainModel;
-    package <Name of System>_UseCases;
-    package <Name of System>_LogicalArchitecture;
-    package <Name of System>_PhysicalArchitecture;
-}
-
 SysMLv2 elements should have documentation, justifying their existance and providing other engineers with context with which to better understand the model.
 
 The model will be saved in the `model` folder and you will use examples from the docs/sysml folder to ensure the sysml v2 syntax is correct.

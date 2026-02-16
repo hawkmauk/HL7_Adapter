@@ -3,12 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
+import subprocess
+
 from .base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from .ir import DocumentIR, ExposedElement
 
 
 LATEX_SPECIAL_RE = re.compile(r"([\\{}$&#_%~^])")
 STYLE_FILE_NAME = "lyrebird-doc-style.sty"
+TEX4HT_CFG_NAME = "lyrebird-html.cfg"
 LABEL_SAFE_RE = re.compile(r"[^a-z0-9:-]+")
 
 
@@ -25,6 +28,24 @@ def _doc_slug(document_id: str) -> str:
 def _label_key(document_id: str) -> str:
     key = document_id.lower().replace("_", "-")
     return LABEL_SAFE_RE.sub("-", key).strip("-")
+
+
+def _try_convert_svg_to_pdf(svg_path: Path, pdf_path: Path) -> None:
+    """Convert SVG to PDF for pdflatex if rsvg-convert or similar is available."""
+    if not svg_path.exists():
+        return
+    for cmd in (["rsvg-convert", "-f", "pdf", "-o", str(pdf_path), str(svg_path)],):
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=10)
+            if pdf_path.exists():
+                return
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            continue
+
+
+def _template_dir() -> Path:
+    generator_dir = Path(__file__).resolve().parent
+    return generator_dir / "templates" / "latex"
 
 
 def _style_template_path() -> Path:
@@ -147,10 +168,7 @@ def _render_exposed_package_structure(document: DocumentIR) -> str:
         if members:
             lines.append("\\begin{itemize}")
             for member in members:
-                member_line = (
-                    f"\\item \\texttt{{{_escape_latex(member.kind)}}} "
-                    f"\\textbf{{{_escape_latex(member.name)}}}"
-                )
+                member_line = f"\\item \\textbf{{{_escape_latex(member.name)}}}"
                 lines.append(member_line)
                 if member.doc:
                     lines.append(_escape_latex(member.doc))
@@ -181,6 +199,7 @@ def _build_tex(document: DocumentIR, version: str) -> str:
     lines = [
         "% Auto-generated from SysML views",
         f"% Source: {document.source.file_path}",
+        "% Build from the output directory so lyrebird-doc-style.sty is found, or run the generator first.",
         "\\documentclass[11pt]{article}",
         f"\\usepackage{{{STYLE_FILE_NAME.removesuffix('.sty')}}}",
         "",
@@ -236,6 +255,22 @@ class LatexGenerator(GeneratorTarget):
         style_target = output_dir / STYLE_FILE_NAME
         style_target.write_text(style_source.read_text(encoding="utf-8"), encoding="utf-8")
 
+        template_dir = style_source.parent
+        logo_svg = template_dir / "lyrebird-logo.svg"
+        logo_pdf = template_dir / "lyrebird-logo.pdf"
+        if logo_svg.exists():
+            (output_dir / "lyrebird-logo.svg").write_bytes(logo_svg.read_bytes())
+        if logo_pdf.exists():
+            (output_dir / "lyrebird-logo.pdf").write_bytes(logo_pdf.read_bytes())
+        else:
+            _try_convert_svg_to_pdf(logo_svg, output_dir / "lyrebird-logo.pdf")
+
+        tex4ht_cfg = _template_dir() / TEX4HT_CFG_NAME
+        if tex4ht_cfg.exists():
+            (output_dir / TEX4HT_CFG_NAME).write_text(
+                tex4ht_cfg.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+
         artifacts: list[GeneratedArtifact] = []
         artifacts.append(
             GeneratedArtifact(
@@ -243,6 +278,13 @@ class LatexGenerator(GeneratorTarget):
                 artifact_type="style",
             )
         )
+        if tex4ht_cfg.exists():
+            artifacts.append(
+                GeneratedArtifact(
+                    path=output_dir / TEX4HT_CFG_NAME,
+                    artifact_type="tex4ht-config",
+                )
+            )
         for document in sorted(documents, key=lambda item: item.document_id):
             filename = f"cim-{_doc_slug(document.document_id)}-{options.version}.tex"
             output_path = output_dir / filename

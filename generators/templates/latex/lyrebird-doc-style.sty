@@ -10,6 +10,7 @@
 \RequirePackage{fancyhdr}
 \RequirePackage{hyperref}
 \RequirePackage{enumitem}
+\RequirePackage{graphicx}
 \RequirePackage{array}
 \RequirePackage{booktabs}
 \RequirePackage{longtable}
@@ -21,6 +22,7 @@
 \definecolor{LyrebirdNavy}{HTML}{0B2545}
 \definecolor{LyrebirdTeal}{HTML}{00A7A0}
 \definecolor{LyrebirdInk}{HTML}{1E293B}
+\definecolor{LyrebirdHeadText}{HTML}{1B1B1B}
 \definecolor{LyrebirdMuted}{HTML}{64748B}
 \definecolor{LyrebirdSurface}{HTML}{F8FAFC}
 \definecolor{LyrebirdBorder}{HTML}{DCE3EA}
@@ -70,8 +72,9 @@
   {0.5em}
   {}
 
-\setlist[itemize]{leftmargin=1.4em,itemsep=0.2em,topsep=0.25em}
-\setlist[enumerate]{leftmargin=1.6em,itemsep=0.2em,topsep=0.25em}
+% List styling: no bullets for itemize; compact spacing
+\setlist[itemize]{label={}, leftmargin=1.4em, itemsep=0.2em, topsep=0.25em}
+\setlist[enumerate]{leftmargin=1.6em, itemsep=0.2em, topsep=0.25em}
 
 \renewcommand{\arraystretch}{1.22}
 
@@ -88,20 +91,21 @@
   bottom=1mm
 }
 
-\newcommand{\LyrebirdDocumentTitle}[3]{
-  \begin{tcolorbox}[
-    colback=LyrebirdNavy,
-    colframe=LyrebirdNavy,
-    arc=1mm,
-    boxrule=0pt,
-    left=2.2mm,
-    right=2.2mm,
-    top=1.5mm,
-    bottom=1.5mm
-  ]
-    {\color{white}\LARGE\textbf{#1}}\par
-    \vspace{0.35em}
-    {\color{white}\normalsize\texttt{#2} \hfill Version: #3}
-  \end{tcolorbox}
+% Logo: include if lyrebird-logo.pdf exists in current dir (convert from lyrebird-logo.svg if needed)
+\newcommand{\LyrebirdLogo}{%
+  \IfFileExists{lyrebird-logo.pdf}{%
+    \includegraphics[height=2.2em]{lyrebird-logo.pdf}%
+  }{}%
+}
+
+\newcommand{\LyrebirdDocumentTitle}[3]{%
+  \noindent
+  \LyrebirdLogo
+  \hfill
+  {\color{LyrebirdHeadText}\LARGE\textbf{#1}}\par
+  \vspace{0.35em}
+  \noindent
+  \hfill
+  {\color{LyrebirdHeadText}\normalsize\texttt{#2} \quad Version: #3}\par
   \vspace{0.7em}
 }

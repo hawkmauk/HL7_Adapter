@@ -8,6 +8,7 @@ import re
 BLOCK_DECL_RE = re.compile(
     r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part)\s+"
     r"(?:(?:def)\s+)?"
+    r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
     r"[^{;\n]*\{"
 )
@@ -29,6 +30,7 @@ RENDER_RE = re.compile(r"(?m)^\s*render\s+as(?P<kind>[A-Za-z0-9_]+)\s*;")
 class ModelElement:
     kind: str
     name: str
+    short_name: str | None
     file_path: Path
     start_index: int
     end_index: int
@@ -49,6 +51,7 @@ class ModelIndex:
     elements: list[ModelElement]
     by_qualified_name: dict[str, ModelElement]
     by_name: dict[str, list[ModelElement]]
+    by_short_name: dict[str, list[ModelElement]]
     declared_ids: dict[str, list[Path]]
 
     def get_single(self, name: str) -> ModelElement | None:
@@ -62,6 +65,15 @@ def _strip_quotes(value: str) -> str:
     if value.startswith("'") and value.endswith("'"):
         return value[1:-1]
     return value
+
+
+def _strip_short_name(value: str | None) -> str | None:
+    if value is None:
+        return None
+    clean = value.strip()
+    if clean.startswith("'") and clean.endswith("'"):
+        clean = clean[1:-1]
+    return clean or None
 
 
 def _line_no(text: str, index: int) -> int:
@@ -86,6 +98,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
     for match in BLOCK_DECL_RE.finditer(text):
         kind = match.group("kind")
         name = _strip_quotes(match.group("name"))
+        short_name = _strip_short_name(match.group("short"))
         open_brace_index = text.find("{", match.start())
         if open_brace_index < 0:
             continue
@@ -106,6 +119,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             ModelElement(
                 kind=kind,
                 name=name,
+                short_name=short_name,
                 file_path=file_path,
                 start_index=match.start(),
                 end_index=close_brace_index,
@@ -155,14 +169,19 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
 
     by_qname: dict[str, ModelElement] = {}
     by_name: dict[str, list[ModelElement]] = {}
+    by_short_name: dict[str, list[ModelElement]] = {}
     for element in all_elements:
         by_qname[element.qualified_name] = element
         by_name.setdefault(element.name, []).append(element)
+        if element.short_name:
+            by_short_name.setdefault(element.short_name, []).append(element)
+            by_name.setdefault(element.short_name, []).append(element)
 
     return ModelIndex(
         files=files,
         elements=all_elements,
         by_qualified_name=by_qname,
         by_name=by_name,
+        by_short_name=by_short_name,
         declared_ids=declared_ids,
     )

@@ -41,7 +41,31 @@ python3 -m generators --target latex --model-dir model --out out --version v0.1.
 Outputs:
 
 - `out/cim-<doc-id>-<version>.tex` for each `DOC_CIM_*` view
+- `out/lyrebird-doc-style.sty`, `out/lyrebird-html.cfg`, and logo assets
 - `out/coverage-report.json`
+
+**Building PDFs:** Run the generator first so `out/` contains the `.sty` and logo. Then run `pdflatex` from inside `out/`, e.g.:
+
+```bash
+python3 -m generators --target latex --model-dir model --out out --version v0.1.0
+cd out && pdflatex cim-eicd-v0.1.0.tex
+```
+
+If you see `File 'lyrebird-doc-style.sty' not found`, run the generator again from the repo root with `--out out`, then build from `out/`.
+
+**Building HTML (tex4ht):** With [tex4ht](https://www.tug.org/tex4ht/) / [make4ht](https://www.kodymirus.cz/make4ht/) installed, generate as above, then from `out/` run:
+
+```bash
+cd out && make4ht -c lyrebird-html.cfg cim-eicd-v0.1.0.tex
+```
+
+For HTML5 output:
+
+```bash
+make4ht -c lyrebird-html.cfg cim-eicd-v0.1.0.tex "html5"
+```
+
+This produces `cim-eicd-v0.1.0.html` (and assets) using the Lyrebird styling defined in `lyrebird-html.cfg`.
 
 ## Output naming convention
 

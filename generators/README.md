@@ -67,6 +67,10 @@ make4ht -c lyrebird-html.cfg cim-eicd-v0.1.0.tex "html5"
 
 This produces `cim-eicd-v0.1.0.html` (and assets) using the Lyrebird styling defined in `lyrebird-html.cfg`.
 
+## CI
+
+On every push to `main` (including merges from pull requests), the [Build docs](.github/workflows/build-docs.yml) workflow runs the generator, builds PDF and HTML for each generated `.tex` file, and uploads the results as a single artifact named **generated-docs**. Download it from the run’s **Summary** in the Actions tab (Artifacts section). The artifact contains `pdf/` (all PDFs) and `html/` (all HTML plus CSS, SVG, and any make4ht assets). You can add a second artifact (e.g. generated code) or a job that builds and pushes a Docker image to GHCR in the same workflow so docs and code/images are produced together.
+
 ## Output naming convention
 
 For `DOC_CIM_<X>`:

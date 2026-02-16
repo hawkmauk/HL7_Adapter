@@ -1,0 +1,62 @@
+# Build generated docs (PDF + HTML) on every push to main.
+# Outputs are uploaded as a single artifact (generated-docs) with pdf/ and html/ layout.
+name: Build docs
+
+on:
+  push:
+    branches: [main]
+
+env:
+  VERSION: "v0.1.0"
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install TeX Live and tex4ht
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            texlive-latex-base \
+            texlive-latex-extra \
+            texlive-fonts-recommended \
+            texlive-formats-extra \
+            tex4ht \
+            texlive-extra-utils
+
+      - name: Run generator
+        run: |
+          python3 -m generators --target latex --model-dir model --out out --version ${{ env.VERSION }}
+
+      - name: Build PDF and HTML for each .tex
+        run: |
+          cd out
+          for tex in *.tex; do
+            [ -f "$tex" ] || continue
+            base="${tex%.tex}"
+            echo "Building $base..."
+            pdflatex -interaction=nonstopmode -halt-on-error "$tex" || exit 1
+            make4ht -c lyrebird-html.cfg "$base.tex" || exit 1
+          done
+
+      - name: Assemble artifacts
+        run: |
+          mkdir -p artifacts/pdf artifacts/html
+          cp out/*.pdf artifacts/pdf/ 2>/dev/null || true
+          cp out/*.html out/*.css out/*.svg artifacts/html/ 2>/dev/null || true
+          # Copy make4ht-generated PNGs if any (e.g. name*.png)
+          cp out/*.png artifacts/html/ 2>/dev/null || true
+
+      - name: Upload generated-docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-docs
+          path: artifacts/

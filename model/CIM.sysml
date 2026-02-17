@@ -193,7 +193,6 @@ package CIM {
 
         private import MDA::Lifecycle::*;
         private import MDA::Structure::*;
-        private import MDA::CIM::View::*;
 
         part cimConsensusMilestone : CIMConsensusGateway;
         part cimGatewayCheck : GatewayCheck;

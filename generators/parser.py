@@ -4,13 +4,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import re
 
+from .errors import ParsingError
+
 
 BLOCK_DECL_RE = re.compile(
     r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
-    r"[^{;\n]*\{"
+    r"(?P<tail>[^{;\n]*)\{"
 )
 
 ID_DECL_RE = re.compile(
@@ -43,6 +45,7 @@ class ModelElement:
     satisfy_refs: list[str] = field(default_factory=list)
     frame_refs: list[str] = field(default_factory=list)
     render_kind: str | None = None
+    supertypes: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -90,7 +93,7 @@ def _find_matching_brace(text: str, open_brace_index: int) -> int:
             depth -= 1
             if depth == 0:
                 return i
-    raise ValueError("Unbalanced braces while parsing SysML blocks.")
+    raise ParsingError("Unbalanced braces while parsing SysML blocks.")
 
 
 def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
@@ -99,6 +102,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         kind = match.group("kind")
         name = _strip_quotes(match.group("name"))
         short_name = _strip_short_name(match.group("short"))
+        tail = match.group("tail") or ""
         open_brace_index = text.find("{", match.start())
         if open_brace_index < 0:
             continue
@@ -114,6 +118,21 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
 
         render_match = RENDER_RE.search(body)
         render_kind = render_match.group("kind") if render_match else None
+
+        # Optional supertypes (e.g. \"view X : Y\" or \"view X :> Y\")
+        supertypes: list[str] = []
+        tail_clean = tail.strip()
+        if tail_clean:
+            for part in tail_clean.split(","):
+                part_clean = part.strip()
+                if not part_clean:
+                    continue
+                # Strip leading ':' or ':>' tokens
+                while part_clean.startswith(":") or part_clean.startswith(">"):
+                    part_clean = part_clean[1:].lstrip()
+                if not part_clean:
+                    continue
+                supertypes.append(_strip_quotes(part_clean))
 
         elements.append(
             ModelElement(
@@ -131,6 +150,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 satisfy_refs=[m.group("ref").strip() for m in SATISFY_RE.finditer(body)],
                 frame_refs=[m.group("ref").strip() for m in FRAME_RE.finditer(body)],
                 render_kind=render_kind,
+                supertypes=supertypes,
             )
         )
     return elements
@@ -151,9 +171,11 @@ def _resolve_qualified_names(elements: list[ModelElement]) -> None:
 
 
 def parse_model_directory(model_dir: Path) -> ModelIndex:
-    files = sorted(model_dir.glob("*.sysml"))
+    # Recursively include all .sysml files so that library packages under
+    # subdirectories (e.g. MDA_Library) are part of the model index.
+    files = sorted(model_dir.rglob("*.sysml"))
     if not files:
-        raise ValueError(f"No .sysml files found in {model_dir}")
+        raise ParsingError(f"No .sysml files found in {model_dir}")
 
     all_elements: list[ModelElement] = []
     declared_ids: dict[str, list[Path]] = {}

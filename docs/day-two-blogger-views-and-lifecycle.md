@@ -16,22 +16,17 @@ Once the prompt writer was in place, I set it to work **improving the first syst
 
 I wanted the build log to be part of the workflow, not a “write it up later” chore. So I created a dedicated **blogger agent** prompt in `agent/blogger.prompt`. The agent’s job is to take raw notes—bullets, rough paragraphs, references to code or diagrams—and turn them into blog-ready posts: first person, practitioner voice, short paragraphs and clear headings, with technical terms (CIM, PIM, SysML, HL7, ConOps) used correctly and no invented detail. The prompt also asks for a suggested title, optional subtitle options, and a sentence or two for social or newsletter teasers. When I have progress or a decision, I paste the prompt and my notes; the agent returns a draft I can drop into the `docs/` folder. This post is the first one produced that way for day two.
 
-## Standard Views Library and MDA Library
+## Dedicated MDA Library and Loose Coupling
 
-On day one we had project-specific viewports and document blueprints in `CIM_ProjectViews.sysml`. That worked, but it tied the documentation pattern tightly to this one project. To make the generated docs **reusable across projects**, I introduced an explicit **MDA view library** and a project-agnostic CIM skeleton.
+On day one we had project-specific viewports and document blueprints in `CIM_ProjectViews.sysml`. To make the generated docs **reusable across projects**, we turned that into a **dedicated MDA Library** under `model/MDA_Library/`—a first-class template that any MDA-style project can reuse.
 
-At the core is a new `ViewLibrary` package in `model/ViewLibrary/ViewLibrary.sysml`:
+- **Root** — `MDA.sysml` aggregates the main namespaces: `MDA_Structure`, `MDA_View`, `MDA_Lifecycle`, and `MDA_CIM`, with short aliases (`Structure`, `Views`, `Lifecycle`, `CIM`) so imports stay readable.
+- **Shared building blocks** — At the top level: `structure.sysml`, `view.sysml`, `viewpoint.sysml`, and `lifecycle.sysml` (cross-cutting structure contracts, abstract viewpoints, render profiles, lifecycle phases and gates).
+- **CIM slice** — Under `CIM/`: CIM-specific structure (skeleton, package requirements), viewpoints (StakeholderNeeds, ConOps, OperationalScenarios, InterfaceContext, ComplianceAndSafety, LifecycleGatewayReadiness), and view definitions that become the document types (SNRS, ConOps, EICD, RSCM, SCHA, Gateway Signoff). Same pattern will extend to PIM and PSM.
 
-- **StandardViewpointCatalog** — abstract viewpoints (StakeholderConcernsViewpoint, LifecycleGateReadinessViewpoint, ArchitectureAndBehaviorViewpoint, VerificationAndComplianceViewpoint) that CIM, PIM, and PSM catalogs specialize.
-- **StandardRenderProfiles** — shared render profiles (element table, tree diagram, textual notation) so any view library can rely on the same generation contract.
+The folder layout is **logically separated** and much easier to navigate than one big file—a lot of that organisation was manual, as it took some working through to decide what belonged where.
 
-On top of that sits the **CIM view library** in `model/ViewLibrary/CIM_ViewLibrary.sysml`:
-
-- **CIMStandardStructure** — a project-agnostic CIM skeleton (`CIMSkeleton` package) with empty `Domain`, `Stakeholders`, `Context`, `Operations`, `Mission`, and `Assumptions` packages, plus requirements that a conforming CIM must provide each of them. This decouples the *shape* of a CIM from any one project.
-- **CIMStandardViewpointCatalog** — concrete CIM viewpoints (StakeholderNeeds, ConOps, OperationalScenarios, InterfaceContext, ComplianceAndSafety, LifecycleGatewayReadiness) that specialize the abstract ones from `ViewLibrary`.
-- **CIMStandardDocumentPortfolio** — generic document views (SNRS, ConOps, Operational Scenarios, EICD, RSCM, SCHA, Gateway Signoff) bound to those viewpoints and render profiles.
-
-With this in place, a project-specific package like `CIM_ProjectViews` just binds its concerns and viewports to the standard viewpoints and documents from the MDA library. The **document definitions and CIM structure are now shared assets**, not hard-wired to this HL7 Adapter, which will also help when we add other generators (for example, code) that need to understand viewpoints and structure.
+**Documentation** (ConOps, gateway signoffs, SNRS, EICD, etc.) is **generated from the MDA Library**. The library defines *what* documents exist and *what* structure a conforming CIM must have. The **project** (`CIM_ProjectViews.sysml`, `CIM.sysml`) only provides stakeholders, concerns, the actual CIM content, and viewports that *satisfy* the library’s viewpoints and *expose* that content. So we get **loose coupling**: the template lives in the MDA Library; the HL7 Adapter only fills in *who*, *what*, and *how* for this system. ConOps and gateway signoffs are the same *kind* of document across projects; only the content is project-specific.
 
 ## Project Lifecycle in the Model
 
@@ -44,17 +39,23 @@ The **project lifecycle** is no longer implied—it’s modeled. `ProjectLifecyc
 
 So governance is on the digital thread too: gates, phases, and signoff are first-class model elements. As we add PIM and PSM, we’ll hook their view libraries and project views into the same lifecycle and reuse the same stakeholder and viewpoint patterns.
 
+## Python Agent for the Generator
+
+Extending the LaTeX/document generator (and eventually adding code generation from PIM/PSM) needed someone with a clear remit in the codebase. So I added a **dedicated Python agent** for the generator: `agent/python_engineer.prompt`. That agent is a senior Python engineer focused on **parsing models and generating code**—designing and implementing generators that consume our SysML v2 models and the MDA Library and produce artifacts (today mainly docs, tomorrow services, DTOs, config, or tests). The prompt gives it project context (MDA, CIM/PIM/PSM, `MDA_Library`), clear inputs and outputs, and rules: deterministic and regeneration-friendly generation, don’t overwrite hand-maintained files, make mapping rules explicit and traceable. When I need a new generator or a pipeline change, I point it at the relevant model files and describe the desired artifacts; it proposes and implements the Python and templates.
+
 ## What I Did Today
 
 - **Created the prompt writer agent** — `agent/prompt_writer.prompt`: dedicated agent for writing and refining prompts; used it to improve the systems engineer prompt (`agent/system_engineer.prompt`) with clearer structure, terse output behavior, and definition of done.
 - **Created the blogger agent** — `agent/blogger.prompt`: prompt that turns notes into structured blog posts (title, body, optional teaser), with voice and technical-accuracy rules.
-- **Structured the standard views library** — ProjectLifecycle (StandardDocumentationFramework with abstract viewpoints, standard stakeholders, render profiles; LifecycleGovernance with phases, status, and gate types) and CIM_ViewLibrary (CIM standard structure requirements and CIM viewpoint catalog specializing the standard).
-- **Added the project lifecycle** — Lifecycle phases, signoff status, milestones, gateway checks, signoff records, and the three MDA gate types (CIM, PIM, PSM) as part of the shared model.
+- **Structured the standard views library and project lifecycle** — Lifecycle phases, signoff status, gate types; abstract viewpoints and render profiles; CIM structure, viewpoint catalog, and document portfolio.
+- **Created a dedicated MDA Library** — `model/MDA_Library/`: root `MDA.sysml` plus `structure.sysml`, `view.sysml`, `viewpoint.sysml`, `lifecycle.sysml`, and CIM slice; logically separated and easier to navigate (organisation was manual as we worked through the best structure).
+- **Loose coupling** — Documentation (ConOps, gateway signoffs, etc.) is generated from the library; the project only supplies stakeholders, concerns, CIM content, and viewports that satisfy the library’s viewpoints.
+- **Created the Python generator agent** — `agent/python_engineer.prompt`: dedicated agent for parsing SysML models and implementing generators (docs now, code later).
 
 ## Next Up
 
 - **Refine CIM content** — Deeper domain, scenarios, and assumptions; keep concerns and viewpoint coverage aligned.
-- **PIM view library** — Same idea as CIM: PIM standard structure and PIM viewpoint catalog, reusing ProjectLifecycle and the same documentation framework.
-- **Use the blogger agent** — Feed it progress as we go so the build log stays current without becoming a bottleneck.
+- **PIM slice in MDA Library** — Same pattern as CIM: PIM structure, viewpoints, and document portfolio.
+- **Use the Python agent** — Evolve the doc generator and, later, add PIM/PSM-based code generation.
 
 If you’re curious about view libraries in SysML, lifecycle-in-the-model, or keeping a build log with an agent, I’ll keep posting as we go.

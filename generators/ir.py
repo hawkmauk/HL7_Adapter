@@ -28,6 +28,17 @@ class ExposedElement:
 
 
 @dataclass(slots=True)
+class SectionIR:
+    """Represents a logical document section derived from a section view."""
+
+    id: str
+    title: str
+    depth: int
+    intro: str
+    exposed_elements: list[ExposedElement] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class DocumentIR:
     document_id: str
     title: str
@@ -37,6 +48,7 @@ class DocumentIR:
     binding: ViewBinding
     exposed_elements: list[ExposedElement] = field(default_factory=list)
     coverage_refs: list[str] = field(default_factory=list)
+    sections: list[SectionIR] = field(default_factory=list)
 
 
 @dataclass(slots=True)

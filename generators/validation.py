@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .errors import ValidationError
 from .extractor import ExtractionResult
 from .parser import ModelIndex
 
@@ -16,7 +17,7 @@ def validate_model_index(model_index: ModelIndex) -> None:
             joined = ", ".join(str(path) for path in duplicate_ids[symbol])
             lines.append(f"{symbol}: {joined}")
         message = "Duplicate stable IDs found:\n" + "\n".join(lines)
-        raise ValueError(message)
+        raise ValidationError(message)
 
 
 def _extract_last_token(ref: str) -> str | None:
@@ -32,7 +33,7 @@ def _has_symbol(model_index: ModelIndex, symbol: str) -> bool:
 
 def validate_extraction_graph(extraction: ExtractionResult, model_index: ModelIndex) -> None:
     if not extraction.documents:
-        raise ValueError("No DOC_CIM_* views found. Cannot generate artifacts.")
+        raise ValidationError("No DOC_CIM_* views found. Cannot generate artifacts.")
 
     unresolved: list[str] = []
 
@@ -59,4 +60,4 @@ def validate_extraction_graph(extraction: ExtractionResult, model_index: ModelIn
                 )
 
     if unresolved:
-        raise ValueError("Validation failed:\n" + "\n".join(unresolved))
+        raise ValidationError("Validation failed:\n" + "\n".join(unresolved))

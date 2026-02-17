@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable, Iterable, Sequence
 import re
 
-from .ir import CoverageEntry, DocumentIR, ExposedElement, SourceRef, ViewBinding
+from .ir import CoverageEntry, DocumentIR, ExposedElement, SectionIR, SourceRef, ViewBinding
 from .parser import ModelElement, ModelIndex
 
 
@@ -108,11 +109,78 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
     return sorted(resolved.values(), key=lambda item: item.qualified_name)
 
 
+def _collect_section_irs_for_document(
+    element: ModelElement, model_index: ModelIndex
+) -> list[SectionIR]:
+    """
+    If the document view is typed by a document template (e.g. ConOps_Document),
+    collect nested section views from that template and turn them into SectionIRs.
+    """
+
+    # Identify the template view this document is typed by, if any.
+    template: ModelElement | None = None
+    for super_name in element.supertypes:
+        candidates = model_index.by_name.get(super_name, [])
+        for candidate in candidates:
+            if candidate.kind == "view":
+                template = candidate
+                break
+        if template is not None:
+            break
+
+    if template is None:
+        return []
+
+    # Section views are nested view blocks within the template's body.
+    nested_views: list[ModelElement] = [
+        item
+        for item in model_index.elements
+        if item.kind == "view"
+        and item.file_path == template.file_path
+        and template.start_index < item.start_index < item.end_index < template.end_index
+    ]
+    nested_views.sort(key=lambda item: item.start_index)
+
+    sections: list[SectionIR] = []
+    for section_elem in nested_views:
+        exposed = _resolve_expose_elements(section_elem.expose_refs, model_index)
+        sections.append(
+            SectionIR(
+                id=section_elem.short_name or section_elem.name,
+                title=section_elem.name,
+                depth=1,  # Top-level document sections
+                intro=section_elem.doc,
+                exposed_elements=exposed,
+            )
+        )
+
+    return sections
+
+
 def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> DocumentIR:
-    coverage_refs = []
+    coverage_refs: list[str] = []
     for ref in element.expose_refs:
         if "CM_" in ref:
             coverage_refs.append(ref.split("::")[-1].strip())
+
+    # Base exposed elements come from the document view's own expose refs
+    # (e.g. DOC_CIM_* bindings to viewports and coverage requirements).
+    base_exposed = _resolve_expose_elements(element.expose_refs, model_index)
+
+    # Sections are derived from the document template (e.g. ConOps_Document)
+    # and each section has its own resolved exposed elements.
+    sections = _collect_section_irs_for_document(element, model_index)
+
+    # For backwards compatibility, keep DocumentIR.exposed_elements as the union
+    # of the document-level exposure and all section-level elements.
+    if sections:
+        by_qname: dict[str, ExposedElement] = {item.qualified_name: item for item in base_exposed}
+        for section in sections:
+            for exposed in section.exposed_elements:
+                by_qname.setdefault(exposed.qualified_name, exposed)
+        exposed_elements = sorted(by_qname.values(), key=lambda item: item.qualified_name)
+    else:
+        exposed_elements = base_exposed
 
     return DocumentIR(
         document_id=element.name,
@@ -129,8 +197,9 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
             expose_refs=[ref.strip() for ref in element.expose_refs],
             render_kind=element.render_kind,
         ),
-        exposed_elements=_resolve_expose_elements(element.expose_refs, model_index),
+        exposed_elements=exposed_elements,
         coverage_refs=coverage_refs,
+        sections=sections,
     )
 
 
@@ -157,18 +226,36 @@ def _extract_coverage_entry(element: ModelElement) -> CoverageEntry:
     )
 
 
-def extract_documents(model_index: ModelIndex) -> ExtractionResult:
-    doc_elements = [
-        element
-        for element in model_index.elements
-        if element.kind == "view" and element.name.startswith("DOC_CIM_")
-    ]
+def extract_documents(
+    model_index: ModelIndex,
+    *,
+    doc_prefixes: Sequence[str] | None = None,
+    coverage_prefix: str = "CM_",
+    is_document: Callable[[ModelElement], bool] | None = None,
+) -> ExtractionResult:
+    """
+    Extract document and coverage information from a ModelIndex.
+
+    By default this targets DOC_CIM_* views and CM_* coverage requirements,
+    but callers can override the prefixes or provide an explicit document
+    predicate for other abstraction levels (PIM/PSM) or document families.
+    """
+    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_",))
+
+    def _default_is_document(element: ModelElement) -> bool:
+        if element.kind != "view":
+            return False
+        return any(element.name.startswith(prefix) for prefix in effective_doc_prefixes)
+
+    document_predicate: Callable[[ModelElement], bool] = is_document or _default_is_document
+
+    doc_elements = [element for element in model_index.elements if document_predicate(element)]
     doc_elements.sort(key=lambda item: item.name)
 
     coverage_elements = [
         element
         for element in model_index.elements
-        if element.kind == "requirement" and element.name.startswith("CM_")
+        if element.kind == "requirement" and element.name.startswith(coverage_prefix)
     ]
     coverage_elements.sort(key=lambda item: item.name)
 

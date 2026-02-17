@@ -7,6 +7,8 @@ import subprocess
 
 from .base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from .ir import DocumentIR, ExposedElement
+from .registry import register_target
+from .templates import get_template_dir, select_first_existing, copy_asset
 
 
 LATEX_SPECIAL_RE = re.compile(r"([\\{}$&#_%~^])")
@@ -44,22 +46,20 @@ def _try_convert_svg_to_pdf(svg_path: Path, pdf_path: Path) -> None:
 
 
 def _template_dir() -> Path:
-    generator_dir = Path(__file__).resolve().parent
-    return generator_dir / "templates" / "latex"
+    """Return the template directory for the LaTeX target."""
+    return get_template_dir("latex")
 
 
 def _style_template_path() -> Path:
+    """Locate the LaTeX style template, preferring the templates/ tree."""
     generator_dir = Path(__file__).resolve().parent
     repo_root = generator_dir.parent
     candidates = [
-        generator_dir / "templates" / "latex" / STYLE_FILE_NAME,
+        _template_dir() / STYLE_FILE_NAME,
         repo_root / "lib" / STYLE_FILE_NAME,
         generator_dir / "lib" / STYLE_FILE_NAME,
     ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return candidates[0]
+    return select_first_existing(candidates)
 
 
 def _render_element_table(document: DocumentIR) -> str:
@@ -184,6 +184,42 @@ def _render_exposed_package_structure(document: DocumentIR) -> str:
     return "\n".join(lines).strip()
 
 
+def _render_stakeholder_signoff_table(document: DocumentIR) -> str:
+    """
+    Render a tabular layout for gateway stakeholder signoff participants.
+
+    Rows are derived from governance stakeholders exposed via the document
+    bindings (e.g. MDA_Structure::Customer, ProjectManager, SystemsEngineer,
+    ComplianceOfficer, OperationsOwner).
+    """
+    stakeholders: list[ExposedElement] = [
+        element
+        for element in document.exposed_elements
+        if element.package_path and element.package_path[0] == "MDA_Structure"
+    ]
+    if not stakeholders:
+        return "No stakeholder signoff participants resolved."
+
+    stakeholders.sort(key=lambda item: item.name)
+
+    lines = [
+        "\\begin{tabular}{|l|p{5cm}|l|l|p{5cm}|}",
+        "\\hline",
+        "\\textbf{Stakeholder} & \\textbf{Role / Responsibility} & \\textbf{Decision} & \\textbf{Date} & \\textbf{Notes} \\\\",
+        "\\hline",
+    ]
+
+    for element in stakeholders:
+        role = _escape_latex(element.doc) if element.doc else ""
+        lines.append(
+            f"{_escape_latex(element.name)} & {role} & & & \\\\"
+        )
+        lines.append("\\hline")
+
+    lines.append("\\end{tabular}")
+    return "\n".join(lines)
+
+
 def _render_by_directive(document: DocumentIR) -> str:
     render_kind = (document.binding.render_kind or "").strip()
     if render_kind == "ElementTable":
@@ -227,9 +263,42 @@ def _build_tex(document: DocumentIR, version: str) -> str:
         lines.append(_escape_latex(document.purpose))
         lines.append("")
 
-    lines.append("\\subsection{Model View Content}")
-    lines.append(_render_exposed_package_structure(document))
-    lines.append("")
+    if document.sections:
+        # Section-aware rendering: each SectionIR becomes its own subsection.
+        for section in document.sections:
+            heading_cmd = _heading_for_depth(section.depth)
+            lines.append(f"{heading_cmd}{{{_escape_latex(section.title)}}}")
+            if section.intro:
+                lines.append(_escape_latex(section.intro))
+                lines.append("")
+
+            # Special-case rendering for the CIM gateway stakeholder signoff table.
+            if (
+                document.document_id == "DOC_CIM_GatewaySignoff"
+                and section.title.strip().lower() == "stakeholder signoff"
+            ):
+                lines.append(_render_stakeholder_signoff_table(document))
+                lines.append("")
+                continue
+
+            # Filter out package-only entries so we don't create empty lists,
+            # which cause "missing \\item" LaTeX errors.
+            section_items = [e for e in section.exposed_elements if e.kind != "package"]
+            if section_items:
+                lines.append("\\begin{itemize}")
+                for element in section_items:
+                    item = f"\\item \\textbf{{{_escape_latex(element.name)}}}"
+                    if element.doc:
+                        item += f" {_escape_latex(element.doc)}"
+                    lines.append(item)
+                lines.append("\\end{itemize}")
+                lines.append("")
+    else:
+        # Backwards-compatible flat rendering.
+        lines.append("\\subsection{Model View Content}")
+        lines.append(_render_exposed_package_structure(document))
+        lines.append("")
+
     lines.append("\\subsection{Render Directive Snapshot}")
     lines.append(_render_by_directive(document))
     lines.append("")
@@ -252,39 +321,29 @@ class LatexGenerator(GeneratorTarget):
         style_source = _style_template_path()
         if not style_source.exists():
             raise ValueError(f"Missing LaTeX style template: {style_source}")
-        style_target = output_dir / STYLE_FILE_NAME
-        style_target.write_text(style_source.read_text(encoding="utf-8"), encoding="utf-8")
 
+        artifacts: list[GeneratedArtifact] = []
+
+        # Style file
+        style_artifact = copy_asset(style_source, output_dir, artifact_type="style")
+        artifacts.append(style_artifact)
+
+        # Logo assets (not currently tracked in coverage report)
         template_dir = style_source.parent
         logo_svg = template_dir / "lyrebird-logo.svg"
         logo_pdf = template_dir / "lyrebird-logo.pdf"
         if logo_svg.exists():
-            (output_dir / "lyrebird-logo.svg").write_bytes(logo_svg.read_bytes())
+            copy_asset(logo_svg, output_dir, artifact_type="logo-svg")
         if logo_pdf.exists():
-            (output_dir / "lyrebird-logo.pdf").write_bytes(logo_pdf.read_bytes())
+            copy_asset(logo_pdf, output_dir, artifact_type="logo-pdf")
         else:
             _try_convert_svg_to_pdf(logo_svg, output_dir / "lyrebird-logo.pdf")
 
         tex4ht_cfg = _template_dir() / TEX4HT_CFG_NAME
         if tex4ht_cfg.exists():
-            (output_dir / TEX4HT_CFG_NAME).write_text(
-                tex4ht_cfg.read_text(encoding="utf-8"), encoding="utf-8"
-            )
+            tex4ht_artifact = copy_asset(tex4ht_cfg, output_dir, artifact_type="tex4ht-config")
+            artifacts.append(tex4ht_artifact)
 
-        artifacts: list[GeneratedArtifact] = []
-        artifacts.append(
-            GeneratedArtifact(
-                path=style_target,
-                artifact_type="style",
-            )
-        )
-        if tex4ht_cfg.exists():
-            artifacts.append(
-                GeneratedArtifact(
-                    path=output_dir / TEX4HT_CFG_NAME,
-                    artifact_type="tex4ht-config",
-                )
-            )
         for document in sorted(documents, key=lambda item: item.document_id):
             filename = f"cim-{_doc_slug(document.document_id)}-{options.version}.tex"
             output_path = output_dir / filename
@@ -297,3 +356,9 @@ class LatexGenerator(GeneratorTarget):
                 )
             )
         return artifacts
+
+
+@register_target
+def _make_latex_generator() -> GeneratorTarget:
+    """Factory used to register the LaTeX target in the default registry."""
+    return LatexGenerator()

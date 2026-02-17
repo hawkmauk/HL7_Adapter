@@ -1,5 +1,6 @@
 package PIM {
     private import CIM::*;
+    private import MDA::PIM::Structure::*;
 
     package UseCases {
         doc /* System use cases refining CIM operational scenarios; actors from CIM Stakeholders. */

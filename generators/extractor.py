@@ -236,11 +236,11 @@ def extract_documents(
     """
     Extract document and coverage information from a ModelIndex.
 
-    By default this targets DOC_CIM_* views and CM_* coverage requirements,
-    but callers can override the prefixes or provide an explicit document
-    predicate for other abstraction levels (PIM/PSM) or document families.
+    By default this targets DOC_CIM_* and DOC_PIM_* views and CM_* coverage
+    requirements, but callers can override the prefixes or provide an explicit
+    document predicate for other abstraction levels (PSM) or document families.
     """
-    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_",))
+    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_", "DOC_PIM_"))
 
     def _default_is_document(element: ModelElement) -> bool:
         if element.kind != "view":

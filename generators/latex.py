@@ -6,6 +6,7 @@ import re
 import subprocess
 
 from .base import GeneratedArtifact, GenerationOptions, GeneratorTarget
+from .errors import ValidationError
 from .ir import DocumentIR, ExposedElement
 from .registry import register_target
 from .templates import get_template_dir, select_first_existing, copy_asset
@@ -306,6 +307,16 @@ def _build_tex(document: DocumentIR, version: str) -> str:
     return "\n".join(lines)
 
 
+def _filename_for_document(document: DocumentIR, version: str) -> str:
+    """
+    Derive the LaTeX filename for a document.
+
+    We use the view's stable ID directly so that CIM/PIM/PSM documents can
+    coexist without a hard-coded prefix, and append the version suffix.
+    """
+    return f"{document.document_id}-{version}.tex"
+
+
 class LatexGenerator(GeneratorTarget):
     name = "latex"
     supported_renders = {"ElementTable", "TreeDiagram", "TextualNotation"}
@@ -344,8 +355,29 @@ class LatexGenerator(GeneratorTarget):
             tex4ht_artifact = copy_asset(tex4ht_cfg, output_dir, artifact_type="tex4ht-config")
             artifacts.append(tex4ht_artifact)
 
+        # Ensure that derived filenames are unique so we don't silently
+        # overwrite documents that map to the same output path.
+        filename_map: dict[str, list[str]] = {}
+        for document in documents:
+            filename = _filename_for_document(document, options.version)
+            filename_map.setdefault(filename, []).append(document.document_id)
+
+        collisions = {name: ids for name, ids in filename_map.items() if len(ids) > 1}
+        if collisions:
+            lines = []
+            for name, ids in sorted(collisions.items()):
+                joined = ", ".join(sorted(ids))
+                lines.append(f"{name}: {joined}")
+            message = (
+                "Multiple document views map to the same LaTeX filename.\n"
+                "Please rename the affected view(s) in the SysML model so that each "
+                "document has a unique name.\n"
+                + "\n".join(lines)
+            )
+            raise ValidationError(message)
+
         for document in sorted(documents, key=lambda item: item.document_id):
-            filename = f"cim-{_doc_slug(document.document_id)}-{options.version}.tex"
+            filename = _filename_for_document(document, options.version)
             output_path = output_dir / filename
             output_path.write_text(_build_tex(document, options.version), encoding="utf-8")
             artifacts.append(

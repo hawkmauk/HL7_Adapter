@@ -191,8 +191,9 @@ package CIM {
     package LifecycleAlignment {
         doc /* CIM lifecycle gate alignment for stakeholder consensus before progression to PIM. */
 
-        private import ProjectLifecycle::LifecycleGovernance::*;
-        private import ProjectLifecycle::StandardDocumentationFramework::StandardProjectStakeholders::*;
+        private import MDA::Lifecycle::*;
+        private import MDA::Structure::*;
+        private import MDA::CIM::View::*;
 
         part cimConsensusMilestone : CIMConsensusGateway;
         part cimGatewayCheck : GatewayCheck;

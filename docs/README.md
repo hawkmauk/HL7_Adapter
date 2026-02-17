@@ -7,6 +7,7 @@ Documentation and blog for the [Lyrebird Technical Challenge](https://www.lyrebi
 | Date       | Post |
 |-----------|------|
 | 17 Feb 2026 | [Day One: Going MDA and All-In on AI](day-one-mda-and-agents.md) |
+| 18 Feb 2026 | [Day Two: Blogger Agent, Standard Views Library, and Project Lifecycle](day-two-blogger-views-and-lifecycle.md) |
 
 ---
 

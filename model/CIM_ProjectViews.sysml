@@ -1,10 +1,10 @@
 package 'CIM-ProjectViews' {
     private import Views::*;
     private import CIM::*;
-    private import ProjectLifecycle::LifecycleGovernance::*;
-    private import ProjectLifecycle::StandardDocumentationFramework::StandardProjectStakeholders::*;
-    private import 'CIM-ViewLibrary'::*;
-
+    private import MDA::Lifecycle::*;
+    private import MDA::Structure::*;
+    private import MDA::CIM::View::*;
+    
     package StakeholderCatalog {
         doc /* Stakeholder catalog for CIM-level documentation products. */
 
@@ -67,48 +67,12 @@ package 'CIM-ProjectViews' {
         concern CON_006_DegradedModeTransparency : CON_006_DegradedModeTransparency_Def;
     }
 
-    package ViewpointDefinitions {
-        doc /* Project viewpoints realized against reusable CIM view library patterns. */
+    package Viewpoint {
 
-        viewpoint VP_001_StakeholderNeeds {
-            frame ConcernMapping::CON_001_IngestionReliability;
-            frame ConcernMapping::CON_002_ClinicalSemanticPreservation;
-            frame ConcernMapping::CON_006_DegradedModeTransparency;
-        }
-
-        viewpoint VP_002_ConOps {
-            frame ConcernMapping::CON_001_IngestionReliability;
-            frame ConcernMapping::CON_003_InterfaceBoundaryClarity;
-            frame ConcernMapping::CON_005_ComplianceObligations;
-        }
-
-        viewpoint VP_003_OperationalScenarios {
-            frame ConcernMapping::CON_001_IngestionReliability;
-            frame ConcernMapping::CON_006_DegradedModeTransparency;
-        }
-
-        viewpoint VP_004_InterfaceContext {
-            frame ConcernMapping::CON_003_InterfaceBoundaryClarity;
-            frame ConcernMapping::CON_004_DownstreamDeliveryExpectation;
-        }
-
-        viewpoint VP_005_ComplianceAndSafety {
-            frame ConcernMapping::CON_005_ComplianceObligations;
-            frame ConcernMapping::CON_006_DegradedModeTransparency;
-        }
-
-        viewpoint VP_006_CIMGatewayReadiness {
-            frame ConcernMapping::CON_001_IngestionReliability;
-            frame ConcernMapping::CON_005_ComplianceObligations;
-            frame ConcernMapping::CON_006_DegradedModeTransparency;
-        }
-    }
-
-    package Viewports {
+        private import MDA::CIM::Viewpoint::*;
         doc /* Concrete project viewports; structured only by standard CIM packages for reuse. */
 
         view VPT_001_StakeholderNeedsMatrix {
-            satisfy ViewpointDefinitions::VP_001_StakeholderNeeds;
             expose StakeholderCatalog::**;
             expose ConcernMapping::**;
             expose CIM::Mission::**;
@@ -116,7 +80,7 @@ package 'CIM-ProjectViews' {
         }
 
         view VPT_002_ConOpsContext {
-            satisfy ViewpointDefinitions::VP_002_ConOps;
+            satisfy conOpsViewpoint;
             expose CIM::Stakeholders::**;
             expose CIM::Context::**;
             expose CIM::Domain::**;
@@ -125,20 +89,20 @@ package 'CIM-ProjectViews' {
         }
 
         view VPT_003_OperationalFlows {
-            satisfy ViewpointDefinitions::VP_003_OperationalScenarios;
+            satisfy operationalScenariosViewpoint;
             expose CIM::Operations::**;
             render asTextualNotation;
         }
 
         view VPT_004_ExternalInterfaceContext {
-            satisfy ViewpointDefinitions::VP_004_InterfaceContext;
+            satisfy interfaceContextViewpoint;
             expose CIM::Domain::**;
             expose CIM::Context::**;
             render asElementTable;
         }
 
         view VPT_005_ComplianceAndSafety {
-            satisfy ViewpointDefinitions::VP_005_ComplianceAndSafety;
+            satisfy complianceAndSafetyViewpoint;
             expose CIM::Assumptions::**;
             expose CIM::Mission::**;
             expose CIM::Operations::**;
@@ -147,7 +111,7 @@ package 'CIM-ProjectViews' {
         }
 
         view VPT_006_CIMGatewayReadiness {
-            satisfy ViewpointDefinitions::VP_006_CIMGatewayReadiness;
+            satisfy lifecycleGatewayReadinessViewpoint;
             expose CIM::LifecycleAlignment::cimConsensusMilestone;
             expose CIM::LifecycleAlignment::cimGatewayCheck;
             expose CIM::LifecycleAlignment::cimSignoffRecord;
@@ -195,57 +159,43 @@ package 'CIM-ProjectViews' {
     package CIMDocumentBlueprints {
         doc /* CIM document composition blueprints represented as model views bound to viewports. */
 
-        view DOC_CIM_SNRS {
+        view DOC_CIM_SNRS : SNRS_Document {
             doc /* Stakeholder Needs and Requirements Specification. */
-            satisfy ViewpointDefinitions::VP_001_StakeholderNeeds;
-            expose Viewports::VPT_001_StakeholderNeedsMatrix;
+            expose Viewpoint::VPT_001_StakeholderNeedsMatrix;
             expose CoverageMatrix::CM_001;
             expose CoverageMatrix::CM_002;
-            render asElementTable;
         }
 
-        view DOC_CIM_ConOps {
+        view DOC_CIM_ConOps : ConOps_Document {
             doc /* Concept of Operations. */
-            satisfy ViewpointDefinitions::VP_002_ConOps;
-            expose Viewports::VPT_002_ConOpsContext;
+            expose Viewpoint::VPT_002_ConOpsContext;
             expose CIM::Mission::**;
-            render asTreeDiagram;
         }
 
-        view DOC_CIM_OperationalScenarios {
+        view DOC_CIM_OperationalScenarios : OperationalScenarios_Document {
             doc /* Operational Scenarios and Use Case Specification. */
-            satisfy ViewpointDefinitions::VP_003_OperationalScenarios;
-            expose Viewports::VPT_003_OperationalFlows;
-            render asTextualNotation;
+            expose Viewpoint::VPT_003_OperationalFlows;
         }
 
-        view DOC_CIM_EICD {
+        view DOC_CIM_EICD : EICD_Document {
             doc /* External Interface Context Document. */
-            satisfy ViewpointDefinitions::VP_004_InterfaceContext;
-            expose Viewports::VPT_004_ExternalInterfaceContext;
-            render asElementTable;
+            expose Viewpoint::VPT_004_ExternalInterfaceContext;
         }
 
-        view DOC_CIM_RSCM {
+        view DOC_CIM_RSCM : RSCM_Document {
             doc /* Regulatory and Standards Compliance Matrix (context-level obligations). */
-            satisfy ViewpointDefinitions::VP_005_ComplianceAndSafety;
-            expose Viewports::VPT_005_ComplianceAndSafety;
-            render asElementTable;
+            expose Viewpoint::VPT_005_ComplianceAndSafety;
         }
 
-        view DOC_CIM_SCHA {
+        view DOC_CIM_SCHA : SCHA_Document {
             doc /* Safety Case and Hazard Analysis Summary (concept/operational). */
-            satisfy ViewpointDefinitions::VP_005_ComplianceAndSafety;
-            expose Viewports::VPT_005_ComplianceAndSafety;
-            render asElementTable;
+            expose Viewpoint::VPT_005_ComplianceAndSafety;
         }
 
-        view DOC_CIM_GatewaySignoff {
+        view DOC_CIM_GatewaySignoff : GatewaySignoff_Document {
             doc /* CIM stakeholder consensus and gateway signoff record before progression to PIM. */
-            satisfy ViewpointDefinitions::VP_006_CIMGatewayReadiness;
-            expose Viewports::VPT_006_CIMGatewayReadiness;
+            expose Viewpoint::VPT_006_CIMGatewayReadiness;
             expose CoverageMatrix::CM_007;
-            render asElementTable;
         }
     }
 

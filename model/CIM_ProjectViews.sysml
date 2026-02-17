@@ -1,6 +1,8 @@
 package 'CIM-ProjectViews' {
     private import Views::*;
     private import CIM::*;
+    private import ProjectLifecycle::LifecycleGovernance::*;
+    private import ProjectLifecycle::StandardDocumentationFramework::StandardProjectStakeholders::*;
     private import 'CIM-ViewLibrary'::*;
 
     package StakeholderCatalog {
@@ -94,6 +96,12 @@ package 'CIM-ProjectViews' {
             frame ConcernMapping::CON_005_ComplianceObligations;
             frame ConcernMapping::CON_006_DegradedModeTransparency;
         }
+
+        viewpoint VP_006_CIMGatewayReadiness {
+            frame ConcernMapping::CON_001_IngestionReliability;
+            frame ConcernMapping::CON_005_ComplianceObligations;
+            frame ConcernMapping::CON_006_DegradedModeTransparency;
+        }
     }
 
     package Viewports {
@@ -137,6 +145,19 @@ package 'CIM-ProjectViews' {
             expose CIM::Domain::**;
             render asElementTable;
         }
+
+        view VPT_006_CIMGatewayReadiness {
+            satisfy ViewpointDefinitions::VP_006_CIMGatewayReadiness;
+            expose CIM::LifecycleAlignment::cimConsensusMilestone;
+            expose CIM::LifecycleAlignment::cimGatewayCheck;
+            expose CIM::LifecycleAlignment::cimSignoffRecord;
+            expose Customer;
+            expose ProjectManager;
+            expose SystemsEngineer;
+            expose ComplianceOfficer;
+            expose OperationsOwner;
+            render asElementTable;
+        }
     }
 
     package CoverageMatrix {
@@ -164,6 +185,10 @@ package 'CIM-ProjectViews' {
 
         requirement CM_006 {
             doc /* STK_OperationsEngineer -> CON_006_DegradedModeTransparency -> CIM -> VP_003_OperationalScenarios + VP_005_ComplianceAndSafety -> VPT_003_OperationalFlows + VPT_005_ComplianceAndSafety -> OSS.S2,S3; SCHA.S3 */
+        }
+
+        requirement CM_007 {
+            doc /* Customer/ProjectManager/SystemsEngineer/ComplianceOfficer/OperationsOwner -> CON_001 + CON_005 + CON_006 -> CIM Gate -> VP_006_CIMGatewayReadiness -> VPT_006_CIMGatewayReadiness -> SIG_CIM_GATE.S1,S2,S3 */
         }
     }
 
@@ -214,6 +239,14 @@ package 'CIM-ProjectViews' {
             expose Viewports::VPT_005_ComplianceAndSafety;
             render asElementTable;
         }
+
+        view DOC_CIM_GatewaySignoff {
+            doc /* CIM stakeholder consensus and gateway signoff record before progression to PIM. */
+            satisfy ViewpointDefinitions::VP_006_CIMGatewayReadiness;
+            expose Viewports::VPT_006_CIMGatewayReadiness;
+            expose CoverageMatrix::CM_007;
+            render asElementTable;
+        }
     }
 
     package AutomationReadiness {
@@ -241,6 +274,10 @@ package 'CIM-ProjectViews' {
 
         requirement AUTO_006 {
             doc /* Publish target: versioned build artifacts with immutable naming and branch-based retention policy. */
+        }
+
+        requirement AUTO_007 {
+            doc /* SIG_CIM_GATE shall generate cim-gateway-signoff-<version>.pdf and cim-gateway-signoff-<version>.tex from DOC_CIM_GatewaySignoff. */
         }
     }
 }

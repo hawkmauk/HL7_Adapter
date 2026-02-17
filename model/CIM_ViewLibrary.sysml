@@ -1,5 +1,6 @@
 package 'CIM-ViewLibrary' {
     private import Views::*;
+    private import ProjectLifecycle::StandardDocumentationFramework::StandardViewpointCatalog::*;
 
     package CIMStandardStructure {
         doc /* Reusable contract for CIM organization across projects. */
@@ -29,43 +30,31 @@ package 'CIM-ViewLibrary' {
         }
     }
 
-    package StandardViewpointCatalog {
-        doc /* Reusable viewpoint definition catalog to be instantiated in project view models. */
+    package CIMStandardViewpointCatalog {
+        doc /* CIM-specific viewpoint catalog that specializes the cross-model abstract standard viewpoint catalog. */
 
-        viewpoint def StakeholderNeedsViewpoint {
+        viewpoint def StakeholderNeedsViewpoint :> StakeholderConcernsViewpoint {
             doc /* Covers stakeholder intent, outcomes, and traceability concerns. */
         }
 
-        viewpoint def ConOpsViewpoint {
+        viewpoint def ConOpsViewpoint :> ArchitectureAndBehaviorViewpoint {
             doc /* Covers mission, operational context, and assumptions for system use. */
         }
 
-        viewpoint def OperationalScenariosViewpoint {
+        viewpoint def OperationalScenariosViewpoint :> ArchitectureAndBehaviorViewpoint {
             doc /* Covers nominal and degraded operational scenario narratives. */
         }
 
-        viewpoint def InterfaceContextViewpoint {
+        viewpoint def InterfaceContextViewpoint :> ArchitectureAndBehaviorViewpoint {
             doc /* Covers external boundaries and exchanged conceptual artifacts. */
         }
 
-        viewpoint def ComplianceAndSafetyViewpoint {
+        viewpoint def ComplianceAndSafetyViewpoint :> VerificationAndComplianceViewpoint {
             doc /* Covers policy/constraint obligations and operational hazard posture. */
         }
-    }
 
-    package StandardRenderProfiles {
-        doc /* Reusable render profile definitions for document generation consistency. */
-
-        view def ElementTableProfile {
-            render asElementTable;
-        }
-
-        view def TreeDiagramProfile {
-            render asTreeDiagram;
-        }
-
-        view def TextualNotationProfile {
-            render asTextualNotation;
+        viewpoint def LifecycleGatewayReadinessViewpoint :> LifecycleGateReadinessViewpoint {
+            doc /* Covers CIM gateway entry criteria, stakeholder consensus status, and signoff evidence. */
         }
     }
 }

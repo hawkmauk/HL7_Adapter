@@ -1,0 +1,263 @@
+When creating a PIM we should have the following artifacts:
+
+example:
+```
+package PIM {
+    package LogicalArchitecture;
+    package Interfaces;
+    package UseCases;
+    package Behavior;
+    package DataModel;
+    package Requirements;
+    package Allocations;
+}
+```
+
+[What a PIM is]
+- Refines the CIM with a logical solution design.
+- Still platform-independent: no specific technology (no "Kafka", "PostgreSQL", etc.).
+- Introduces logical structure: blocks, ports, interfaces, internal behavior, allocations from operational concepts to logical functions.
+- Supports System Architecture Description, Behavior Specification, Data Architecture, and traceability to CIM requirements.
+
+[Logical Architecture]
+Define the system as a logical block and decompose it into logical components (parts) with ports and connectors. This is the white-box view of the system.
+
+example:
+```
+package LogicalArchitecture {
+
+    import Domain::*;
+    import Context::*;
+
+    block def <LibraryLendingSystem> 'Library Lending System' {
+        part catalog : CatalogService;
+        part loanManager : LoanManager;
+        part reservationService : ReservationService;
+        part notificationService : NotificationService;
+
+        port patronFacing : PatronInterface;
+        port staffFacing : StaffInterface;
+        port externalCatalog : CatalogProtocol;
+
+        connect patronFacing to catalog;
+        connect patronFacing to loanManager;
+        connect patronFacing to reservationService;
+        connect staffFacing to catalog, loanManager, reservationService;
+        connect catalog to externalCatalog;
+        connect loanManager to notificationService;
+        connect reservationService to notificationService;
+    }
+
+    block def <CatalogService> 'Catalog Service';
+    block def <LoanManager> 'Loan Manager';
+    block def <ReservationService> 'Reservation Service';
+    block def <NotificationService> 'Notification Service';
+
+}
+```
+
+[Interfaces]
+Define logical interfaces (ports, flow properties, item flows) that components expose. No protocol or technology detail yet.
+
+example:
+```
+package Interfaces {
+
+    interface def <PatronInterface> 'Patron Interface' {
+        in searchRequest : CatalogSearchRequest;
+        out searchResult : CatalogSearchResult;
+        in borrowRequest : BorrowRequest;
+        out borrowConfirmation : LoanRecord;
+        in returnRequest : ReturnRequest;
+        in reserveRequest : ReserveRequest;
+        out reserveConfirmation : ReservationRecord;
+    }
+
+    interface def <StaffInterface> 'Staff Interface' {
+        in addItemRequest : AddItemRequest;
+        in updateAvailability : AvailabilityUpdate;
+        in overrideRequest : StaffOverride;
+    }
+
+    interface def <CatalogProtocol> 'Catalog Protocol' {
+        in query : CatalogQuery;
+        out response : CatalogResponse;
+    }
+
+    part def <CatalogSearchRequest> 'Catalog Search Request';
+    part def <CatalogSearchResult> 'Catalog Search Result';
+    part def <BorrowRequest> 'Borrow Request';
+    part def <LoanRecord> 'Loan Record';
+    part def <ReserveRequest> 'Reserve Request';
+    part def <ReservationRecord> 'Reservation Record';
+
+}
+```
+
+[Use Cases]
+Refine operational scenarios from the CIM into system use cases (actors and system responses). Still logical, not implementation.
+
+example:
+```
+package UseCases {
+
+    import Stakeholders::*;
+    import LogicalArchitecture::*;
+
+    use case def <BorrowItem> 'Borrow Item';
+    use case def <ReturnItem> 'Return Item';
+    use case def <SearchCatalog> 'Search Catalog';
+    use case def <ReserveItem> 'Reserve Item';
+    use case def <ManageInventory> 'Manage Inventory';
+
+    part actor : Patron;
+    part actor : Librarian;
+
+    include BorrowItem in SearchCatalog when "patron may search before borrowing";
+    include ReserveItem in BorrowItem when "item unavailable, patron reserves";
+
+}
+```
+
+[Behavior]
+Define logical behavior: activities (what the system does) and state machines (modes/states). Allocate to logical parts where appropriate.
+
+example:
+```
+package Behavior {
+
+    import LogicalArchitecture::*;
+    import Interfaces::*;
+
+    action def <ValidatePatron> 'Validate Patron';
+    action def <CheckAvailability> 'Check Availability';
+    action def <CreateLoan> 'Create Loan';
+    action def <UpdateCatalog> 'Update Catalog';
+    action def <SendNotification> 'Send Notification';
+
+    action def ProcessBorrowRequest {
+        flow {
+            first ValidatePatron;
+            then CheckAvailability;
+            then CreateLoan;
+            then UpdateCatalog;
+            then SendNotification;
+        }
+    }
+
+    state def <ItemState> 'Item State';
+    state Available : ItemState;
+    state OnLoan : ItemState;
+    state Reserved : ItemState;
+    state Withdrawn : ItemState;
+
+    state machine def ItemLifecycle {
+        state initial : Available;
+        state final : Withdrawn;
+        transition Available to OnLoan on borrow;
+        transition OnLoan to Available on return;
+        transition Available to Reserved on reserve;
+        transition Reserved to Available on cancel;
+        transition Reserved to OnLoan on fulfill;
+    }
+
+}
+```
+
+[Data Model]
+Logical data structures and information exchanged between components. Types and relationships, not storage or serialization.
+
+example:
+```
+package DataModel {
+
+    part def <CatalogEntry> 'Catalog Entry' {
+        attribute title : String;
+        attribute author : String;
+        attribute identifier : String;
+        attribute availability : AvailabilityStatus;
+    }
+
+    part def <LoanRecord> 'Loan Record' {
+        attribute itemId : String;
+        attribute patronId : String;
+        attribute dueDate : Date;
+        attribute status : LoanStatus;
+    }
+
+    part def <ReservationRecord> 'Reservation Record' {
+        attribute itemId : String;
+        attribute patronId : String;
+        attribute queuePosition : Integer;
+        attribute expiry : DateTime;
+    }
+
+    value type def <AvailabilityStatus> 'Availability Status' : String;
+    value type def <LoanStatus> 'Loan Status' : String;
+
+}
+```
+
+[Requirements]
+System-level requirements that refine CIM/stakeholder needs. Trace satisfy/derive relationships to logical elements and back to CIM.
+
+example:
+```
+package Requirements {
+
+    import LogicalArchitecture::*;
+    import Behavior::*;
+
+    requirement <SYS1> CatalogSearchLatency {
+        text = "Catalog search results are returned within 2 seconds under normal load.";
+    }
+
+    requirement <SYS2> LoanTransactionIntegrity {
+        text = "Each loan and return is recorded exactly once and is auditable.";
+    }
+
+    requirement <SYS3> ReservationFairness {
+        text = "Reservations are fulfilled in queue order when the item becomes available.";
+    }
+
+    requirement <SYS4> NotificationOnEvent {
+        text = "Patron is notified when a reserved item becomes available or when a loan is due soon.";
+    }
+
+    satisfy SYS1 by CatalogService;
+    satisfy SYS2 by LoanManager;
+    satisfy SYS3 by ReservationService;
+    satisfy SYS4 by NotificationService;
+
+}
+```
+
+[Allocations]
+Allocate CIM operational actions and stakeholders to PIM logical elements. This links the platform-independent design back to the computation-independent mission and operations.
+
+example:
+```
+package Allocations {
+
+    import Operations::*;
+    import Context::*;
+    import Behavior::*;
+    import LogicalArchitecture::*;
+
+    allocate BorrowItem to ProcessBorrowRequest;
+    allocate ReturnItem to CreateLoan, SendNotification;
+    allocate LibraryService to LibraryLendingSystem;
+
+}
+```
+
+Typical diagrams for PIM:
+- Block definition diagram (logical blocks, ports, parts)
+- Internal block diagram (connections between parts)
+- Use case diagram (actors, use cases, include/extend)
+- Activity diagram (logical activities and flows)
+- State machine diagram (states and transitions)
+- Sequence diagram (logical interactions between parts)
+- Requirement diagram (satisfy, derive, allocate)
+
+All still technology-agnostic; no programming language, database, or middleware chosen yet.

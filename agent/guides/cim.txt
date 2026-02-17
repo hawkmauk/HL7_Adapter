@@ -20,16 +20,16 @@ example:
 ```
 package Domain {
 
-    part def Parcel;
-    part def DeliveryLocation;
-    part def AirspaceZone;
+    part def <Parcel> 'Parcel';
+    part def <DeliveryLocation> 'Delivery Location';
+    part def <AirspaceZone> 'Airspace Zone';
 
-    part def WeatherCondition;
+    part def <WeatherCondition> 'Weather Condition';
 
     part def UrbanAirspace : AirspaceZone;
     part def RestrictedAirspace : AirspaceZone;
 
-    association ParcelDeliveredTo {
+    association <ParcelDeliveredTo> 'Parcel Delivered To' {
         end parcel : Parcel;
         end location : DeliveryLocation;
     }
@@ -93,15 +93,15 @@ package ConOps {
 }
 package Stakeholders {
 
-    part def Customer;
-    part def LogisticsOperator;
-    part def AviationRegulator;
-    part def CityAuthority;
+    part def <Customer> 'Customer';
+    part def <LogisticsOperator> 'Logistics Operator';
+    part def <AviationRegulator> 'Aviation Regulator';
+    part def <CityAuthority> 'City Authority';
 
 }
 package Context {
 
-    part def DroneDeliveryService;
+    part def <DroneDeliveryService> 'Drone Delivery Service';
 
     part customer : Customer;
     part operator : LogisticsOperator;
@@ -114,11 +114,11 @@ package Context {
 }
 package Operations {
 
-    action def RequestDelivery;
-    action def DispatchDrone;
-    action def TransportParcel;
-    action def ReleaseParcel;
-    action def ConfirmDelivery;
+    action def <RequestDelivery> 'Request Delivery';
+    action def <DispatchDrone> 'Dispatch Drone';
+    action def <TransportParcel> 'Transport Parcel';
+    action def <ReleaseParcel> 'Release Parcel';
+    action def <ConfirmDelivery> 'Confirm Delivery';
 
     action def NormalDeliveryScenario {
         flow {
@@ -143,8 +143,8 @@ package Mission {
 }
 package Assumptions {
 
-    constraint def DesignatedDropZonesExist;
-    constraint def UrbanAirspaceAccessible;
+    constraint def <DesignatedDropZonesExist> 'Designated Drop Zones Exist';
+    constraint def <UrbanAirspaceAccessible> 'Urban Airspace Accessible';
 
 }
 
@@ -155,9 +155,9 @@ example:
 ```
 package Stakeholders {
 
-    part def Customer;
-    part def LogisticsOperator;
-    part def AviationRegulator;
+    part def <Customer> 'Customer';
+    part def <LogisticsOperator> 'Logistics Operator';
+    part def <AviationRegulator> 'Aviation Regulator';
 
 }
 ```

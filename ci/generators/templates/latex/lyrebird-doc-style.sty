@@ -109,3 +109,13 @@
   {\color{LyrebirdHeadText}\normalsize\texttt{#2} \quad Version: #3}\par
   \vspace{0.7em}
 }
+
+% Use case environment: title + small monospace body
+\newenvironment{usecase}[1]{%
+  \subsubsection*{#1}%
+  \begingroup
+  \small\ttfamily
+}{%
+  \par
+  \endgroup
+}

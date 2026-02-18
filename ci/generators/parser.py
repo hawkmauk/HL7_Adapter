@@ -26,6 +26,17 @@ EXPOSE_RE = re.compile(r"(?m)^\s*expose\s+(?P<ref>[^;]+);")
 SATISFY_RE = re.compile(r"(?m)^\s*satisfy\s+(?P<ref>[^;]+);")
 FRAME_RE = re.compile(r"(?m)^\s*frame\s+(?P<ref>[^;]+);")
 RENDER_RE = re.compile(r"(?m)^\s*render\s+as(?P<kind>[A-Za-z0-9_]+)\s*;")
+ATTRIBUTE_RE = re.compile(
+    r"(?m)^\s*attribute\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+    r"\s*:\s*(?P<type>[^;]+);"
+)
+
+
+@dataclass(slots=True)
+class ModelAttribute:
+    name: str
+    type: str | None
 
 
 @dataclass(slots=True)
@@ -46,6 +57,7 @@ class ModelElement:
     frame_refs: list[str] = field(default_factory=list)
     render_kind: str | None = None
     supertypes: list[str] = field(default_factory=list)
+    attributes: list[ModelAttribute] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -119,6 +131,14 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         render_match = RENDER_RE.search(body)
         render_kind = render_match.group("kind") if render_match else None
 
+        # Field-level attributes declared inside the block.
+        attributes: list[ModelAttribute] = []
+        for attr_match in ATTRIBUTE_RE.finditer(body):
+            attr_name = attr_match.group("name")
+            raw_type = (attr_match.group("type") or "").strip()
+            attr_type = raw_type or None
+            attributes.append(ModelAttribute(name=attr_name, type=attr_type))
+
         # Optional supertypes (e.g. \"view X : Y\" or \"view X :> Y\")
         supertypes: list[str] = []
         tail_clean = tail.strip()
@@ -151,6 +171,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 frame_refs=[m.group("ref").strip() for m in FRAME_RE.finditer(body)],
                 render_kind=render_kind,
                 supertypes=supertypes,
+                attributes=attributes,
             )
         )
     return elements

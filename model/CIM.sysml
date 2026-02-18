@@ -2,41 +2,103 @@ package CIM {
 
     package Domain {
         doc /* Domain ontology for a local HL7 to HTTPS integration context. */
+        private import ScalarValues::*;
 
         part def <HL7Message> 'HL7 Message' {
-            doc /* Conceptual representation of an inbound HL7 v2 message carried over MLLP. */
+            doc /* Conceptual representation of an inbound HL7 message (any version) in the integration context. */
+
+            attribute messageType : String;
+            attribute triggerEvent : String;
+            attribute controlId : String;
+            attribute sentTimestamp : String;
+
+            action parse;
+            action extractMetadata;
         }
 
         part def <MLLPFrame> 'MLLP Frame' {
             doc /* Transport framing envelope used to delimit HL7 payloads on TCP streams. */
+
+            attribute startDelimiter : String;
+            attribute endDelimiter : String;
+            attribute payloadLength : Integer;
+
+            action unwrap;
         }
 
         part def <PatientDemographics> 'Patient Demographics' {
             doc /* Conceptual patient data extracted from HL7 segments, such as PID content. */
+
+            attribute patientId : String;
+            attribute givenName : String;
+            attribute familyName : String;
+            attribute dateOfBirth : String;
+            attribute gender : String;
+
+            action isComplete;
         }
 
         part def <MessageMetadata> 'Message Metadata' {
             doc /* Conceptual metadata extracted from MSH fields, including trigger event type. */
+
+            attribute sendingApplication : String;
+            attribute sendingFacility : String;
+            attribute receivingApplication : String;
+            attribute receivingFacility : String;
+            attribute sequenceNumber : String;
+
+            action correlateWithMessage;
         }
 
         part def <JSONPayload> 'JSON Payload' {
             doc /* Structured payload produced from HL7 content and posted to a REST endpoint. */
+
+            attribute payloadType : String;
+            attribute schemaVersion : String;
+            attribute body : String;
+
+            action summarise;
         }
 
         part def <RESTEndpoint> 'REST Endpoint' {
             doc /* Conceptual HTTP interface that receives transformed clinical event payloads. */
+
+            attribute name : String;
+            attribute resourcePath : String;
+            attribute purpose : String;
+            attribute interactionStyle : String;
+
+            action describeContract;
         }
 
         part def <IntegrationError> 'Integration Error' {
             doc /* Any recoverable or non-recoverable operational issue during receive, parse, map, or forward. */
+
+            attribute code : String;
+            attribute messageText : String;
+            attribute isRecoverable : Boolean;
+            attribute occurredAt : String;
+
+            action classify;
         }
 
         part def <ParseError> 'Parse Error' :> 'Integration Error' {
             doc /* Error caused by malformed HL7 structure or missing required fields. */
+
+            attribute segmentId : String;
+            attribute fieldPath : String;
+
+            action highlightLocation;
         }
 
         part def <DeliveryError> 'Delivery Error' :> 'Integration Error' {
             doc /* Error caused by network, API availability, or unsuccessful HTTP response. */
+
+            attribute statusCode : Integer;
+            attribute endpointName : String;
+            attribute attemptCount : Integer;
+
+            action suggestRetry;
         }
     }
 

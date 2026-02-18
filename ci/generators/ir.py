@@ -25,6 +25,7 @@ class ExposedElement:
     name: str
     package_path: tuple[str, ...]
     doc: str
+    attributes: list["AttributeIR"] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -60,3 +61,10 @@ class CoverageEntry:
     viewport_ids: list[str]
     document_codes: list[str]
     source: SourceRef
+
+
+@dataclass(slots=True)
+class AttributeIR:
+    name: str
+    type: str | None
+    doc: str = ""

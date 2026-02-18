@@ -4,7 +4,15 @@ from dataclasses import dataclass, field
 from typing import Callable, Iterable, Sequence
 import re
 
-from .ir import CoverageEntry, DocumentIR, ExposedElement, SectionIR, SourceRef, ViewBinding
+from .ir import (
+    AttributeIR,
+    CoverageEntry,
+    DocumentIR,
+    ExposedElement,
+    SectionIR,
+    SourceRef,
+    ViewBinding,
+)
 from .parser import ModelElement, ModelIndex
 
 
@@ -99,6 +107,10 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 name=candidate.name,
                 package_path=package_path,
                 doc=candidate.doc,
+                attributes=[
+                    AttributeIR(name=attr.name, type=attr.type, doc="")
+                    for attr in getattr(candidate, "attributes", [])
+                ],
             )
             # If an exposed element is itself a view, include what it exposes.
             if candidate.kind == "view" and candidate.qualified_name not in expanded_views:

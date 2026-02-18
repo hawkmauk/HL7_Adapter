@@ -20,48 +20,12 @@ The aim is to make the **digital thread** explicit: requirements, design, lifecy
     - `CIM/`: CIM‑specific structure, viewpoints, and document templates (SNRS, ConOps, EICD, RSCM, SCHA, Gateway Signoff).
     - `PIM/`: PIM‑specific structure, viewpoints, and document templates (Logical Architecture, Interface Design, Behavior Design, Allocation, Verification, PIM Gateway Signoff).
 - `generators/`: Python framework that parses SysML and generates LaTeX/HTML documentation based on the view library.
-- `docs/`: narrative documentation such as day‑by‑day build logs and design notes.
+- `docs/`: narrative documentation, build logs, design notes, and [CI/CD and generated documentation](docs/CI_CD.md).
 
-### Generated artifacts (high level)
+### Documentation
 
-From the models and view definitions, the generator produces **document‑style outputs** (LaTeX ➝ PDF, plus HTML via tex4ht) for both CIM and PIM:
+- **Generated docs (HTML and PDF)** are published on **GitHub Pages**: [https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/).
+- For details on generated artifacts, the build pipeline, and releases, see [CI/CD and generated documentation](docs/CI_CD.md).
 
-- **CIM documents (examples)**:
-  - **SNRS** – Stakeholder Needs and Requirements (SoR‑like view at the concept level).
-  - **ConOps** – Concept of Operations (domain, context, mission, operations, assumptions).
-  - **Operational Scenarios** – nominal and degraded scenario narratives.
-  - **EICD** – External Interface Context (actors, boundaries, conceptual exchanges).
-  - **RSCM / SCHA** – Compliance matrix and safety case/hazard summaries.
-  - **CIM Gateway Signoff** – evidence and signoff for the CIM lifecycle gate.
-
-- **PIM documents (examples)**:
-  - **Logical Architecture Specification** – logical components, connectors, responsibilities, design rationale.
-  - **Interface Design Description** – logical interfaces, message contracts, error handling, versioning.
-  - **Behavior and Use Case Design** – PIM‑level flows and behavior refinements.
-  - **Requirements & Allocation Spec** – PIM requirements and their allocations to logical elements.
-  - **Verification Readiness & Test Intent** – verification objectives and test strategy at PIM.
-  - **PIM Gateway Readiness** – design‑review/gateway pack for entering PSM.
-
-Each document is defined as a **SysML view** that:
-
-- **Satisfies** one or more MDA viewpoints (e.g. Stakeholder Needs, ConOps, Logical Architecture, Gateway Readiness).
-- **Exposes** relevant packages, elements, and viewports (CIM/PIM structure, requirements, lifecycle artifacts).
-- Is rendered via standard profiles (tables, trees, textual snapshots).
-
-### CI and document generation
-
-The project uses **GitHub Actions** to keep documentation in sync with the models:
-
-- On each push to `main`, the CI workflow:
-  - Checks out the repo and installs LaTeX + tex4ht.
-  - Runs the Python generator (`python -m generators`) against `model/` to build LaTeX sources for all `DOC_*` views.
-  - Runs `pdflatex` and `make4ht` to produce **PDF** and **HTML** artifacts for each generated `.tex` file.
-  - Uploads the outputs as a versioned `generated-docs` artifact (with `pdf/` and `html/` subfolders).
-
-This gives you:
-
-- A **repeatable document build** driven entirely by the SysML models and MDA library.
-- A single CI entry point where future generators (e.g. PIM/PSM‑based code, configuration, or tests) can be added alongside the doc pipeline.
-
-At a high level, you can think of this repo as a **working example of MDA applied to an HL7 adapter**: CIM and PIM models, a reusable MDA library, and a doc/CI pipeline that turns those models into human‑readable artifacts for stakeholders and lifecycle governance.
+At a high level, this repo is a **working example of MDA applied to an HL7 adapter**: CIM and PIM models, a reusable MDA library, and a doc/CI pipeline that turns those models into human‑readable artifacts for stakeholders and lifecycle governance.
 

@@ -233,33 +233,6 @@ package PIM {
     }
 
     package Allocations {
-        doc /* Allocate CIM operational actions and system to PIM behavior and logical block. */
-
-        private import CIM::Operations::*;
-        private import CIM::Context::*;
-        private import PIM::Behavior::*;
-        private import PIM::LogicalArchitecture::*;
-
-        action cimReceiveMLLPMessage : ReceiveMLLPMessage;
-        action cimParseAndValidateHL7 : ParseAndValidateHL7;
-        action cimTransformToJSON : TransformToJSON;
-        action cimPostPayloadToAPI : PostPayloadToAPI;
-        action cimHandleOperationalError : HandleOperationalError;
-
-        action pimReceiveFramedMessage : ReceiveFramedMessage;
-        action pimParseAndValidate : ParseAndValidate;
-        action pimTransformToJSON : TransformToJSON;
-        action pimPostToEndpoint : PostToEndpoint;
-        action pimHandleError : HandleError;
-
-        part cimHL7AdapterService : HL7AdapterService;
-        part pimHL7Adapter : HL7Adapter;
-
-        allocate cimReceiveMLLPMessage to pimReceiveFramedMessage;
-        allocate cimParseAndValidateHL7 to pimParseAndValidate;
-        allocate cimTransformToJSON to pimTransformToJSON;
-        allocate cimPostPayloadToAPI to pimPostToEndpoint;
-        allocate cimHandleOperationalError to pimHandleError;
-        allocate cimHL7AdapterService to pimHL7Adapter;
+        doc /* Placeholder for future PIM allocations between requirements, logical architecture, and behavior. */
     }
 }

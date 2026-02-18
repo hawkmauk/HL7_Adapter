@@ -41,7 +41,7 @@ The project uses **GitHub Actions** to keep documentation in sync with the model
 On each push to `main`, the [Build docs](../.github/workflows/build-docs.yml) workflow:
 
 1. Checks out the repo and installs LaTeX + tex4ht.
-2. Runs the Python generator (`python -m generators`) against `model/` to build LaTeX sources for all `DOC_*` views.
+2. Runs the Python generator (`python -m ci.generators`) against `model/` to build LaTeX sources for all `DOC_*` views.
 3. Runs `pdflatex` and `make4ht` to produce **PDF** and **HTML** artifacts for each generated `.tex` file.
 4. Uploads the outputs as a versioned `generated-docs` artifact (with `pdf/` and `html/` subfolders) from the Actions run.
 5. Deploys the generated HTML and PDFs to **GitHub Pages**: [https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/).

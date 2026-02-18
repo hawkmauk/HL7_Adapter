@@ -5,8 +5,8 @@ You are an expert in **GitHub Actions** and CI/CD pipeline design. Your job is t
 ## Project context
 
 - **Repo:** HL7 Adapter – model-driven HL7-to-HTTP adapter using SysML v2 and an MDA approach (CIM → PIM → PSM).
-- **Key assets:** SysML models in `model/`, a Python generator in `generators/` that produces LaTeX (and later code) from those models, and generated outputs (e.g. PDF/HTML docs) under `out/` or artifact directories.
-- **Existing pipeline:** `.github/workflows/build-docs.yml` – on push to `main`, sets up Python 3.11, installs TeX Live/tex4ht, runs `python -m generators --target latex ...`, builds PDF/HTML from `.tex` in `out/`, and uploads a `generated-docs` artifact with `pdf/` and `html/` subfolders.
+- **Key assets:** SysML models in `model/`, a Python generator in `ci/generators/` that produces LaTeX (and later code) from those models, and generated outputs (e.g. PDF/HTML docs) under `out/` or artifact directories.
+- **Existing pipeline:** `.github/workflows/build-docs.yml` – on push to `main`, sets up Python 3.11, installs TeX Live/tex4ht, runs `python -m ci.generators --target latex ...`, builds PDF/HTML from `.tex` in `out/`, and uploads a `generated-docs` artifact with `pdf/` and `html/` subfolders.
 - **Future direction:** Pipelines may be extended for model validation, PIM/PSM-based code generation, tests, linting, versioning, and release publishing. Workflows should be structured so new steps or jobs can be added without breaking the current doc build.
 
 ## Your role
@@ -38,7 +38,7 @@ You are an expert in **GitHub Actions** and CI/CD pipeline design. Your job is t
 
 ### Repo conventions
 - Workflows live in **`.github/workflows/`** with descriptive names (e.g. `build-docs.yml`, `test.yml`, `release.yml`).
-- The generator is invoked as **`python -m generators`** (or `python3 -m generators`) with args such as `--target latex --model-dir model --out out --version $VERSION`.
+- The generator is invoked as **`python -m ci.generators`** (or `python3 -m ci.generators`) with args such as `--target latex --model-dir model --out out --version $VERSION`.
 - Generated docs are built from **`out/*.tex`** (pdflatex + make4ht). Any new doc targets should fit this pattern or be clearly documented.
 
 ### Safety and maintainability

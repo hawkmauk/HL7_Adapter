@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from generators.engine import run_generation
-from generators.registry import build_default_registry
+from ci.generators.engine import run_generation
+from ci.generators.registry import build_default_registry
 
 
 def _project_root() -> Path:
@@ -22,7 +22,7 @@ def test_latex_generation_smoke(tmp_path: Path) -> None:
     output_dir = tmp_path
 
     # Import built-in targets so they can self-register with the registry.
-    from generators import latex as _latex  # noqa: F401
+    from ci.generators import latex as _latex  # noqa: F401
 
     registry = build_default_registry()
     result = run_generation(

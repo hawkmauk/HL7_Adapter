@@ -39,20 +39,20 @@ side-effect registration and then calls `build_default_registry()`.
 From repository root:
 
 ```bash
-python3 -m generators --target latex --model-dir model --out out --version v0.1.0
+python3 -m ci.generators --target latex --model-dir model --out out --version v0.1.0
 ```
 
 Outputs:
 
-- `out/cim-<doc-id>-<version>.tex` for each `DOC_CIM_*` view
+- `out/<document-id>-<version>.tex` for each document view (CIM/PIM/PSM)
 - `out/lyrebird-doc-style.sty`, `out/lyrebird-html.cfg`, and logo assets
 - `out/coverage-report.json`
 
 **Building PDFs:** Run the generator first so `out/` contains the `.sty` and logo. Then run `pdflatex` from inside `out/`, e.g.:
 
 ```bash
-python3 -m generators --target latex --model-dir model --out out --version v0.1.0
-cd out && pdflatex cim-eicd-v0.1.0.tex
+python3 -m ci.generators --target latex --model-dir model --out out --version v0.1.0
+cd out && pdflatex DOC_CIM_EICD-v0.1.0.tex
 ```
 
 If you see `File 'lyrebird-doc-style.sty' not found`, run the generator again from the repo root with `--out out`, then build from `out/`.
@@ -60,16 +60,16 @@ If you see `File 'lyrebird-doc-style.sty' not found`, run the generator again fr
 **Building HTML (tex4ht):** With [tex4ht](https://www.tug.org/tex4ht/) / [make4ht](https://www.kodymirus.cz/make4ht/) installed, generate as above, then from `out/` run:
 
 ```bash
-cd out && make4ht -c lyrebird-html.cfg cim-eicd-v0.1.0.tex
+cd out && make4ht -c lyrebird-html.cfg DOC_CIM_EICD-v0.1.0.tex
 ```
 
 For HTML5 output:
 
 ```bash
-make4ht -c lyrebird-html.cfg cim-eicd-v0.1.0.tex "html5"
+make4ht -c lyrebird-html.cfg DOC_CIM_EICD-v0.1.0.tex "html5"
 ```
 
-This produces `cim-eicd-v0.1.0.html` (and assets) using the Lyrebird styling defined in `lyrebird-html.cfg`.
+This produces `DOC_CIM_EICD-v0.1.0.html` (and assets) using the Lyrebird styling defined in `lyrebird-html.cfg`.
 
 ### Target configuration
 
@@ -87,12 +87,12 @@ On every push to `main` (including merges from pull requests), the [Build docs](
 
 ## Output naming convention
 
-For `DOC_CIM_<X>`:
+Filenames use the document view's stable ID plus the version suffix (no CIM/PIM/PSM prefix):
 
-- filename: `cim-<x-lower>-<version>.tex`
+- filename: `<document-id>-<version>.tex`
 - examples:
-  - `DOC_CIM_SNRS` -> `cim-snrs-v0.1.0.tex`
-  - `DOC_CIM_ConOps` -> `cim-conops-v0.1.0.tex`
+  - `DOC_CIM_SNRS` -> `DOC_CIM_SNRS-v0.1.0.tex`
+  - `DOC_PIM_LogicalArchitecture` -> `DOC_PIM_LogicalArchitecture-v0.1.0.tex`
 
 ## Supported render mappings
 
@@ -102,7 +102,7 @@ For `DOC_CIM_<X>`:
 
 ## Adding a new target (future code generation)
 
-1. Create a new module under `generators/` (for example, `python_code.py`).
+1. Create a new module under `ci/generators/` (for example, `python_code.py`).
 2. Implement `GeneratorTarget`:
    - set `name`
    - set `supported_renders`
@@ -110,7 +110,7 @@ For `DOC_CIM_<X>`:
 3. Register it with the default registry using the helper in `registry.py`, e.g.:
 
    ```python
-   from generators.registry import register_target
+   from ci.generators.registry import register_target
 
    @register_target
    def _make_python_generator() -> GeneratorTarget:
@@ -127,9 +127,9 @@ This keeps parser and extraction logic shared across documentation and source-co
 
 Templates and static assets for targets live under:
 
-- `generators/templates/<target-name>/...`
+- `ci/generators/templates/<target-name>/...`
 
-Use helpers in `generators/templates.py`:
+Use helpers in `ci/generators/templates.py`:
 
 - `get_template_dir(target_name)` — locate the base template directory.
 - `select_first_existing(candidates)` — pick the first available template.

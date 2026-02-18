@@ -25,7 +25,7 @@ def _build_registry() -> TargetRegistry:
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="python -m generators",
+        prog="python -m ci.generators",
         description="Generate artifacts from SysML model views.",
     )
     parser.add_argument("--target", required=False, help="Generation target (e.g. latex).")

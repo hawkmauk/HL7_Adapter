@@ -11,7 +11,7 @@ def get_template_dir(target_name: str) -> Path:
     Return the base template directory for a given target.
 
     By convention, target templates live under:
-        generators/templates/<target_name>/
+        ci/generators/templates/<target_name>/
     """
     generator_dir = Path(__file__).resolve().parent
     return generator_dir / "templates" / target_name

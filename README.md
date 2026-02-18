@@ -19,7 +19,7 @@ The aim is to make the **digital thread** explicit: requirements, design, lifecy
     - `structure.sysml`, `view.sysml`, `viewpoint.sysml`, `lifecycle.sysml` – cross‑cutting MDA structure, abstract viewpoints, render profiles, and lifecycle concepts.
     - `CIM/`: CIM‑specific structure, viewpoints, and document templates (SNRS, ConOps, EICD, RSCM, SCHA, Gateway Signoff).
     - `PIM/`: PIM‑specific structure, viewpoints, and document templates (Logical Architecture, Interface Design, Behavior Design, Allocation, Verification, PIM Gateway Signoff).
-- `generators/`: Python framework that parses SysML and generates LaTeX/HTML documentation based on the view library.
+- `ci/generators/`: Python framework that parses SysML and generates LaTeX/HTML documentation based on the view library.
 - `docs/`: narrative documentation, build logs, design notes, and [CI/CD and generated documentation](docs/CI_CD.md).
 
 ### Documentation

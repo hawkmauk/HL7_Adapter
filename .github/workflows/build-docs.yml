@@ -34,7 +34,7 @@ jobs:
 
       - name: Run generator
         run: |
-          python3 -m generators --target latex --model-dir model --out out --version ${{ env.VERSION }}
+          python3 -m ci.generators --target latex --model-dir model --out out --version ${{ env.VERSION }}
 
       - name: Build PDF and HTML for each .tex
         run: |
@@ -61,8 +61,32 @@ jobs:
           name: generated-docs
           path: artifacts/
 
+  build-diagrams:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install SysML v2 toolchain
+        run: bash ci/install-sysmlv2.sh
+
+      - name: Build and render diagrams
+        run: bash ci/render.sh
+
+      - name: Upload diagrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: sysml-diagrams
+          path: dist/diagrams/
+
   deploy-pages:
-    needs: [build-docs]
+    needs: [build-docs, build-diagrams]
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -74,11 +98,17 @@ jobs:
         with:
           name: generated-docs
 
+      - name: Download sysml-diagrams artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sysml-diagrams
+
       - name: Prepare site directory
         run: |
-          mkdir -p pages-root/pdf
+          mkdir -p pages-root/pdf pages-root/diagrams
           cp -r html/* pages-root/ 2>/dev/null || true
           cp pdf/*.pdf pages-root/pdf/ 2>/dev/null || true
+          cp sysml-diagrams/*.svg pages-root/diagrams/ 2>/dev/null || true
 
       - name: Generate index.html
         run: |
@@ -109,9 +139,9 @@ jobs:
           </head>
           <body>
             <h1>HL7 Adapter – Generated documentation</h1>
-            <p class="meta">Model-driven docs (CIM and PIM). HTML and PDF for each document.</p>
+            <p class="meta">Model-driven docs (CIM and PIM). HTML, PDF, and diagram (SVG) for each document.</p>
             <table>
-              <thead><tr><th>Document</th><th>HTML</th><th>PDF</th></tr></thead>
+              <thead><tr><th>Document</th><th>HTML</th><th>PDF</th><th>Diagram</th></tr></thead>
               <tbody>
           INDEX_EOF
           for f in html/*.html; do
@@ -119,7 +149,13 @@ jobs:
             base=$(basename "$f" .html)
             # Display name: strip version suffix like -v0.1.0, replace hyphens with spaces
             name=$(echo "$base" | sed 's/-v[0-9].*$//' | sed 's/-/ /g')
-            echo "                <tr><td>$name</td><td><a href=\"$base.html\">View</a></td><td><a href=\"pdf/$base.pdf\">Download</a></td></tr>" >> pages-root/index.html
+            # Diagram link: same basename as doc; link only if SVG exists
+            if [ -f "pages-root/diagrams/$base.svg" ]; then
+              diagram_link="<a href=\"diagrams/$base.svg\">View</a>"
+            else
+              diagram_link="—"
+            fi
+            echo "                <tr><td>$name</td><td><a href=\"$base.html\">View</a></td><td><a href=\"pdf/$base.pdf\">Download</a></td><td>$diagram_link</td></tr>" >> pages-root/index.html
           done
           cat >> pages-root/index.html << 'INDEX_EOF'
               </tbody>

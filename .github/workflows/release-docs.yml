@@ -37,7 +37,7 @@ jobs:
 
       - name: Run generator
         run: |
-          python3 -m generators --target latex --model-dir model --out out --version ${{ env.VERSION }}
+          python3 -m ci.generators --target latex --model-dir model --out out --version ${{ env.VERSION }}
 
       - name: Build PDF and HTML for each .tex
         run: |

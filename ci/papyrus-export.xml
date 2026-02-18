@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<papyrusExport xmlns="http://www.eclipse.org/papyrus/export">
+
+  <!-- Input model (XMI produced by SysML v2 parser) -->
+  <model path="build/model.xmi"/>
+
+  <!-- Output directory for rendered diagrams -->
+  <output path="diagrams/"/>
+
+  <!-- Export format: svg | png | pdf -->
+  <format>svg</format>
+
+  <!-- Export all diagrams generated from views -->
+  <exportAllViews>true</exportAllViews>
+
+  <!-- Rendering options -->
+  <options>
+    <option name="layout" value="auto"/>
+    <option name="includeLabels" value="true"/>
+    <option name="includeCompartments" value="true"/>
+    <option name="edgeRouting" value="orthogonal"/>
+  </options>
+
+</papyrusExport>

@@ -12,7 +12,7 @@ fi
 
 # Download Papyrus headless
 if [ ! -d "papyrus" ]; then
-  wget -q https://www.eclipse.org/downloads/download.php?file=/modeling/mdt/papyrus/rcp/latest/papyrus-rcp-linux64.tar.gz -O papyrus.tar.gz
+  wget -q https://www.eclipse.org/downloads/download.php?file=/modeling/mdt/papyrus/papyrus-desktop/rcp/2025-06/7.1.0/papyrus-desktop-2025-06-7.1.0-linux.gtk.x86_64.tar.gz&mirror_id=492 -O papyrus.tar.gz
   tar -xzf papyrus.tar.gz
   mv Papyrus papyrus
 fi

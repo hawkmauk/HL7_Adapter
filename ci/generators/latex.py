@@ -7,7 +7,7 @@ import subprocess
 
 from .base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from .errors import ValidationError
-from .ir import DocumentIR, ExposedElement
+from .ir import DocumentIR, ExposedElement, SectionIR
 from .registry import register_target
 from .templates import get_template_dir, select_first_existing, copy_asset
 
@@ -221,6 +221,45 @@ def _render_stakeholder_signoff_table(document: DocumentIR) -> str:
     return "\n".join(lines)
 
 
+def _render_section_elements_table(section: SectionIR) -> str:
+    """Render a section's exposed elements as a (potentially multi-page) table."""
+    items = [e for e in section.exposed_elements if e.kind != "package"]
+    if not items:
+        return "No elements resolved."
+
+    lines = [
+        "\\begin{longtable}{|p{4cm}|p{2cm}|p{8.5cm}|}",
+        "\\hline",
+        "\\textbf{Name} & \\textbf{Kind} & \\textbf{Description} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for element in items:
+        # Description text
+        cell_parts: list[str] = []
+        if element.doc:
+            cell_parts.append(_escape_latex(element.doc))
+
+        # Field-level attributes as a nested itemize block inside the same cell.
+        if element.attributes:
+            cell_parts.append("\\begin{itemize}")
+            for attr in element.attributes:
+                type_suffix = f": {attr.type}" if attr.type else ""
+                cell_parts.append(
+                    f"  \\item {_escape_latex(attr.name)}{_escape_latex(type_suffix)}"
+                )
+            cell_parts.append("\\end{itemize}")
+
+        cell_text = " ".join(cell_parts)
+        lines.append(
+            f"{_escape_latex(element.name)} & {_escape_latex(element.kind)} & {cell_text} \\\\"
+        )
+        lines.append("\\hline")
+
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
 def _render_by_directive(document: DocumentIR) -> str:
     render_kind = (document.binding.render_kind or "").strip()
     if render_kind == "ElementTable":
@@ -238,6 +277,7 @@ def _build_tex(document: DocumentIR, version: str) -> str:
         f"% Source: {document.source.file_path}",
         "% Build from the output directory so lyrebird-doc-style.sty is found, or run the generator first.",
         "\\documentclass[11pt]{article}",
+        "\\usepackage{longtable}",
         f"\\usepackage{{{STYLE_FILE_NAME.removesuffix('.sty')}}}",
         "",
         "\\begin{document}",
@@ -282,17 +322,10 @@ def _build_tex(document: DocumentIR, version: str) -> str:
                 lines.append("")
                 continue
 
-            # Filter out package-only entries so we don't create empty lists,
-            # which cause "missing \\item" LaTeX errors.
+            # Render section elements as a table (name/kind/description).
             section_items = [e for e in section.exposed_elements if e.kind != "package"]
             if section_items:
-                lines.append("\\begin{itemize}")
-                for element in section_items:
-                    item = f"\\item \\textbf{{{_escape_latex(element.name)}}}"
-                    if element.doc:
-                        item += f" {_escape_latex(element.doc)}"
-                    lines.append(item)
-                lines.append("\\end{itemize}")
+                lines.append(_render_section_elements_table(section))
                 lines.append("")
     else:
         # Backwards-compatible flat rendering.

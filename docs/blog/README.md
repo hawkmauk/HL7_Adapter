@@ -8,6 +8,7 @@ Documentation and blog for the [Lyrebird Technical Challenge](https://www.lyrebi
 |-----------|------|
 | 17 Feb 2026 | [Day One: Going MDA and All-In on AI](day-one-mda-and-agents.md) |
 | 18 Feb 2026 | [Day Two: Blogger Agent, Standard Views Library, and Project Lifecycle](day-two-blogger-views-and-lifecycle.md) |
+| 19 Feb 2026 | [Day Three: Diagrams, the GitHub CI Agent, and a Proper Git Workflow](day-three-diagrams-ci-and-workflow.md) |
 
 ---
 

@@ -194,6 +194,30 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
     else:
         exposed_elements = base_exposed
 
+    # Special handling for CIM Operational Scenarios: also include CIM::UseCases.*
+    # so that CIM-level use case narratives can be rendered in the document even
+    # though the current view definition exposes CIM::Operations only.
+    if element.name == "DOC_CIM_OperationalScenarios":
+        for model_el in model_index.elements:
+            if model_el.kind == "use case" and model_el.qualified_name.startswith("CIM::UseCases::"):
+                package_path = tuple(model_el.qualified_name.split("::")[:-1])
+                qname = model_el.qualified_name
+                if not any(e.qualified_name == qname for e in exposed_elements):
+                    exposed_elements.append(
+                        ExposedElement(
+                            qualified_name=qname,
+                            kind=model_el.kind,
+                            name=model_el.name,
+                            package_path=package_path,
+                            doc=model_el.doc,
+                            attributes=[
+                                AttributeIR(name=attr.name, type=attr.type, doc="")
+                                for attr in getattr(model_el, "attributes", [])
+                            ],
+                        )
+                    )
+        exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
+
     return DocumentIR(
         document_id=element.name,
         title=_title_from_id(element.name),

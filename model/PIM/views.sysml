@@ -51,6 +51,7 @@ package PIM_Views {
             satisfy logicalArchitectureViewpoint;
             expose PIM::Behavior::**;
             expose PIM::UseCases::**;
+
             render asTextualNotation;
         }
 

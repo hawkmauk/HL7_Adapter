@@ -155,7 +155,7 @@ package CIM_View {
                operational flows. It should highlight the main path from event publication
                through to successful completion.
              */
-            expose CIM::Operations::HandleMessage::**;
+            expose CIM::Operations::HandleFrame::**;
         }
 
         view <UseCasesSection> 'Use Cases' {

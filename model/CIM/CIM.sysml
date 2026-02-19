@@ -166,18 +166,13 @@ package CIM {
         private import Domain::*;
 
         doc
-        /* Event occurrences are the send/receive ends where messages are transacted between
-           systems or components; actions in Operations are the behaviors that produce or
-           consume those events (AIM S2.1, S7.5). Technology-agnostic; no protocol-specific payloads.
-           Mapping: MLLP Frame Sent/Received — SendMLLPFrame (upstream), ReceiveMLLPFrame (adapter).
-           HL7 Message Extracted — ExtractHL7Message (adapter). HL7 Message Transformed —
-           TransformHL7Message (adapter), consumed by SendJSONPayload. JSON Message Sent/Received —
-           SendJSONPayload (adapter), ReceiveJSONPayload (downstream). Integration Error Sent/Received —
-           HandleIntegrationError (adapter), ReceiveIntegrationError (adapter). Operations::HandleMessage
-           is the adapter's composite flow. */
+        /* Event occurrences represent technology‑agnostic send/receive points for messages
+           between systems or components at CIM level (AIM S2.1, S7.5). The specific actions
+           that produce or consume each event are documented on the individual occurrences. */
 
         occurrence def Created {
-            doc /* Occurrence that is created by the system. */
+            doc /* This event will be used by Observable domain objects to signal their creation.
+            It is the first of what could be many lifecycle events that could be raised by the object. */
         }
 
         occurrence def <MLLPFrameSent> 'MLLP Frame Sent' {
@@ -345,23 +340,52 @@ package CIM {
 
             objective {
                 doc
-                /* Primary scenario
-                   ----------------
-                   End‑to‑end conceptual flow from HL7 frame publication to JSON payload receipt:
-                   - upstreamSystem sends an HL7Message framed in an MLLPFrame (Send MLLP Frame),
-                     producing a msgMLLPFrame that is received by adapterService (Receive MLLP Frame).
-                   - adapterService unwraps the MLLPFrame to create an HL7Message and then
-                     extracts demographics/metadata and composes a JSONPayload (Handle HL7 Message),
-                     with parallel extraction flows and a decision on whether to send an error.
-                   - adapterService posts the JSONPayload to a RESTEndpoint owned by
-                     downstreamApiOwner (Send JSON Payload), which conceptually receives
-                     the JSONPayload (Receive JSON Payload).
-                   - Any degraded outcomes (parse/transform or delivery failures) are captured
-                     and handled via Handle Integration Error (CIM).
+                /* Main Success Scenario
+                   ---------------------
+                   1. upstreamSystem sends an HL7Message framed in an MLLPFrame towards adapterService
+                      (Send MLLP Frame – msgMLLPFrame from upstreamSystem.msgMLLPFrameSent to
+                      adapterService.msgMLLPFrameReceived).
+                   2. adapterService receives the MLLPFrame and unwraps it into an HL7Message for
+                      further handling (Receive MLLP Frame / Handle Frame).
+                   3. adapterService extracts demographics and metadata and composes a JSONPayload
+                      from the HL7Message (Handle HL7 Message – CreateMetadata, CreateDemographics,
+                      CreateJsonPayload).
+                   4. adapterService sends the JSONPayload to a RESTEndpoint owned by
+                      downstreamApiOwner (Send JSON Payload – JSONPayloadExchange).
+                   5. downstreamApiOwner receives the JSONPayload (Receive JSON Payload).
+                   6. No IntegrationError is raised; the event is considered successfully ingested
+                      and forwarded.
 
-                   The includes in this use case trace the main message and action flows:
-                   MLLP frame exchange, HL7 message handling, JSON payload exchange, and
-                   integration‑error handling. */
+                   Alternate Paths
+                   ---------------
+                   A1. HL7 content variations
+                       - As described in Handle HL7 Message (optional segments omitted, additional
+                         non‑critical segments present), extraction still yields a clinically
+                         sufficient JSONPayload.
+                       - Rejoin at step 3 when JSONPayload is composed successfully.
+
+                   A2. Multiple logical REST endpoints
+                       - As described in Send JSON Payload, adapterService selects among multiple
+                         RESTEndpoint variants based on JSONPayload content.
+                       - Rejoin at step 4 once JSONPayload is successfully posted.
+
+                   Exception Paths
+                   ---------------
+                   E1. Frame‑level failures (oversized frame, connection reset/timeout)
+                       - As described in Receive MLLP Frame, adapterService records an
+                         IntegrationError and does not proceed to HL7 handling.
+                       - Control flows into Handle Integration Error (CIM); this scenario does not
+                         rejoin the main success path.
+
+                   E2. HL7 content errors (malformed header, missing mandatory data)
+                       - As described in Handle HL7 Message, a ParseError/IntegrationError is
+                         raised and handled by Handle Integration Error (CIM).
+                       - Scenario terminates in degraded mode; no rejoin to step 3.
+
+                   E3. Delivery failures (downstream HTTP / policy issues)
+                       - As described in Send JSON Payload, a DeliveryError/IntegrationError is
+                         raised and handled by Handle Integration Error (CIM).
+                       - Scenario terminates in degraded mode; no rejoin to step 5. */
             }
 
             include 'Send MLLP Frame';
@@ -495,51 +519,61 @@ package CIM {
 
             objective {
                 doc
-                /* Primary scenario
-                   ----------------
-                   adapterService handles an HL7Message that has already been created from an
-                   MLLPFrame by:
-                   - Receiving the creation event (message hl7MessageCreated from hl7Message.created
-                     to adapterService.msgHL7MessageCreated).
-                   - Forking into two parallel actions: CreateMetadata and CreateDemographics, each
-                     consuming the HL7Message via flows from hl7MessageCreated.
-                   - Composing a JSONPayload in CreateJsonPayload from both metadata and demographics
-                     (flows from extractMetadata.'metadata' and extractDemographics.demographics).
-                   - Deciding whether to send a JSON payload or an IntegrationError based on the
-                     success of the extraction actions (composeJsonPayload vs. sendError).
+                /* Main Success Scenario
+                   ---------------------
+                   1. An HL7Message instance is created from a received MLLPFrame; its creation is
+                      signalled to adapterService (message hl7MessageCreated from hl7Message.created
+                      to adapterService.msgHL7MessageCreated).
+                   2. adapterService forks into two parallel extraction actions:
+                      - CreateMetadata to derive MessageMetadata from the HL7Message.
+                      - CreateDemographics to derive PatientDemographics from the HL7Message.
+                   3. Both CreateMetadata and CreateDemographics succeed, producing 'metadata' and
+                      demographics outputs.
+                   4. adapterService composes a JSONPayload in CreateJsonPayload from metadata and
+                      demographics (flows from extractMetadata.'metadata' and
+                      extractDemographics.demographics).
+                   5. The JSONPayload is made available for subsequent sending to downstream
+                      systems.
 
-                   - Domain: HL7Message, PatientDemographics, MessageMetadata, JSONPayload, IntegrationError.
-                   - Mission: Accurate Clinical Transformation (M2).
-
-                   Alternate scenarios (parse/extract stage)
-                   -----------------------------------------
+                   Alternate Paths
+                   ---------------
                    A1. Optional clinical segments omitted
-                       - HL7Message lacks certain optional segments; required PatientDemographics and core fields are present.
-                       - Extraction still succeeds; PatientDemographics may be partially populated.
+                       - HL7Message lacks certain optional segments; required PatientDemographics
+                         and core fields are present.
+                       - Both extraction actions still succeed, though demographics may be
+                         partially populated.
+                       - Rejoin at step 3/4 when CreateJsonPayload has sufficient inputs.
 
-                   A2. Additional non-critical segments present
+                   A2. Additional non‑critical segments present
                        - HL7Message contains extra segments not used by this adapter.
-                       - These are ignored conceptually; validation focuses on required content.
+                       - These are ignored; extraction focuses on required content.
+                       - Rejoin at step 3/4 with normal JSONPayload composition.
 
-                   Alternate scenarios (transform stage)
-                   -------------------------------------
-                   A1. Mapping with optional fields omitted
-                       - Certain fields in JSONPayload are absent because corresponding HL7 segments were optional.
+                   A3. Mapping with optional JSON fields omitted
+                       - Certain fields in JSONPayload are absent because corresponding HL7
+                         segments were optional.
                        - Clinical meaning required for the mission is still preserved.
+                       - Rejoin at step 5 with a valid but partially populated JSONPayload.
 
-                   A2. Additional derived fields
-                       - adapterService derives additional non-essential fields (e.g. summary fields) in JSONPayload.
-                       - CIM notes their presence conceptually without prescribing implementation details.
+                   A4. Additional derived JSON fields
+                       - adapterService derives additional non‑essential (summary) fields in
+                         JSONPayload.
+                       - CIM records these without prescribing detailed implementation.
+                       - Rejoin at step 5 with an enriched JSONPayload.
 
-                   Exception scenarios (extract stage)
-                   -----------------------------------
+                   Exception Paths
+                   ---------------
                    E3. Malformed header or segment structure
-                       - HL7Message has an invalid structure (e.g. malformed MSH, inconsistent field separators).
+                       - HL7Message has an invalid structure (e.g. malformed MSH, inconsistent
+                         field separators).
                        - A ParseError is raised, linked to HL7Message and relevant segmentId/fieldPath.
+                       - Flow proceeds to CreateIntegrationError / Handle Integration Error (CIM);
+                         this path does not rejoin the main success scenario.
 
                    E4. Missing mandatory patient data
                        - PatientDemographics lacks mandatory fields (e.g. patientId or dateOfBirth).
-                       - Extraction/validation fails and records a ParseError, leading to degraded handling. */
+                       - Extraction/validation fails and records a ParseError, leading to degraded
+                         handling via Handle Integration Error (CIM); no rejoin. */
             }
         }
 
@@ -569,37 +603,44 @@ package CIM {
 
             objective {
                 doc
-                /* Primary scenario
-                   ----------------
-                   adapterService sends a JSONPayload that has been created by prior HL7 handling
-                   to a downstream RESTEndpoint:
-                   - Creation flow: message jsonPayloadCreated from jsonPayload.created to
-                     adapterService.msgJSONPayloadCreated marks that a JSONPayload instance exists.
-                   - Send/receive flow: message JSONPayloadExchange of JSONPayload from
-                     adapterService.msgJSONPayloadSent to downstreamApiOwner.msgJSONPayloadReceived.
-                   - Operations: SendJSONPayload (adapter send) and ReceiveJSONPayload (downstream receive).
-                   - Domain: JSONPayload, RESTEndpoint.
-                   - Mission: Secure Interoperability (M3).
+                /* Main Success Scenario
+                   ---------------------
+                   1. A JSONPayload instance is created by prior HL7 handling; its creation is
+                      signalled to adapterService (message jsonPayloadCreated from jsonPayload.created
+                      to adapterService.msgJSONPayloadCreated).
+                   2. adapterService prepares and sends the JSONPayload to a RESTEndpoint owned by
+                      downstreamApiOwner (SendJSONPayload).
+                   3. The JSONPayload is received by downstreamApiOwner
+                      (ReceiveJSONPayload – JSONPayloadExchange from
+                      adapterService.msgJSONPayloadSent to downstreamApiOwner.msgJSONPayloadReceived).
+                   4. No DeliveryError or IntegrationError is raised; the handoff is considered
+                      successful.
 
-                   Alternate scenarios (forward stage)
-                   -----------------------------------
+                   Alternate Paths
+                   ---------------
                    A1. Multiple logical endpoints
-                       - RESTEndpoint represents a family of logical endpoints; adapterService selects one based on JSONPayload content.
+                       - RESTEndpoint represents a family of logical endpoints; adapterService
+                         selects one based on JSONPayload content.
                        - All selected endpoints conceptually satisfy the same handoff intent.
+                       - Rejoin at step 3 once JSONPayload is successfully received.
 
-                   Exception scenarios (forward stage)
-                   -----------------------------------
+                   Exception Paths
+                   ---------------
                    E5. Downstream temporary failure (e.g. 503)
                        - RESTEndpoint responds with a temporary failure; a DeliveryError is recorded.
-                       - Subsequent handling is captured in Handle Integration Error (CIM).
+                       - Handling is delegated to Handle Integration Error (CIM); this scenario does
+                         not rejoin the main success path.
 
                    E6. Network or connectivity failure
                        - Conceptual network issues prevent delivery (e.g. connection reset, timeout).
-                       - A DeliveryError is raised; no successful handoff occurs.
+                       - A DeliveryError is raised; no successful handoff occurs; flow proceeds to
+                         Handle Integration Error (CIM); no rejoin.
 
                    E7. Security or policy failure
-                       - Conceptual security/policy constraints (e.g. PHIHandlingPolicy) prevent forwarding.
-                       - IntegrationError reflects the failure to meet M3/M4 obligations for this message. */
+                       - Conceptual security/policy constraints (e.g. PHIHandlingPolicy) prevent
+                         forwarding.
+                       - IntegrationError reflects the failure to meet M3/M4 obligations for this
+                         message; flow proceeds to Handle Integration Error (CIM); no rejoin. */
             }
         }
 
@@ -663,8 +704,10 @@ package CIM {
         /* Requirement satisfaction relationships from CIM use cases to mission requirements. */
 
         satisfy 'Reliable Event Ingestion' by 'Send MLLP Frame';
+        satisfy 'Reliable Event Ingestion' by 'Receive MLLP Frame';
         satisfy 'Accurate Clinical Transformation' by 'Handle HL7 Message';
         satisfy 'Secure Interoperability' by 'Send JSON Payload';
+        satisfy 'Secure Interoperability' by 'Receive JSON Payload';
         satisfy 'Operational Transparency' by 'Handle Integration Error (CIM)';
     }
 

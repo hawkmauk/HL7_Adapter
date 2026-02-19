@@ -157,61 +157,145 @@ package CIM {
     package Operations {
         doc /* High-level operational activities and scenarios, kept technology-agnostic at CIM level. */
 
-        action def <PublishHL7Event> 'Publish HL7 Event' {
-            doc /* Upstream actor publishes a framed HL7 message to the adapter listener. */
+        private import ScalarValues::*;
+        private import Domain::*;
+        private import Events::*;
+
+        action def <SendMLLPFrame> 'Send MLLP Frame' {
+            doc /* Upstream actor publishes a framed HL7 event to the adapter listener. */
+            in mllpFrame : MLLPFrame;
+            out attribute success : Boolean;
         }
 
-        action def <ReceiveMLLPMessage> 'Receive MLLP Message' {
+        action def <ReceiveMLLPFrame> 'Receive MLLP Frame' {
             doc /* Adapter accepts inbound framed data from a TCP connection. */
+            out mllpFrame : MLLPFrame;
         }
 
-        action def <ParseAndValidateHL7> 'Parse and Validate HL7' {
-            doc /* Adapter parses HL7 structure and validates required message content. */
+        action def <ExtractHL7Message> 'Extract HL7 Message' {
+            doc /* Extract the HL7 message from the MLLP frame. */
+            in mllpFrame : MLLPFrame;
+            out hl7Message : HL7Message;
+            out attribute success : Boolean;
         }
 
-        action def <TransformToJSON> 'Transform to JSON' {
+        action def <TransformHL7Message> 'Transform HL7 Message' {
             doc /* Adapter maps selected HL7 fields into a stable JSON representation. */
+            in hl7Message : HL7Message;
+            out jsonPayload : JSONPayload;
+            out attribute success : Boolean;
         }
 
-        action def <PostPayloadToAPI> 'Post Payload to API' {
-            doc /* Adapter submits transformed payload to downstream HTTP endpoint. */
+        action def <SendJSONPayload> 'Send JSON Payload' {
+            doc /* Adapter publishes a JSON event to a downstream API. */
+            in jsonPayload : JSONPayload;
+            out attribute success : Boolean;
         }
 
-        action def <HandleOperationalError> 'Handle Operational Error' {
-            doc /* Adapter logs, reports, and applies retry or rejection behavior for failures. */
+        action def <ReceiveJSONPayload> 'Receive JSON Payload' {
+            doc /* Adapter receives a JSON event from a downstream API. */
+            out jsonPayload : JSONPayload;
+            out attribute success : Boolean;
+        }
+
+        action def <ReceiveIntegrationError> 'Receive Integration Error' {
+            doc /* Adapter receives an integration error. */
+            out integrationError : IntegrationError;
+        }
+
+        action def <HandleIntegrationError> 'Handle Integration Error' {
+            doc /* Adapter handles an integration error. */
+            in integrationError : IntegrationError;
         }
 
         /* Coarse-grained CIM-level flow for ingestion and forwarding. */
-        action def <EventFlow> 'Event Flow' {
+        action def <HandleMessage> 'Handle Message' {
             doc
             /* Main CIM-level flow from publish through receive, parse, transform, and post.
                Detailed protocol-specific behavior and error handling are refined in PIM behavior. */
 
-            action publish : PublishHL7Event;
-            action receive : ReceiveMLLPMessage;
-            action parse : ParseAndValidateHL7;
-            action transform : TransformToJSON;
-            action post : PostPayloadToAPI;
+            action receive : ReceiveMLLPFrame;
+            action extract : ExtractHL7Message;
+            action transform : TransformHL7Message;
+            action publish : SendJSONPayload;
+            action handleIntegrationError : HandleIntegrationError;
 
-            first publish then receive;
-            first receive then parse;
-            first parse then transform;
-            first transform then post;
-            first post then done;
+            first receive;
+            then extract;
+            if extract.success then transform; else handleIntegrationError;
+            if transform.success then publish; else handleIntegrationError;
+            then done;
+
+            out attribute success : Boolean = extract.success and transform.success;
+        }
+    }
+
+    package Events {
+
+        private import ScalarValues::*;
+
+        doc
+        /* Event occurrences are the send/receive ends where messages are transacted between
+           systems or components; actions in Operations are the behaviors that produce or
+           consume those events (AIM S2.1, S7.5). Technology-agnostic; no protocol-specific payloads.
+           Mapping: HL7MessageSent produced by PublishHL7Event (upstream), consumed at receive end
+           by ReceiveHL7Event (adapter). HL7MessageReceived is that receive end. JSONMessageSent
+           produced by PublishJSONEvent (adapter), consumed at receive end by ReceiveJSONEvent
+           (downstream). Operations::HandleMessage is the adapter’s composite flow. */
+
+        occurrence def <MLLPMessageSent> 'MLLP Frame Sent' {
+            doc /* Send end of an HL7 message transaction. Produced by: PublishHL7Event (upstream). */
+        }
+
+        occurrence def <MLLPFrameReceived> 'MLLP Frame Received' {
+            doc /* Receive end of an HL7 message transaction. Consumed by: ReceiveHL7Event (adapter). */
+        }
+
+        occurrence def <HL7MessageExtracted> 'HL7 Message Extracted' {
+            doc /* Extracted the HL7 message from the MLLP message. */
+            out attribute success : Boolean;
+        }
+
+        occurrence def <HL7MessageParsed> 'HL7 Message Parsed' {
+            doc /* Parsed end of an HL7 message transaction. Consumed by: ParseHL7Message (adapter). */
+            out attribute success : Boolean;
+        }
+
+        occurrence def <HL7MessageTransformed> 'HL7 Message Transformed' {
+            doc /* Transformed end of an HL7 message transaction. Consumed by: TransformHL7Message (adapter). */
+            out attribute success : Boolean;
+        }
+
+        occurrence def <JSONMessageSent> 'JSON Message Sent' {
+            doc /* Send end of a JSON payload transaction. Produced by: PublishJSONEvent (adapter). */
+        }
+
+        occurrence def <JSONMessageReceived> 'JSON Message Received' {
+            doc /* Receive end of a JSON payload transaction. Consumed by: ReceiveJSONEvent (downstream). */
+        }
+
+        occurrence def <IntegrationErrorSent> 'Integration Error Sent' {
+            doc /* Send end of an integration error transaction. Produced by: HandleIntegrationError (adapter). */
+        }
+
+        occurrence def <IntegrationErrorReceived> 'Integration Error Received' {
+            doc /* Receive end of an integration error transaction. Consumed by: HandleIntegrationError (adapter). */
         }
     }
 
     package UseCases {
-        doc /* CIM-level use cases derived from the EventFlow operation. */
+        doc /* CIM-level use cases derived from the HandleMessage operation and event-centric message flows. */
 
         private import Stakeholders::*;
         private import Context::*;
         private import Domain::*;
         private import Operations::*;
         private import Mission::*;
+        private import Events::*;
 
         /* Core use case that orchestrates the CIM operational story. */
         use case 'Ingest and Forward Event (CIM)' {
+
             subject adapterService : HL7AdapterService;
 
             actor upstreamSystem : UpstreamHL7System;
@@ -226,16 +310,25 @@ package CIM {
 
             include 'Send HL7 Message';
             include 'Receive HL7 Message';
-            include 'Parse HL7 Message';
-            include 'Transform HL7 Message';
-            include 'Forward JSON Payload';
+            include 'Handle HL7 Message';
+            include 'Send JSON Message';
         }
 
         /* CIM-level use cases decomposed from the main flow. */
 
         use case 'Send HL7 Message' {
-            subject upstreamSystem : UpstreamHL7System;
-            actor adapterService : HL7AdapterService;
+
+            private import Domain::*;
+            private import Events::*;
+
+            subject upstreamSystem : UpstreamHL7System {
+                event occurrence msgHL7MessageSent : MLLPMessageSent;
+            }
+            actor adapterService : HL7AdapterService{
+                event occurrence msgHL7MessageReceived : MLLPMessageReceived;
+            }
+            message msgHL7Message of HL7Message
+                from upstreamSystem.msgHL7MessageSent to adapterService.msgHL7MessageReceived;
 
             objective {
                 doc
@@ -262,15 +355,38 @@ package CIM {
         }
 
         use case 'Receive HL7 Message' {
-            subject adapterService : HL7AdapterService;
-            actor upstreamSystem : UpstreamHL7System;
+
+            private import Domain::*;
+            private import Events::*;
+
+            subject adapterService : HL7AdapterService{
+                event occurrence msgHL7MessageReceived : MLLPMessageReceived;
+                event occurrence msgErrorSent : IntegrationErrorSent;
+                event occurrence msgErrorReceived : IntegrationErrorReceived;
+            }
+
+            actor upstreamSystem : UpstreamHL7System {
+                event occurrence msgHL7MessageSent : MLLPMessageSent;
+            }
+            message msgHL7Message of HL7Message
+                from upstreamSystem.msgHL7MessageSent to adapterService.msgHL7MessageReceived;
+
+            message msgError of IntegrationError
+                from adapterService.msgErrorSent to adapterService.msgErrorReceived;
+
+            action handleMessage : HandleMessage;
+
+            first msgHL7Message;
+            then handleMessage;
+            if handleMessage.success then msgHL7Message; else msgError;
+            then done;
 
             objective {
                 doc
                 /* Primary scenario
                    ----------------
                    adapterService conceptually receives and unwraps the framed HL7Message.
-                   - Operation: ReceiveMLLPMessage.
+                   - Operation: ReceiveHL7Event.
                    - Domain: MLLPFrame, HL7Message.
 
                    Exception scenarios (receive stage)
@@ -285,16 +401,20 @@ package CIM {
             }
         }
 
-        use case 'Parse HL7 Message' {
+        use case 'Handle HL7 Message' {
+
             subject adapterService : HL7AdapterService;
-            actor upstreamSystem : UpstreamHL7System;
+
+            action handleMessage : HandleMessage;
+
+            first handleMessage;
+            then done;
 
             objective {
                 doc
                 /* Primary scenario
                    ----------------
-                   adapterService parses the HL7Message and validates required content at CIM level.
-                   - Operation: ParseAndValidateHL7.
+                   adapterService parses and transforms the HL7Message (ParseHL7Message, TransformHL7Message).
                    - Domain: HL7Message, PatientDemographics, MessageMetadata.
                    - Mission: Accurate Clinical Transformation (M2).
 
@@ -302,37 +422,11 @@ package CIM {
                    --------------------------------
                    A1. Optional clinical segments omitted
                        - HL7Message lacks certain optional segments; required PatientDemographics and core fields are present.
-                       - ParseAndValidateHL7 still succeeds; PatientDemographics may be partially populated.
+                       - ParseHL7Message still succeeds; PatientDemographics may be partially populated.
 
                    A2. Additional non-critical segments present
                        - HL7Message contains extra segments not used by this adapter.
                        - These are ignored conceptually; validation focuses on required content.
-
-                   Exception scenarios (parse stage)
-                   --------------------------------
-                   E3. Malformed header or segment structure
-                       - HL7Message has an invalid structure (e.g. malformed MSH, inconsistent field separators).
-                       - A ParseError is raised, linked to HL7Message and relevant segmentId/fieldPath.
-
-                   E4. Missing mandatory patient data
-                       - PatientDemographics lacks mandatory fields (e.g. patientId or dateOfBirth).
-                       - ParseAndValidateHL7 fails validation and records a ParseError, leading to degraded handling. */
-            }
-        }
-
-        use case 'Transform HL7 Message' {
-            subject adapterService : HL7AdapterService;
-            actor downstreamApiOwner : DownstreamAPIOwner;
-
-            objective {
-                doc
-                /* Primary scenario
-                   ----------------
-                   adapterService transforms a validated HL7Message into a JSONPayload suitable
-                   for conceptual consumption by downstreamApiOwner.
-                   - Operation: TransformToJSON.
-                   - Domain: HL7Message, JSONPayload.
-                   - Mission: Accurate Clinical Transformation (M2).
 
                    Alternate scenarios (transform stage)
                    -------------------------------------
@@ -342,20 +436,46 @@ package CIM {
 
                    A2. Additional derived fields
                        - adapterService derives additional non-essential fields (e.g. summary fields) in JSONPayload.
-                       - CIM notes their presence conceptually without prescribing implementation details. */
+                       - CIM notes their presence conceptually without prescribing implementation details.
+
+                   Exception scenarios (parse stage)
+                   --------------------------------
+                   E3. Malformed header or segment structure
+                       - HL7Message has an invalid structure (e.g. malformed MSH, inconsistent field separators).
+                       - A ParseError is raised, linked to HL7Message and relevant segmentId/fieldPath.
+
+                   E4. Missing mandatory patient data
+                       - PatientDemographics lacks mandatory fields (e.g. patientId or dateOfBirth).
+                       - ParseHL7Message fails validation and records a ParseError, leading to degraded handling. */
             }
         }
 
-        use case 'Forward JSON Payload' {
-            subject adapterService : HL7AdapterService;
-            actor downstreamApiOwner : DownstreamAPIOwner;
+        use case 'Send JSON Message' {
+
+            private import Domain::*;
+            private import Events::*;
+
+            subject adapterService : HL7AdapterService {
+                event occurrence msgJSONMessageSent : JSONMessageSent;
+            }
+            actor downstreamApiOwner : DownstreamAPIOwner {
+                event occurrence msgJSONMessageReceived : JSONMessageReceived;
+            }
+            message msgJSONMessage of JSONPayload
+                from adapterService.msgJSONMessageSent to downstreamApiOwner.msgJSONMessageReceived;
+
+            action publishJSONEvent : SendJSONPayload;
+
+            first publishJSONEvent;
+            then msgJSONMessage;
+            then done;
 
             objective {
                 doc
                 /* Primary scenario
                    ----------------
                    adapterService posts the JSONPayload to a RESTEndpoint owned by downstreamApiOwner.
-                   - Operation: PostPayloadToAPI.
+                   - Operation: PublishJSONEvent (adapter send); ReceiveJSONEvent (downstream receive).
                    - Domain: JSONPayload, RESTEndpoint.
                    - Mission: Secure Interoperability (M3).
 
@@ -382,16 +502,20 @@ package CIM {
         }
 
         use case 'Handle Integration Error (CIM)' {
+
             subject adapterService : HL7AdapterService;
 
             actor operationsEngineer : OperationsEngineer;
-            actor upstreamSystem : UpstreamHL7System;
-            actor downstreamApiOwner : DownstreamAPIOwner;
+
+            action handleIntegrationError : HandleIntegrationError;
+
+            first handleIntegrationError;
+            then done;
 
             objective {
                 doc
                 /* Handle Integration Error (CIM) covers degraded scenarios conceptually
-                   described by the EventFlow operation, including ParseError and DeliveryError.
+                   described by the HandleMessage operation, including ParseError and DeliveryError.
                    - Domain: IntegrationError, ParseError, DeliveryError.
                    - Mission: Operational Transparency (M4).
 
@@ -410,9 +534,8 @@ package CIM {
         /* Requirement satisfaction relationships from CIM use cases to mission requirements. */
 
         satisfy 'Reliable Event Ingestion' by 'Send HL7 Message';
-        satisfy 'Accurate Clinical Transformation' by 'Parse HL7 Message';
-        satisfy 'Accurate Clinical Transformation' by 'Transform HL7 Message';
-        satisfy 'Secure Interoperability' by 'Forward JSON Payload';
+        satisfy 'Accurate Clinical Transformation' by 'Handle HL7 Message';
+        satisfy 'Secure Interoperability' by 'Send JSON Message';
         satisfy 'Operational Transparency' by 'Handle Integration Error (CIM)';
     }
 

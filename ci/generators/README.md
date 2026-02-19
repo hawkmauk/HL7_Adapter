@@ -4,7 +4,7 @@ This package provides a model-driven generation framework that traverses SysML m
 
 ## Current target
 
-- `latex`: generates `.tex` files from `DOC_CIM_*` views in `model/CIM_Views.sysml`.
+- `latex`: generates `.tex` files from `DOC_CIM_*` views in `model/CIM/views.sysml` and `DOC_PIM_*` views in `model/PIM/views.sysml`.
 
 ## Architecture
 

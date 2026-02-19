@@ -60,7 +60,6 @@ package 'PIM-ProjectViews' {
 
         view VPT_PIM_005_PIMGatewayReadiness {
             satisfy pimLifecycleGatewayReadinessViewpoint;
-            expose PIM::LogicalArchitecture::HL7Adapter;
             expose MDA_Lifecycle::PIMConsensusGateway;
             expose MDA_Lifecycle::GatewayCheck;
             expose MDA_Lifecycle::SignoffRecord;
@@ -132,4 +131,3 @@ package 'PIM-ProjectViews' {
         }
     }
 }
-

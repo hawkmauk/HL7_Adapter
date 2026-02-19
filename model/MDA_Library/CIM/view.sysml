@@ -104,7 +104,7 @@ package CIM_View {
                level. It should provide narrative descriptions of nominal and exceptional flows
                without prescribing detailed design or implementation behaviour.
              */
-            expose CIM::Operations::**;
+            expose CIM::Actions::**;
         }
 
         view <EventsSection> 'Event Taxonomy' {
@@ -146,7 +146,7 @@ package CIM_View {
                at the CIM level. It explains the scope of nominal and degraded flows and
                how they relate to the mission and domain context.
              */
-            expose CIM::Operations::**;
+            expose CIM::Actions::**;
         }
 
         view <ScenariosSection> 'Scenarios' {
@@ -155,7 +155,7 @@ package CIM_View {
                operational flows. It should highlight the main path from event publication
                through to successful completion.
              */
-            expose CIM::Operations::HandleFrame::**;
+            expose CIM::Actions::HandleFrame::**;
         }
 
         view <UseCasesSection> 'Use Cases' {
@@ -164,7 +164,7 @@ package CIM_View {
                scenarios. It can be used to group scenarios by stakeholder, mission outcome,
                or operational objective.
              */
-            expose CIM::Operations::**;
+            expose CIM::Actions::**;
         }
     }
 

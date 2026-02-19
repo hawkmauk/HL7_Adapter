@@ -18,7 +18,7 @@ I wanted the build log to be part of the workflow, not a “write it up later”
 
 ## Dedicated MDA Library and Loose Coupling
 
-On day one we had project-specific viewports and document blueprints in `CIM_ProjectViews.sysml`. To make the generated docs **reusable across projects**, we turned that into a **dedicated MDA Library** under `model/MDA_Library/`—a first-class template that any MDA-style project can reuse.
+On day one we had project-specific viewports and document blueprints in `model/CIM/views.sysml`. To make the generated docs **reusable across projects**, we turned that into a **dedicated MDA Library** under `model/MDA_Library/`—a first-class template that any MDA-style project can reuse.
 
 - **Root** — `MDA.sysml` aggregates the main namespaces: `MDA_Structure`, `MDA_View`, `MDA_Lifecycle`, and `MDA_CIM`, with short aliases (`Structure`, `Views`, `Lifecycle`, `CIM`) so imports stay readable.
 - **Shared building blocks** — At the top level: `structure.sysml`, `view.sysml`, `viewpoint.sysml`, and `lifecycle.sysml` (cross-cutting structure contracts, abstract viewpoints, render profiles, lifecycle phases and gates).
@@ -26,7 +26,7 @@ On day one we had project-specific viewports and document blueprints in `CIM_Pro
 
 The folder layout is **logically separated** and much easier to navigate than one big file—a lot of that organisation was manual, as it took some working through to decide what belonged where.
 
-**Documentation** (ConOps, gateway signoffs, SNRS, EICD, etc.) is **generated from the MDA Library**. The library defines *what* documents exist and *what* structure a conforming CIM must have. The **project** (`CIM_ProjectViews.sysml`, `CIM.sysml`) only provides stakeholders, concerns, the actual CIM content, and viewports that *satisfy* the library’s viewpoints and *expose* that content. So we get **loose coupling**: the template lives in the MDA Library; the HL7 Adapter only fills in *who*, *what*, and *how* for this system. ConOps and gateway signoffs are the same *kind* of document across projects; only the content is project-specific.
+**Documentation** (ConOps, gateway signoffs, SNRS, EICD, etc.) is **generated from the MDA Library**. The library defines *what* documents exist and *what* structure a conforming CIM must have. The **project** (`model/CIM/views.sysml`, `model/CIM/CIM.sysml`) only provides stakeholders, concerns, the actual CIM content, and viewports that *satisfy* the library’s viewpoints and *expose* that content. So we get **loose coupling**: the template lives in the MDA Library; the HL7 Adapter only fills in *who*, *what*, and *how* for this system. ConOps and gateway signoffs are the same *kind* of document across projects; only the content is project-specific.
 
 ## Project Lifecycle in the Model
 
@@ -35,7 +35,7 @@ The **project lifecycle** is no longer implied—it’s modeled. `ProjectLifecyc
 - **LifecyclePhase** — Concept (CIM), LogicalDesign (PIM), PlatformRealization (PSM), ValidationAndRelease. So we can tag milestones and gate readiness by phase.
 - **SignoffStatus** — Draft, InReview, Approved, Rejected. Useful for gateway check views and “have we got consensus?” reporting.
 - **LifecycleMilestone**, **GatewayCheck**, **SignoffRecord** — The concepts we need to represent “we’re at the CIM gate,” “here’s the checklist,” “here’s who signed off and with what status.”
-- **CIMConsensusGateway**, **PIMConsensusGateway**, **PSMReleaseGateway** — The three gates we care about for MDA. CIM_ProjectViews already has a view (e.g. `VPT_006_CIMGatewayReadiness`, `DOC_CIM_GatewaySignoff`) that exposes gateway and signoff evidence; that view is backed by this lifecycle model.
+- **CIMConsensusGateway**, **PIMConsensusGateway**, **PSMReleaseGateway** — The three gates we care about for MDA. The CIM views file already has a view (e.g. `VPT_006_CIMGatewayReadiness`, `DOC_CIM_GatewaySignoff`) that exposes gateway and signoff evidence; that view is backed by this lifecycle model.
 
 So governance is on the digital thread too: gates, phases, and signoff are first-class model elements. As we add PIM and PSM, we’ll hook their view libraries and project views into the same lifecycle and reuse the same stakeholder and viewpoint patterns.
 

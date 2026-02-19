@@ -8,7 +8,7 @@ from .errors import ParsingError
 
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|use\s+case|occurrence)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|use\s+case|occurrence|action)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -31,6 +31,7 @@ ATTRIBUTE_RE = re.compile(
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
     r"\s*:\s*(?P<type>[^;]+);"
 )
+ALIAS_RE = re.compile(r"(?m)^\s*alias\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\s+for\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;")
 
 
 @dataclass(slots=True)
@@ -58,6 +59,7 @@ class ModelElement:
     render_kind: str | None = None
     supertypes: list[str] = field(default_factory=list)
     attributes: list[ModelAttribute] = field(default_factory=list)
+    aliases: list[tuple[str, str]] = field(default_factory=list)  # (alias_name, target_name)
 
 
 @dataclass(slots=True)
@@ -68,6 +70,7 @@ class ModelIndex:
     by_name: dict[str, list[ModelElement]]
     by_short_name: dict[str, list[ModelElement]]
     declared_ids: dict[str, list[Path]]
+    alias_map: dict[str, str] = field(default_factory=dict)  # logical path -> actual qualified name
 
     def get_single(self, name: str) -> ModelElement | None:
         candidates = self.by_name.get(name, [])
@@ -158,6 +161,12 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                     continue
                 supertypes.append(_strip_quotes(part_clean))
 
+        # Aliases (e.g. \"alias Domain for CIM_Domain;\") in packages
+        aliases: list[tuple[str, str]] = []
+        if kind == "package":
+            for alias_match in ALIAS_RE.finditer(body):
+                aliases.append((alias_match.group("alias"), alias_match.group("target")))
+
         elements.append(
             ModelElement(
                 kind=kind,
@@ -176,6 +185,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 render_kind=render_kind,
                 supertypes=supertypes,
                 attributes=attributes,
+                aliases=aliases,
             )
         )
     return elements
@@ -224,6 +234,14 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
             by_short_name.setdefault(element.short_name, []).append(element)
             by_name.setdefault(element.short_name, []).append(element)
 
+    # Build alias map so view refs like CIM::Domain::** resolve to CIM_Domain::**
+    alias_map: dict[str, str] = {}
+    for element in all_elements:
+        if element.kind == "package" and element.aliases:
+            for alias_name, target_name in element.aliases:
+                logical = f"{element.qualified_name}::{alias_name}"
+                alias_map[logical] = target_name
+
     return ModelIndex(
         files=files,
         elements=all_elements,
@@ -231,4 +249,5 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
         by_name=by_name,
         by_short_name=by_short_name,
         declared_ids=declared_ids,
+        alias_map=alias_map,
     )

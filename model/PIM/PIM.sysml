@@ -5,5 +5,6 @@ package PIM {
     alias Interfaces for PIM_Interfaces;
     alias Allocations for PIM_Allocations;
     alias Behavior for PIM_Behavior;
+    alias UseCases for PIM_UseCases;
 
 }

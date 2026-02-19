@@ -113,19 +113,20 @@ package PIM_View {
                including how they refine CIM operational scenarios.
              */
             expose PIM::Behavior::**;
+            expose PIM::UseCases::**;
         }
 
         view <NominalFlowsSection> 'Nominal Flows' {
             doc
             /* This section focuses on primary success-oriented flows and their mapping to logical components. */
-            expose PIM::Behavior::ProcessNominalFlow::**;
+            expose PIM::UseCases::IngestAndForwardEvent::**;
         }
 
         view <ErrorFlowsSection> 'Error and Degraded Flows' {
             doc
             /* This section describes how the system behaves under error and degraded conditions at the PIM level. */
-            expose PIM::Behavior::ProcessDegradedFlowParse::**;
-            expose PIM::Behavior::ProcessDegradedFlowDelivery::**;
+            expose PIM::UseCases::HandleParseFailure::**;
+            expose PIM::UseCases::HandleDeliveryFailure::**;
         }
 
         view <StateMachinesSection> 'State Machines and Internal Behavior' {

@@ -90,7 +90,7 @@ package 'CIM-ProjectViews' {
 
         view VPT_003_OperationalFlows {
             satisfy operationalScenariosViewpoint;
-            expose CIM::Operations::**;
+            expose CIM::Actions::**;
             render asTextualNotation;
         }
 
@@ -105,7 +105,7 @@ package 'CIM-ProjectViews' {
             satisfy complianceAndSafetyViewpoint;
             expose CIM::Assumptions::**;
             expose CIM::Mission::**;
-            expose CIM::Operations::**;
+            expose CIM::Actions::**;
             expose CIM::Domain::**;
             render asElementTable;
         }

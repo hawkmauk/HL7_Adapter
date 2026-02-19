@@ -48,24 +48,52 @@ def _abstraction_level(document_id: str) -> str:
     return "UNKNOWN"
 
 
+def _expand_alias_ref(ref: str, model_index: ModelIndex) -> str:
+    """Expand alias prefixes so CIM::Domain -> CIM_Domain, CIM::Domain::** -> CIM_Domain::**."""
+    alias_map = getattr(model_index, "alias_map", None) or {}
+    if not alias_map:
+        return ref
+    # Longest key first so we match CIM::Domain before CIM
+    for key in sorted(alias_map.keys(), key=len, reverse=True):
+        if ref == key:
+            return alias_map[key]
+        if ref.startswith(key + "::"):
+            return alias_map[key] + ref[len(key) :]
+    return ref
+
+
 def _by_reference(ref: str, model_index: ModelIndex) -> list[ModelElement]:
     clean_ref = ref.strip()
     if not clean_ref:
         return []
-    if clean_ref in model_index.by_qualified_name:
-        return [model_index.by_qualified_name[clean_ref]]
+    expanded = _expand_alias_ref(clean_ref, model_index)
+    if expanded in model_index.by_qualified_name:
+        return [model_index.by_qualified_name[expanded]]
 
-    by_name = model_index.by_name.get(clean_ref, [])
+    by_name = model_index.by_name.get(expanded, [])
     if by_name:
         return sorted(by_name, key=lambda item: item.qualified_name)
 
-    suffix = f"::{clean_ref}"
+    suffix = f"::{expanded}"
     candidates = [
         element
         for element in model_index.elements
-        if element.qualified_name == clean_ref or element.qualified_name.endswith(suffix)
+        if element.qualified_name == expanded or element.qualified_name.endswith(suffix)
     ]
     return sorted(candidates, key=lambda item: item.qualified_name)
+
+
+def _title_from_expose_refs(expose_refs: list[str]) -> str | None:
+    """Derive a section title from the first expose ref (e.g. CIM::Actions::** -> Actions)."""
+    if not expose_refs:
+        return None
+    ref = expose_refs[0].strip()
+    if ref.endswith("::**"):
+        ref = ref[:-4].strip()
+    elif ref.endswith("::*"):
+        ref = ref[:-3].strip()
+    parts = ref.split("::")
+    return parts[-1] if parts else None
 
 
 def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) -> list[ExposedElement]:
@@ -156,10 +184,14 @@ def _collect_section_irs_for_document(
     sections: list[SectionIR] = []
     for section_elem in nested_views:
         exposed = _resolve_expose_elements(section_elem.expose_refs, model_index)
+        # Prefer title from expose ref package name (e.g. CIM::Actions::** -> "Actions")
+        title_from_ref = _title_from_expose_refs(section_elem.expose_refs)
+        display_name = section_elem.name.strip("'")
+        title = title_from_ref if title_from_ref else display_name
         sections.append(
             SectionIR(
                 id=section_elem.short_name or section_elem.name,
-                title=section_elem.name,
+                title=title,
                 depth=1,  # Top-level document sections
                 intro=section_elem.doc,
                 exposed_elements=exposed,

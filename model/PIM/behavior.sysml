@@ -2,7 +2,7 @@ package PIM_Behavior {
 
     private import CIM::*;
     private import CIM::Domain::*;
-    private import CIM::Operations::*;
+    private import CIM::Actions::*;
 
     doc
     /* PIM-level behavior for the HL7 Adapter, modeled with state machines for each logical

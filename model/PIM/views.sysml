@@ -131,4 +131,3 @@ package 'PIM-ProjectViews' {
         }
     }
 }
-

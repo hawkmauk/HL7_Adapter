@@ -140,22 +140,13 @@ package CIM_View {
             expose CIM::Operations::**;
         }
 
-        view <NominalScenariosSection> 'Nominal Scenarios' {
+        view <ScenariosSection> 'Scenarios' {
             doc
             /* This section provides narrative descriptions of the primary, success-oriented
                operational flows. It should highlight the main path from event publication
                through to successful completion.
              */
-            expose CIM::Operations::NominalFlow::**;
-        }
-
-        view <DegradedScenariosSection> 'Degraded and Error Scenarios' {
-            doc
-            /* This section describes degraded, exceptional, and error-handling scenarios.
-               It focuses on how the system behaves when parsing, transformation, delivery,
-               or external dependencies fail.
-             */
-            expose CIM::Operations::DegradedFlow::**;
+            expose CIM::Operations::EventFlow::**;
         }
 
         view <UseCasesSection> 'Use Cases' {

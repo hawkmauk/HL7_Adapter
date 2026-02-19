@@ -25,18 +25,18 @@ package PIM_UseCases {
         doc /* Sequence of messages between MLLPReceiver, Parser, Transformer, HTTPForwarder; data flow and return signals aligned with PIM::Behavior state machines. */
 
         use case ingestAndForwardEvent : IngestAndForwardEvent {
-            part mllpReceiver[1] {
+            part mllpReceiver[1] : MLLPReceiver {
                 event occurrence frameCompleteSent;
             }
-            part parser[1] {
+            part parser[1] : Parser {
                 event occurrence frameReceived;
                 then event occurrence hl7MessageCreatedSent;
             }
-            part transformer[1] {
+            part transformer[1] : Transformer {
                 event occurrence transformRequestedReceived;
                 then event occurrence jsonPayloadCreatedSent;
             }
-            part httpForwarder[1] {
+            part httpForwarder[1] : HTTPForwarder {
                 event occurrence payloadReceived;
                 then event occurrence httpSuccessSent;
             }
@@ -68,11 +68,10 @@ package PIM_UseCases {
         doc /* Parser emits parse failure; ErrorHandler receives, classifies, logs; optional human-in-the-loop escalation. */
 
         use case handleParseFailure : HandleParseFailure {
-            
-            part parser[1] {
+            part parser[1] : Parser {
                 event occurrence parseFailedSent;
             }
-            part errorHandler[1] {
+            part errorHandler[1] : ErrorHandler {
                 event occurrence errorReceived;
                 then event occurrence classificationCompletedSent;
             }
@@ -106,12 +105,12 @@ package PIM_UseCases {
         doc /* HTTPForwarder reports failure (HTTP5xx/network); ErrorHandler receives; retry loop; on max retries exceeded, optional escalation to Operations Engineer. */
 
         use case handleDeliveryFailure : HandleDeliveryFailure {
-            part httpForwarder[1] {
+            part httpForwarder[1] : HTTPForwarder {
                 event occurrence deliveryFailureSent;
                 then event occurrence retryRequestedReceived;
                 then event occurrence maxRetriesExceededSent;
             }
-            part errorHandler[1] {
+            part errorHandler[1] : ErrorHandler {
                 event occurrence deliveryErrorReceived;
                 then event occurrence retryRequestedSent;
             }

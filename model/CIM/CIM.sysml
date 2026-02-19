@@ -5,6 +5,10 @@ package CIM {
         private import ScalarValues::*;
         private import Events::*;
 
+        abstract part def <SensitiveData> 'Sensitive Data' {
+            doc /* Sensitive data that is not to be exposed to the system. */
+        }
+
         part def <Observable> 'Observable' {
             doc /* Observable part that can be observed by the system. */
             event occurrence created : Created;
@@ -25,6 +29,7 @@ package CIM {
             attribute triggerEvent : String;
             attribute controlId : String;
             attribute sentTimestamp : String;
+            attribute rawMessage : SensitiveData;
 
         }
 
@@ -41,8 +46,8 @@ package CIM {
             doc /* Conceptual patient data extracted from HL7 segments, such as PID content. */
 
             attribute patientId : String;
-            attribute givenName : String;
-            attribute familyName : String;
+            attribute givenName : SensitiveData;
+            attribute familyName : SensitiveData;
             attribute dateOfBirth : String;
             attribute gender : String;
 
@@ -64,7 +69,7 @@ package CIM {
 
             attribute payloadType : String;
             attribute schemaVersion : String;
-            attribute body : String;
+            attribute body : SensitiveData;
 
         }
 

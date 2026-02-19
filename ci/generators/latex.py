@@ -260,6 +260,29 @@ def _render_section_elements_table(section: SectionIR) -> str:
     return "\n".join(lines)
 
 
+def _render_events_table(events: list[ExposedElement]) -> str:
+    """Render CIM Events occurrences as a table."""
+    if not events:
+        return "No events defined."
+
+    lines = [
+        "\\begin{longtable}{|p{4cm}|p{2cm}|p{8.5cm}|}",
+        "\\hline",
+        "\\textbf{Name} & \\textbf{Kind} & \\textbf{Description} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for event in events:
+        desc = _escape_latex(event.doc) if event.doc else ""
+        lines.append(
+            f"{_escape_latex(event.name)} & {_escape_latex(event.kind)} & {desc} \\\\"
+        )
+        lines.append("\\hline")
+
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
 def _render_by_directive(document: DocumentIR) -> str:
     render_kind = (document.binding.render_kind or "").strip()
     if render_kind == "ElementTable":
@@ -323,7 +346,9 @@ def _build_tex(document: DocumentIR, version: str) -> str:
                 continue
 
             # Render section elements as a table (name/kind/description).
-            section_items = [e for e in section.exposed_elements if e.kind != "package"]
+            section_items = [
+                e for e in section.exposed_elements if e.kind not in {"package", "use case"}
+            ]
             if section_items:
                 lines.append(_render_section_elements_table(section))
                 lines.append("")
@@ -332,6 +357,36 @@ def _build_tex(document: DocumentIR, version: str) -> str:
         lines.append("\\subsection{Model View Content}")
         lines.append(_render_exposed_package_structure(document))
         lines.append("")
+
+    # CIM Events (ConOps): render any CIM::Events::* occurrences as their own subsection.
+    events = [
+        e
+        for e in document.exposed_elements
+        if e.kind == "occurrence" and e.qualified_name.startswith("CIM::Events::")
+    ]
+    if events:
+        lines.append("\\subsection{Events}")
+        lines.append(_render_events_table(events))
+        lines.append("")
+
+    # Use cases: render each using the custom usecase environment so styling
+    # is centralized in the LaTeX stylesheet.
+    use_cases = [e for e in document.exposed_elements if e.kind == "use case"]
+    if use_cases:
+        for use_case in sorted(use_cases, key=lambda item: item.name):
+            lines.append(f"\\begin{{usecase}}{{{_escape_latex(use_case.name)}}}")
+            if use_case.doc:
+                for raw_line in use_case.doc.splitlines():
+                    clean = raw_line.strip()
+                    if clean:
+                        # Preserve line breaks from the SysML doc block by forcing
+                        # a line break after each source line.
+                        lines.append(f"{_escape_latex(clean)}\\\\")
+                    else:
+                        # Blank line => paragraph break.
+                        lines.append("")
+            lines.append("\\end{usecase}")
+            lines.append("")
 
     lines.append("\\subsection{Render Directive Snapshot}")
     lines.append(_render_by_directive(document))

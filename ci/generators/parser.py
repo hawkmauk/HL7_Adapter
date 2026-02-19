@@ -8,7 +8,7 @@ from .errors import ParsingError
 
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|use\s+case|occurrence)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -126,7 +126,11 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         doc_match = DOC_RE.search(body)
         doc = ""
         if doc_match:
-            doc = " ".join(part.strip() for part in doc_match.group("doc").strip().splitlines()).strip()
+            raw_doc = doc_match.group("doc")
+            # Preserve line breaks but strip leading/trailing whitespace on each line
+            # so rendered text is left-aligned and free of indentation noise.
+            doc_lines = [line.strip() for line in raw_doc.splitlines()]
+            doc = "\n".join(doc_lines).strip()
 
         render_match = RENDER_RE.search(body)
         render_kind = render_match.group("kind") if render_match else None

@@ -107,6 +107,15 @@ package CIM_View {
             expose CIM::Operations::**;
         }
 
+        view <EventsSection> 'Event Taxonomy' {
+            doc
+            /* This section defines the conceptual domain events that tie the behaviour model to
+               the structure model (AIM S2.1, S7.5). Each event is cross-referenced to the CIM
+               action that produces or consumes it. Events are technology-agnostic.
+             */
+            expose CIM::Events::**;
+        }
+
         view <MissionSection> 'Mission' {
             doc
             /* This section states the mission objectives, desired outcomes, and success criteria
@@ -146,7 +155,7 @@ package CIM_View {
                operational flows. It should highlight the main path from event publication
                through to successful completion.
              */
-            expose CIM::Operations::EventFlow::**;
+            expose CIM::Operations::HandleFrame::**;
         }
 
         view <UseCasesSection> 'Use Cases' {

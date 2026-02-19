@@ -218,6 +218,29 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
 
+    # Special handling for CIM ConOps: include CIM::Events::* occurrences so they
+    # can be rendered in the document even if not explicitly exposed yet.
+    if element.name == "DOC_CIM_ConOps":
+        for model_el in model_index.elements:
+            if model_el.kind == "occurrence" and model_el.qualified_name.startswith("CIM::Events::"):
+                package_path = tuple(model_el.qualified_name.split("::")[:-1])
+                qname = model_el.qualified_name
+                if not any(e.qualified_name == qname for e in exposed_elements):
+                    exposed_elements.append(
+                        ExposedElement(
+                            qualified_name=qname,
+                            kind=model_el.kind,
+                            name=model_el.name,
+                            package_path=package_path,
+                            doc=model_el.doc,
+                            attributes=[
+                                AttributeIR(name=attr.name, type=attr.type, doc="")
+                                for attr in getattr(model_el, "attributes", [])
+                            ],
+                        )
+                    )
+        exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
+
     return DocumentIR(
         document_id=element.name,
         title=_title_from_id(element.name),

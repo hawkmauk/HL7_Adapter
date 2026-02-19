@@ -1,4 +1,4 @@
-package 'PIM-ProjectViews' {
+package PIM_Views {
 
     private import Views::*;
     private import PIM::*;
@@ -50,6 +50,7 @@ package 'PIM-ProjectViews' {
         view VPT_PIM_003_BehaviorDesign {
             satisfy logicalArchitectureViewpoint;
             expose PIM::Behavior::**;
+            expose PIM::UseCases::**;
             render asTextualNotation;
         }
 

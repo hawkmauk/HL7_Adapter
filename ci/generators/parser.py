@@ -8,7 +8,7 @@ from .errors import ParsingError
 
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|use\s+case|occurrence|action)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -45,6 +45,10 @@ ALLOCATION_SATISFY_RE = re.compile(
 REFINEMENT_DEPENDENCY_RE = re.compile(
     r"(?m)#refinement\s+dependency\s+'([^']+)'\s+to\s+'([^']+)';"
 )
+# Constraint def parameters: "in name : Type;" (not "in item|attribute ...")
+CONSTRAINT_PARAM_RE = re.compile(
+    r"(?m)^\s*in\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<type>[^;]+);"
+)
 
 
 @dataclass(slots=True)
@@ -77,6 +81,7 @@ class ModelElement:
     interface_ends: list[tuple[str, str]] = field(default_factory=list)  # (role, port_type) for interface def
     allocation_satisfy: list[tuple[str, str]] = field(default_factory=list)  # (requirement_name, logical_block_path)
     refinement_dependencies: list[tuple[str, str]] = field(default_factory=list)  # (pim_req, cim_req)
+    constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
 
 
 @dataclass(slots=True)
@@ -217,6 +222,14 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 (ref_match.group(1).strip(), ref_match.group(2).strip())
             )
 
+        # Constraint def parameters: in name : Type;
+        constraint_params: list[tuple[str, str]] = []
+        if kind == "constraint":
+            for cp_match in CONSTRAINT_PARAM_RE.finditer(body):
+                constraint_params.append(
+                    (cp_match.group("name"), cp_match.group("type").strip())
+                )
+
         elements.append(
             ModelElement(
                 kind=kind,
@@ -240,6 +253,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 interface_ends=interface_ends,
                 allocation_satisfy=allocation_satisfy,
                 refinement_dependencies=refinement_dependencies,
+                constraint_params=constraint_params,
             )
         )
     return elements

@@ -207,6 +207,15 @@ package PIM_View {
              */
             expose PIM_Structure::Verification::**;
         }
+
+        view <ParametricValidationSection> 'Parametric Validation' {
+            doc
+            /* This section documents parametric constraint blocks used to validate that the
+               architecture meets performance MoEs (throughput, latency, reliability). Constraints
+               are traceable to CIM MoEs and PIM requirements.
+             */
+            expose PIM::Parametrics::**;
+        }
     }
 
     view def <PIMGatewaySignoff_Document> 'PIM Gateway Readiness and Design Review Document' {

@@ -57,6 +57,7 @@ package PIM_Views {
 
         view VPT_PIM_004_VerificationReadiness {
             satisfy pimVerificationReadinessViewpoint;
+            expose PIM::Parametrics::**;
             render asElementTable;
         }
 

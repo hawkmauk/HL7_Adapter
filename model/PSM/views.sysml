@@ -11,6 +11,7 @@ package PSM_Views {
             doc /* PSM Platform Realization and Technology Selection for the HL7 Adapter. */
             expose PSM::TechnologySelection::**;
             expose PSM::PhysicalArchitecture::**;
+            expose PSM::Interfaces::**;
         }
     }
 }

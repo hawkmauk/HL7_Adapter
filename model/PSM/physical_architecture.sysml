@@ -1,6 +1,7 @@
 package PSM_PhysicalArchitecture {
 
     private import PIM::*;
+    private import PSM::Interfaces::*;
     private import ScalarValues::*;
 
     doc /* PSM physical architecture: each PIM logical component refined with technology bindings and implementation-specific attributes (config, library types). Refines PIM::LogicalArchitecture. */
@@ -46,7 +47,10 @@ package PSM_PhysicalArchitecture {
     }
 
     part def <HL7AdapterService> 'HL7 Adapter Service' :> PIM::LogicalArchitecture::HL7AdapterService {
-        doc /* Refines PIM HL7 Adapter Service. Technology binding: Node.js runtime; AWS Lambda or Docker (Terraform). */
+        doc /* Refines PIM HL7 Adapter Service. Technology binding: Node.js runtime; AWS Lambda or Docker (Terraform). Boundary ports use PSM interface bindings (MLLP ingress, HTTP egress). */
+        port fromUpstream : PSM_MLLPIngressPort;
+        port toDownstream : PSM_JSONEgressPort;
+
         part :>> mllpReceiver : MLLPReceiver;
         part :>> parser : Parser;
         part :>> transformer : Transformer;

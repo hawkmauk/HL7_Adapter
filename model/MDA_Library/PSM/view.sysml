@@ -21,5 +21,10 @@ package PSM_View {
             doc /* PSM components refining PIM with technology bindings and implementation-specific attributes (config, library types). */
             expose PSM::PhysicalArchitecture::**;
         }
+
+        view <InterfaceBindingsSection> 'Interface Bindings' {
+            doc /* PSM interface bindings: MLLP ingress, HTTP egress, runtime config; protocol parameters with types and defaults; PSM port/interface defs refining PIM. */
+            expose PSM::Interfaces::**;
+        }
     }
 }

@@ -221,6 +221,82 @@ def _render_stakeholder_signoff_table(document: DocumentIR) -> str:
     return "\n".join(lines)
 
 
+def _parse_type_and_default(type_str: str | None) -> tuple[str, str]:
+    """Split attribute type string into base type and default (e.g. 'Integer = 2575 { doc }' -> ('Integer', '2575'))."""
+    if not type_str:
+        return ("", "")
+    s = type_str.strip()
+    # Strip trailing { doc ... }
+    if "{" in s:
+        s = s.split("{")[0].strip()
+    if " = " in s:
+        parts = s.split(" = ", 1)
+        return (parts[0].strip(), parts[1].strip())
+    return (s, "")
+
+
+def _render_psm_interface_bindings(section: SectionIR) -> str:
+    """Render PSM interface bindings: binding part defs with parameter tables (name, type, default), ports/interfaces table, error mappings."""
+    prefix = "PSM_Interfaces::"
+    binding_names = ("MLLP Ingress Binding", "HTTP Egress Binding", "Runtime Config Binding")
+    bindings = [
+        e
+        for e in section.exposed_elements
+        if e.kind == "part"
+        and e.qualified_name.startswith(prefix)
+        and e.name in binding_names
+    ]
+    # Order: MLLP, HTTP, Runtime
+    bindings.sort(key=lambda x: (binding_names.index(x.name) if x.name in binding_names else 99, x.qualified_name))
+    error_mappings = [
+        e
+        for e in section.exposed_elements
+        if e.kind == "part"
+        and e.qualified_name.startswith(prefix)
+        and e.name in ("MLLP Error Mapping", "HTTP Response Mapping")
+    ]
+    ports = [e for e in section.exposed_elements if e.kind == "port" and e.qualified_name.startswith(prefix)]
+    interfaces = [e for e in section.exposed_elements if e.kind == "interface" and e.qualified_name.startswith(prefix)]
+
+    lines: list[str] = []
+
+    for binding in bindings:
+        lines.append(f"\\subsubsection{{{_escape_latex(binding.name)}}}")
+        lines.append("")
+        if binding.doc:
+            lines.append(_escape_latex(binding.doc))
+            lines.append("")
+        if binding.attributes:
+            lines.append("\\begin{longtable}{|p{3.5cm}|p{2.5cm}|p{4cm}|}")
+            lines.append("\\hline")
+            lines.append("\\textbf{Parameter} & \\textbf{Type} & \\textbf{Default} \\\\")
+            lines.append("\\hline")
+            lines.append("\\endhead")
+            for attr in binding.attributes:
+                base_type, default = _parse_type_and_default(attr.type)
+                default_tex = _escape_latex(default) if default else "---"
+                lines.append(f"{_escape_latex(attr.name)} & {_escape_latex(base_type)} & {default_tex} \\\\")
+                lines.append("\\hline")
+            lines.append("\\end{longtable}")
+            lines.append("")
+
+    if ports or interfaces:
+        lines.append("\\subsubsection{PSM Ports and Interfaces}")
+        lines.append("")
+        port_interface_tex = _render_boundary_ports_and_interfaces(section)
+        if port_interface_tex:
+            lines.append(port_interface_tex)
+
+    for em in error_mappings:
+        lines.append(f"\\subsubsection{{{_escape_latex(em.name)}}}")
+        lines.append("")
+        if em.doc:
+            lines.append(_escape_latex(em.doc))
+            lines.append("")
+
+    return "\n".join(lines)
+
+
 def _render_boundary_ports_and_interfaces(section: SectionIR) -> str:
     """Render boundary port and interface definitions (port name, interface name, flow properties, types) for PIM Interface Design."""
     ports = [e for e in section.exposed_elements if e.kind == "port"]
@@ -661,6 +737,19 @@ def _build_tex(document: DocumentIR, version: str) -> str:
                 if tech_tex:
                     lines.append(tech_tex)
                     lines.append("")
+
+            # DOC_PSM_PlatformRealization: Interface Bindings section — bindings with parameter tables, ports/interfaces, error mappings.
+            is_interface_bindings_section = (
+                section.title.strip() == "Interface Bindings"
+                or getattr(section, "id", "") == "InterfaceBindingsSection"
+            )
+            if document.document_id == "DOC_PSM_PlatformRealization" and is_interface_bindings_section:
+                psm_if_tex = _render_psm_interface_bindings(section)
+                if psm_if_tex:
+                    lines.append(psm_if_tex)
+                    lines.append("")
+                # Skip generic element table for this section (already rendered bindings, ports, interfaces).
+                continue
 
             # Render section elements as a table (name/kind/description).
             exclude_kinds = {"package", "use case", "port", "interface"}

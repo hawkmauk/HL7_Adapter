@@ -14,6 +14,7 @@
 \RequirePackage{array}
 \RequirePackage{booktabs}
 \RequirePackage{longtable}
+\RequirePackage{etoolbox}
 \RequirePackage{tcolorbox}
 \RequirePackage{setspace}
 
@@ -77,6 +78,9 @@
 \setlist[enumerate]{leftmargin=1.6em, itemsep=0.2em, topsep=0.25em}
 
 \renewcommand{\arraystretch}{1.22}
+
+% Longtable font at 75% of body size (e.g. 11pt -> 8.25pt)
+\AtBeginEnvironment{longtable}{\fontsize{8.25pt}{10pt}\selectfont}
 
 \newcolumntype{Y}{>{\raggedright\arraybackslash}p{0.74\linewidth}}
 

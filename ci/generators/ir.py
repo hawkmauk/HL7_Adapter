@@ -26,6 +26,8 @@ class ExposedElement:
     package_path: tuple[str, ...]
     doc: str
     attributes: list["AttributeIR"] = field(default_factory=list)
+    flow_properties: list["FlowPropertyIR"] = field(default_factory=list)
+    interface_ends: list["InterfaceEndIR"] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -61,6 +63,22 @@ class CoverageEntry:
     viewport_ids: list[str]
     document_codes: list[str]
     source: SourceRef
+
+
+@dataclass(slots=True)
+class FlowPropertyIR:
+    """Single flow property on a port (item or signal/attribute)."""
+    direction: str  # "in" | "out"
+    kind: str       # "item" | "attribute"
+    name: str
+    type: str | None
+
+
+@dataclass(slots=True)
+class InterfaceEndIR:
+    """One end of an interface (role and port type)."""
+    role: str
+    port_type: str
 
 
 @dataclass(slots=True)

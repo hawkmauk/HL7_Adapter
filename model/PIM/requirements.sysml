@@ -85,6 +85,10 @@ package PIM_Requirements {
         doc /* The adapter shall apply a configurable retry policy for transient failures (e.g. 503, network errors) with bounded attempts. Derives from CIM M3. Satisfied by HTTPForwarder. */
     }
 
+    requirement <SYS3_6> 'SYS3.6.Regional Compliance Profile' {
+        doc /* The adapter shall support configuration or deployment profiles that align with regional data protection obligations (e.g. HIPAA in the USA, GDPR in the EU) as refined from CIM M3.3. Satisfied by HL7AdapterService. */
+    }
+
     /* -----------------------------------------------------------------------
      * SYS4 — Operational Transparency (PIM)
      * ----------------------------------------------------------------------- */

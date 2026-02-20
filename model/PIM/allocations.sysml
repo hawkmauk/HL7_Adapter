@@ -31,6 +31,7 @@ package PIM_Allocations {
         satisfy requirement 'SYS3.3.HTTP Method and Headers' by adapter.httpForwarder;
         satisfy requirement 'SYS3.4.Response Code Handling' by adapter.httpForwarder;
         satisfy requirement 'SYS3.5.Retry Policy' by adapter.httpForwarder;
+        satisfy requirement 'SYS3.6.Regional Compliance Profile' by adapter;
 
         satisfy requirement 'SYS4.Operational Transparency' by adapter.errorHandler;
         satisfy requirement 'SYS4.1.Error Classification Taxonomy' by adapter.errorHandler;
@@ -57,8 +58,9 @@ package PIM_Allocations {
     #refinement dependency 'SYS3.1.TLS Configuration' to 'M3.1.TLS Protection';
     #refinement dependency 'SYS3.2.Endpoint URL Validation' to 'M3.2.Endpoint Authentication';
     #refinement dependency 'SYS3.3.HTTP Method and Headers' to 'M3.2.Endpoint Authentication';
-    #refinement dependency 'SYS3.4.Response Code Handling' to 'M3.3.PHI Minimization and Regional Compliance';
-    #refinement dependency 'SYS3.5.Retry Policy' to 'M3.3.PHI Minimization and Regional Compliance';
+    #refinement dependency 'SYS3.4.Response Code Handling' to 'M3.Secure Interoperability';
+    #refinement dependency 'SYS3.5.Retry Policy' to 'M3.Secure Interoperability';
+    #refinement dependency 'SYS3.6.Regional Compliance Profile' to 'M3.3.PHI Minimization and Regional Compliance';
 
     #refinement dependency 'SYS4.1.Error Classification Taxonomy' to 'M4.1.Error Classification';
     #refinement dependency 'SYS4.2.Structured Log Format' to 'M4.2.Structured Logging';

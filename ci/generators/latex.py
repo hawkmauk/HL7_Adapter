@@ -356,6 +356,29 @@ def _render_events_table(events: list[ExposedElement]) -> str:
     return "\n".join(lines)
 
 
+def _render_allocation_traceability_matrix(document: DocumentIR) -> str:
+    """Render the allocation traceability matrix (Requirement, Logical block, CIM derive)."""
+    rows = getattr(document, "allocation_matrix", None) or []
+    if not rows:
+        return ""
+
+    lines = [
+        "\\begin{longtable}{|p{5cm}|p{4cm}|p{5cm}|}",
+        "\\hline",
+        "\\textbf{Requirement} & \\textbf{Logical block} & \\textbf{CIM derive} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for row in rows:
+        req = _escape_latex(row.requirement)
+        block = _escape_latex(row.logical_block)
+        cim = _escape_latex(row.cim_derive) if row.cim_derive else "---"
+        lines.append(f"{req} & {block} & {cim} \\\\")
+        lines.append("\\hline")
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
 def _render_by_directive(document: DocumentIR) -> str:
     render_kind = (document.binding.render_kind or "").strip()
     if render_kind == "ElementTable":
@@ -399,6 +422,15 @@ def _build_tex(document: DocumentIR, version: str) -> str:
         lines.append("\\subsection{Purpose}")
         lines.append(_escape_latex(document.purpose))
         lines.append("")
+
+    # DOC_PIM_Allocation: dedicated Traceability matrix subsection (satisfy relationships).
+    if document.document_id == "DOC_PIM_Allocation":
+        matrix_tex = _render_allocation_traceability_matrix(document)
+        if matrix_tex:
+            lines.append("\\subsection{Traceability Matrix}")
+            lines.append("")
+            lines.append(matrix_tex)
+            lines.append("")
 
     if document.sections:
         # Section-aware rendering: each SectionIR becomes its own subsection.

@@ -39,6 +39,12 @@ FLOW_PROPERTY_RE = re.compile(
 INTERFACE_END_RE = re.compile(
     r"(?m)^\s*end\s+(?P<role>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<port_type>[A-Za-z_][A-Za-z0-9_]*)\s*;"
 )
+ALLOCATION_SATISFY_RE = re.compile(
+    r"(?m)^\s*satisfy\s+requirement\s+'([^']+)'\s+by\s+([^;]+);"
+)
+REFINEMENT_DEPENDENCY_RE = re.compile(
+    r"(?m)#refinement\s+dependency\s+'([^']+)'\s+to\s+'([^']+)';"
+)
 
 
 @dataclass(slots=True)
@@ -69,6 +75,8 @@ class ModelElement:
     aliases: list[tuple[str, str]] = field(default_factory=list)  # (alias_name, target_name)
     flow_properties: list[tuple[str, str, str, str]] = field(default_factory=list)  # (direction, kind, name, type)
     interface_ends: list[tuple[str, str]] = field(default_factory=list)  # (role, port_type) for interface def
+    allocation_satisfy: list[tuple[str, str]] = field(default_factory=list)  # (requirement_name, logical_block_path)
+    refinement_dependencies: list[tuple[str, str]] = field(default_factory=list)  # (pim_req, cim_req)
 
 
 @dataclass(slots=True)
@@ -195,6 +203,20 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             for end_match in INTERFACE_END_RE.finditer(body):
                 interface_ends.append((end_match.group("role"), end_match.group("port_type")))
 
+        # Allocation satisfy: satisfy requirement 'Req' by logicalBlock;
+        allocation_satisfy: list[tuple[str, str]] = []
+        for sat_match in ALLOCATION_SATISFY_RE.finditer(body):
+            allocation_satisfy.append(
+                (sat_match.group(1).strip(), sat_match.group(2).strip())
+            )
+
+        # Refinement: #refinement dependency 'PIM_Req' to 'CIM_Req';
+        refinement_dependencies: list[tuple[str, str]] = []
+        for ref_match in REFINEMENT_DEPENDENCY_RE.finditer(body):
+            refinement_dependencies.append(
+                (ref_match.group(1).strip(), ref_match.group(2).strip())
+            )
+
         elements.append(
             ModelElement(
                 kind=kind,
@@ -216,6 +238,8 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 aliases=aliases,
                 flow_properties=flow_properties,
                 interface_ends=interface_ends,
+                allocation_satisfy=allocation_satisfy,
+                refinement_dependencies=refinement_dependencies,
             )
         )
     return elements

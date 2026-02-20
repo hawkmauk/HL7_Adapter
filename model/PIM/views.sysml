@@ -57,6 +57,7 @@ package PIM_Views {
 
         view VPT_PIM_004_VerificationReadiness {
             satisfy pimVerificationReadinessViewpoint;
+            expose PIM::Parametrics::**;
             render asElementTable;
         }
 
@@ -65,6 +66,9 @@ package PIM_Views {
             expose MDA_Lifecycle::PIMConsensusGateway;
             expose MDA_Lifecycle::GatewayCheck;
             expose MDA_Lifecycle::SignoffRecord;
+            expose TechnicalLead;
+            expose SystemsEngineer;
+            expose QualityAssuranceLead;
             render asElementTable;
         }
     }

@@ -5,6 +5,7 @@ from typing import Callable, Iterable, Sequence
 import re
 
 from .ir import (
+    AllocationRowIR,
     AttributeIR,
     CoverageEntry,
     DocumentIR,
@@ -139,6 +140,7 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 InterfaceEndIR(role=r, port_type=pt)
                 for r, pt in getattr(candidate, "interface_ends", [])
             ]
+            constraint_params = list(getattr(candidate, "constraint_params", []))
             resolved[candidate.qualified_name] = ExposedElement(
                 qualified_name=candidate.qualified_name,
                 kind=candidate.kind,
@@ -151,6 +153,7 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 ],
                 flow_properties=flow_props,
                 interface_ends=interface_ends_ir,
+                constraint_params=constraint_params,
             )
             # If an exposed element is itself a view, include what it exposes.
             if candidate.kind == "view" and candidate.qualified_name not in expanded_views:
@@ -258,6 +261,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                                 AttributeIR(name=attr.name, type=attr.type, doc="")
                                 for attr in getattr(model_el, "attributes", [])
                             ],
+                            constraint_params=list(getattr(model_el, "constraint_params", [])),
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
@@ -278,6 +282,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                         InterfaceEndIR(role=r, port_type=pt)
                         for r, pt in getattr(model_el, "interface_ends", [])
                     ]
+                    constraint_params = list(getattr(model_el, "constraint_params", []))
                     exposed_elements.append(
                         ExposedElement(
                             qualified_name=qname,
@@ -291,9 +296,32 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                             ],
                             flow_properties=flow_props,
                             interface_ends=interface_ends_ir,
+                            constraint_params=constraint_params,
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
+
+    # DOC_PIM_Allocation: build traceability matrix from satisfy + refinement in PIM_Allocations.
+    allocation_matrix: list[AllocationRowIR] = []
+    if element.name == "DOC_PIM_Allocation":
+        refinement_map: dict[str, str] = {}
+        allocation_elements = [
+            e for e in model_index.elements
+            if e.qualified_name.startswith("PIM_Allocations") or e.qualified_name == "PIM_Allocations"
+        ]
+        for model_el in allocation_elements:
+            for pim_req, cim_req in getattr(model_el, "refinement_dependencies", []):
+                refinement_map[pim_req] = cim_req
+        for model_el in allocation_elements:
+            for req_name, logical_block in getattr(model_el, "allocation_satisfy", []):
+                allocation_matrix.append(
+                    AllocationRowIR(
+                        requirement=req_name,
+                        logical_block=logical_block,
+                        cim_derive=refinement_map.get(req_name),
+                    )
+                )
+        allocation_matrix.sort(key=lambda r: (r.requirement, r.logical_block))
 
     return DocumentIR(
         document_id=element.name,
@@ -313,6 +341,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
         exposed_elements=exposed_elements,
         coverage_refs=coverage_refs,
         sections=sections,
+        allocation_matrix=allocation_matrix,
     )
 
 

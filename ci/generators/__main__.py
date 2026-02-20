@@ -51,7 +51,8 @@ def _build_registry() -> TargetRegistry:
     import time; we import them here so they are available on the CLI.
     """
     # Import built-in targets for side-effect registration.
-    from . import latex as _latex  # noqa: F401
+    from .targets import latex as _latex  # noqa: F401
+    from .targets import typescript as _typescript  # noqa: F401
 
     return build_default_registry()
 

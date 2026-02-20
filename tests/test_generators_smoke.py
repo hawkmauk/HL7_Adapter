@@ -22,7 +22,7 @@ def test_latex_generation_smoke(tmp_path: Path) -> None:
     output_dir = tmp_path
 
     # Import built-in targets so they can self-register with the registry.
-    from ci.generators import latex as _latex  # noqa: F401
+    from ci.generators.targets import latex as _latex  # noqa: F401
 
     registry = build_default_registry()
     result = run_generation(

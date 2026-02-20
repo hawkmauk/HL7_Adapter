@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Iterable, Sequence
 import re
 
-from .ir import (
+from ..ir import (
     AllocationRowIR,
     AttributeIR,
     CoverageEntry,
@@ -16,7 +16,7 @@ from .ir import (
     SourceRef,
     ViewBinding,
 )
-from .parser import ModelElement, ModelIndex
+from ..parsing import ModelElement, ModelIndex
 
 
 ID_RE = {
@@ -60,7 +60,6 @@ def _expand_alias_ref(ref: str, model_index: ModelIndex) -> str:
     alias_map = getattr(model_index, "alias_map", None) or {}
     if not alias_map:
         return ref
-    # Longest key first so we match CIM::Domain before CIM
     for key in sorted(alias_map.keys(), key=len, reverse=True):
         if ref == key:
             return alias_map[key]
@@ -165,7 +164,6 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 value_assignments=value_assignments,
                 weight_assignments=weight_assignments,
             )
-            # If an exposed element is itself a view, include what it exposes.
             if candidate.kind == "view" and candidate.qualified_name not in expanded_views:
                 expanded_views.add(candidate.qualified_name)
                 for nested_ref in candidate.expose_refs:
@@ -182,7 +180,6 @@ def _collect_section_irs_for_document(
     collect nested section views from that template and turn them into SectionIRs.
     """
 
-    # Identify the template view this document is typed by, if any.
     template: ModelElement | None = None
     for super_name in element.supertypes:
         candidates = model_index.by_name.get(super_name, [])
@@ -196,7 +193,6 @@ def _collect_section_irs_for_document(
     if template is None:
         return []
 
-    # Section views are nested view blocks within the template's body.
     nested_views: list[ModelElement] = [
         item
         for item in model_index.elements
@@ -209,7 +205,6 @@ def _collect_section_irs_for_document(
     sections: list[SectionIR] = []
     for section_elem in nested_views:
         exposed = _resolve_expose_elements(section_elem.expose_refs, model_index)
-        # Prefer title from expose ref package name (e.g. CIM::Actions::** -> "Actions")
         title_from_ref = _title_from_expose_refs(section_elem.expose_refs)
         display_name = section_elem.name.strip("'")
         title = title_from_ref if title_from_ref else display_name
@@ -217,7 +212,7 @@ def _collect_section_irs_for_document(
             SectionIR(
                 id=section_elem.short_name or section_elem.name,
                 title=title,
-                depth=1,  # Top-level document sections
+                depth=1,
                 intro=section_elem.doc,
                 exposed_elements=exposed,
             )
@@ -232,16 +227,10 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
         if "CM_" in ref:
             coverage_refs.append(ref.split("::")[-1].strip())
 
-    # Base exposed elements come from the document view's own expose refs
-    # (e.g. DOC_CIM_* bindings to viewports and coverage requirements).
     base_exposed = _resolve_expose_elements(element.expose_refs, model_index)
 
-    # Sections are derived from the document template (e.g. ConOps_Document)
-    # and each section has its own resolved exposed elements.
     sections = _collect_section_irs_for_document(element, model_index)
 
-    # For backwards compatibility, keep DocumentIR.exposed_elements as the union
-    # of the document-level exposure and all section-level elements.
     if sections:
         by_qname: dict[str, ExposedElement] = {item.qualified_name: item for item in base_exposed}
         for section in sections:
@@ -251,9 +240,6 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
     else:
         exposed_elements = base_exposed
 
-    # Special handling for CIM Operational Scenarios: also include CIM::UseCases.*
-    # so that CIM-level use case narratives can be rendered in the document even
-    # though the current view definition exposes CIM::Operations only.
     if element.name == "DOC_CIM_OperationalScenarios":
         for model_el in model_index.elements:
             if model_el.kind == "use case" and model_el.qualified_name.startswith("CIM::UseCases::"):
@@ -279,8 +265,6 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
 
-    # Special handling for CIM ConOps: include CIM::Events::* occurrences so they
-    # can be rendered in the document even if not explicitly exposed yet.
     if element.name == "DOC_CIM_ConOps":
         for model_el in model_index.elements:
             if model_el.kind == "occurrence" and model_el.qualified_name.startswith("CIM::Events::"):
@@ -317,7 +301,6 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
 
-    # DOC_PIM_Allocation: build traceability matrix from satisfy + refinement in PIM_Allocations.
     allocation_matrix: list[AllocationRowIR] = []
     if element.name == "DOC_PIM_Allocation":
         refinement_map: dict[str, str] = {}

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .ir import DocumentIR
+from .ir import ModelGraph
 
 
 @dataclass(slots=True)
@@ -32,7 +32,7 @@ class GeneratorTarget(ABC):
     @abstractmethod
     def generate(
         self,
-        documents: list[DocumentIR],
+        graph: ModelGraph,
         options: GenerationOptions,
     ) -> list[GeneratedArtifact]:
-        """Generate output artifacts for an extracted document set."""
+        """Generate output artifacts from the model graph."""

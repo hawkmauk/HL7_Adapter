@@ -48,8 +48,8 @@ package PSM_PhysicalArchitecture {
 
     part def <HL7AdapterService> 'HL7 Adapter Service' :> PIM::LogicalArchitecture::HL7AdapterService {
         doc /* Refines PIM HL7 Adapter Service. Technology binding: Node.js runtime; AWS Lambda or Docker (Terraform). Boundary ports use PSM interface bindings (MLLP ingress, HTTP egress). */
-        port fromUpstream : PSM_MLLPIngressPort;
-        port toDownstream : PSM_JSONEgressPort;
+        port :>> fromUpstream : PSM_MLLPIngressPort;
+        port :>> toDownstream : PSM_JSONEgressPort;
 
         part :>> mllpReceiver : MLLPReceiver;
         part :>> parser : Parser;

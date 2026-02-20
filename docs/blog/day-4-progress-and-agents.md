@@ -17,3 +17,13 @@ We also seem to **get better results when we plan the implementation of the issu
 I’ve also been **providing examples from the SysML Release Training and examples folder** to the system engineer agent when I ask it to create or refine model elements. That has **helped**—the agent can match patterns and syntax from those reference models instead of guessing. So the guides under `agent/guides/sysml` aren’t just for humans; feeding them to the system engineer improves the quality of what it produces.
 
 So day four so far: **cadence improving**, **Product Owner revising acceptance criteria on real issues**, and **agent-led dev reviews** proving their value. **Planning implementation with Cursor** and **feeding SysML training/examples** to the system engineer agent both help. The generator is in the Python agent’s hands. More to come as we push through the architecture focus and toward deployment.
+
+---
+
+## Later in day four: mixed bag
+
+It’s been a **mixed bag** so far today. **Lots of progress early on**—we **completed the PIM**, which was a clear milestone. The **PSM has started well** too, but **creating and displaying the trade studies** has been a challenge. The initial AI-generated design had **a lot of duplication** and was **quite simple**; I **restructured it** and learned about **evaluations in SysML** along the way. So the PSM trade-study / technology-selection side is in better shape now, but it cost time.
+
+**Once again the documentation side of things has distracted**—generating and refining the docs (ConOps, PSM platform realization, etc.) pulls focus. I’ll need to **try and focus more on delivering an actual application**: the model and the docs are valuable, but the challenge is to get a runnable adapter over the line. So the reminder for the rest of the day (and the deployment phase): keep the model and docs in sync, but **prioritise getting something that runs**.
+
+I’ve also had a **couple of git branching and merging issues** today—minor annoyances, but they could have eaten time. The **GitHub CI agent** has been able to **help me resolve them quickly**: understanding the conflict, suggesting the right commands, or clarifying the branch state. So the agent we brought in for workflows and CI is paying off for day-to-day git friction too.

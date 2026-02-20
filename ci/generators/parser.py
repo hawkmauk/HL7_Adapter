@@ -29,8 +29,14 @@ RENDER_RE = re.compile(r"(?m)^\s*render\s+as(?P<kind>[A-Za-z0-9_]+)\s*;")
 ATTRIBUTE_RE = re.compile(
     r"(?m)^\s*attribute\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
-    r"\s*:\s*(?P<type>[^;]+);"
+    r"\s*:\s*(?P<type>[^;{]+);"
 )
+# Attribute with doc block and no semicolon (SysML v2 style): "attribute name : type { doc /* ... */ }"
+ATTRIBUTE_NO_SEMICOLON_RE = re.compile(
+    r"(?m)^\s*attribute\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+    r"\s*:\s*(?P<type>[^{]+)\s*\{\s*doc\s*/\*.*?\*/\s*\}",
+)  # no trailing \s* so next match starts at line start (^)
 ALIAS_RE = re.compile(r"(?m)^\s*alias\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\s+for\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;")
 FLOW_PROPERTY_RE = re.compile(
     r"(?m)^\s*(?P<dir>in|out)\s+(?P<kind>item|attribute)\s+"
@@ -177,6 +183,14 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             raw_type = (attr_match.group("type") or "").strip()
             attr_type = raw_type or None
             attributes.append(ModelAttribute(name=attr_name, type=attr_type))
+        seen_attr_names = {a.name for a in attributes}
+        for attr_match in ATTRIBUTE_NO_SEMICOLON_RE.finditer(body):
+            attr_name = attr_match.group("name")
+            if attr_name in seen_attr_names:
+                continue
+            seen_attr_names.add(attr_name)
+            raw_type = (attr_match.group("type") or "").strip()
+            attributes.append(ModelAttribute(name=attr_name, type=raw_type or None))
 
         # Optional supertypes (e.g. \"view X : Y\" or \"view X :> Y\")
         supertypes: list[str] = []

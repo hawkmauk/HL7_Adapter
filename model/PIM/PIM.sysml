@@ -6,5 +6,6 @@ package PIM {
     alias Allocations for PIM_Allocations;
     alias Behavior for PIM_Behavior;
     alias UseCases for PIM_UseCases;
+    alias Parametrics for PIM_Parametrics;
 
 }

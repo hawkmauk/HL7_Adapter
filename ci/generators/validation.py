@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from .errors import ValidationError
-from .extractor import ExtractionResult
-from .parser import ModelIndex
+from .extraction import ExtractionResult
+from .parsing import ModelIndex
 
 
 def validate_model_index(model_index: ModelIndex) -> None:

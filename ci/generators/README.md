@@ -2,9 +2,10 @@
 
 This package provides a model-driven generation framework that traverses SysML model views and emits target artifacts in a consistent way.
 
-## Current target
+## Current targets
 
-- `latex`: generates `.tex` files from `DOC_CIM_*` views in `model/CIM/views.sysml` and `DOC_PIM_*` views in `model/PIM/views.sysml`.
+- **`latex`**: generates `.tex` files from document views in `model/CIM/views.sysml`, `model/PIM/views.sysml`, and `model/PSM/views.sysml` (e.g. `DOC_CIM_*`, `DOC_PIM_*`, `DOC_PSM_*`).
+- **`typescript`**: generates a Node.js/TypeScript application skeleton from PSM component state machines (one module per component, adapter orchestrator, `package.json`, `tsconfig.json`). See **docs/Code_Generation.md** for the code-generation architecture and usage.
 
 ## Architecture
 
@@ -23,16 +24,19 @@ Core modules:
 
 - `base.py`: target interface and generation options.
 - `registry.py`: target registration and lookup.
-- `parser.py`: lightweight SysML subset parser.
-- `extractor.py`: document extraction to IR.
+- `parsing/`: SysML subset parser (`driver.py` entry point, `model.py`, `regex.py`, `elements.py`, `nested.py`).
+- `ir/`: document IR (`document.py`) and graph IR (`graph.py`: `GraphNode`, `GraphEdge`, `ModelGraph`).
+- `extraction/`: document extraction to `DocumentIR` (`extractor.py`).
+- `graph/`: model graph builder (`builder.py`: `build_model_graph`).
 - `validation.py`: quality gates.
-- `engine.py`: orchestration (parse -> extract -> validate -> generate).
-- `latex.py`: LaTeX target implementation.
+- `engine.py`: orchestration (parse → extract → validate → build graph → generate).
+- `targets/latex/`: LaTeX target implementation.
+- `targets/typescript/`: TypeScript code-generation target.
 - `__main__.py`: CLI entrypoint.
 
-Targets register themselves with the default registry via helpers in
-`registry.py`. The CLI imports built-in targets (currently `latex`) for
-side-effect registration and then calls `build_default_registry()`.
+Targets register themselves with the default registry via `@register_target` in
+`registry.py`. The CLI imports built-in targets (`targets.latex`, `targets.typescript`)
+for side-effect registration and then calls `build_default_registry()`.
 
 ## Usage
 
@@ -100,28 +104,20 @@ Filenames use the document view's stable ID plus the version suffix (no CIM/PIM/
 - `render asTreeDiagram` -> hierarchical `itemize` fallback
 - `render asTextualNotation` -> `verbatim` block
 
-## Adding a new target (future code generation)
+## Adding a new target
 
-1. Create a new module under `ci/generators/` (for example, `python_code.py`).
+For **code generation** (e.g. TypeScript, or a future Python skeleton), see **docs/Code_Generation.md** for the graph-based pipeline and how to add a target that consumes `ModelGraph`.
+
+Summary:
+
+1. Create a subpackage under `ci/generators/targets/` (e.g. `targets/python/`) with an `__init__.py` that defines your `GeneratorTarget` subclass.
 2. Implement `GeneratorTarget`:
-   - set `name`
-   - set `supported_renders`
-   - implement `generate(documents, options) -> list[GeneratedArtifact]`
-3. Register it with the default registry using the helper in `registry.py`, e.g.:
+   - set `name` and `supported_renders`
+   - implement `generate(graph: ModelGraph, options: GenerationOptions) -> list[GeneratedArtifact]`
+3. Register with `@register_target` and a factory that returns the target instance.
+4. Import the target package from `__main__.py` inside `_build_registry()` so it registers when the CLI runs.
 
-   ```python
-   from ci.generators.registry import register_target
-
-   @register_target
-   def _make_python_generator() -> GeneratorTarget:
-       return PythonGenerator()
-   ```
-
-4. Import the module from the CLI entrypoint (or another always-imported module)
-   so it is available when `build_default_registry()` is called.
-5. Reuse `DocumentIR` extraction and keep target-specific logic isolated in the new target module.
-
-This keeps parser and extraction logic shared across documentation and source-code generators.
+The LaTeX target still uses the document-centric IR (via `options.extra["_documents"]`); code-generation targets use the `ModelGraph` directly. Both share the same parse → extract → validate → build graph pipeline.
 
 ## Templates and assets
 

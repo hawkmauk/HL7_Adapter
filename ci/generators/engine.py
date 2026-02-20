@@ -5,8 +5,10 @@ from pathlib import Path
 
 from .base import GeneratedArtifact, GenerationOptions
 from .errors import GenerationError
-from .extractor import ExtractionResult, extract_documents
-from .parser import ModelIndex, parse_model_directory
+from .extraction import ExtractionResult, extract_documents
+from .graph import build_model_graph
+from .ir import ModelGraph
+from .parsing import ModelIndex, parse_model_directory
 from .registry import TargetRegistry
 from .validation import validate_extraction_graph, validate_model_index
 
@@ -16,6 +18,7 @@ class RunResult:
     model_index: ModelIndex
     extraction: ExtractionResult
     artifacts: list[GeneratedArtifact]
+    graph: ModelGraph | None = None
 
 
 def run_generation(
@@ -33,8 +36,9 @@ def run_generation(
 
         extraction = extract_documents(model_index)
         validate_extraction_graph(extraction, model_index)
+
+        graph = build_model_graph(model_index)
     except GenerationError:
-        # Parsing/validation functions already provide structured errors.
         raise
     except Exception as exc:  # pragma: no cover - defensive coding
         raise GenerationError(
@@ -42,15 +46,18 @@ def run_generation(
             f"from model_dir={model_dir} to output_dir={output_dir}"
         ) from exc
 
+    effective_extra = dict(extra or {})
+    effective_extra["_documents"] = extraction.documents
+
     target = registry.get(target_name)
     options = GenerationOptions(
         version=version,
         model_dir=model_dir,
         output_dir=output_dir,
-        extra=extra or {},
+        extra=effective_extra,
     )
     try:
-        artifacts = target.generate(extraction.documents, options)
+        artifacts = target.generate(graph, options)
     except GenerationError:
         raise
     except Exception as exc:  # pragma: no cover - defensive coding
@@ -58,4 +65,9 @@ def run_generation(
             f"Target '{target_name}' failed while generating artifacts into {output_dir}"
         ) from exc
 
-    return RunResult(model_index=model_index, extraction=extraction, artifacts=artifacts)
+    return RunResult(
+        model_index=model_index,
+        extraction=extraction,
+        artifacts=artifacts,
+        graph=graph,
+    )

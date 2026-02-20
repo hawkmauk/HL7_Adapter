@@ -8,23 +8,17 @@ package PSM_View {
     viewpoint platformRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::PlatformRealizationViewpoint;
 
     view def <PlatformRealization_Document> 'PSM Platform Realization and Technology Selection' {
-        doc /* Captures technology selections (trade studies) and PSM physical architecture with technology bindings. Renders TechnologySelection and PhysicalArchitecture for the HL7 Adapter. */
+        doc /* Captures technology selections and PSM physical architecture with implementation attributes. */
         satisfy platformRealizationViewpoint;
         render asElementTable;
 
         view <TechnologySelectionSection> 'Technology Selection' {
-            doc
-            /* This section presents the technology trade studies and selection rationale:
-               language/runtime, HL7 parser, HTTP client, and deployment model.
-             */
+            doc /* Technology trade studies and selection rationale. */
             expose PSM::TechnologySelection::**;
         }
 
         view <PhysicalArchitectureSection> 'Physical Architecture' {
-            doc
-            /* This section describes the PSM components that refine PIM logical components,
-               with technology bindings (e.g. Node.js/TypeScript, node-hl7-complete, axios/undici, AWS/Terraform).
-             */
+            doc /* PSM components refining PIM with technology bindings and implementation-specific attributes (config, library types). */
             expose PSM::PhysicalArchitecture::**;
         }
     }

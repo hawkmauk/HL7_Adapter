@@ -5,7 +5,7 @@ package PSM_Views {
     private import MDA::PSM::View::*;
 
     package PSMDocumentBlueprints {
-        doc /* PSM document composition: platform realization and technology selection. */
+        doc /* PSM document: platform realization and component design. */
 
         view DOC_PSM_PlatformRealization : PlatformRealization_Document {
             doc /* PSM Platform Realization and Technology Selection for the HL7 Adapter. */

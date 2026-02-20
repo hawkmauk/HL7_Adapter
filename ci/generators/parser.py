@@ -8,7 +8,7 @@ from .errors import ParsingError
 
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|use\s+case|occurrence|action)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|use\s+case|occurrence|action)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -32,6 +32,13 @@ ATTRIBUTE_RE = re.compile(
     r"\s*:\s*(?P<type>[^;]+);"
 )
 ALIAS_RE = re.compile(r"(?m)^\s*alias\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\s+for\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;")
+FLOW_PROPERTY_RE = re.compile(
+    r"(?m)^\s*(?P<dir>in|out)\s+(?P<kind>item|attribute)\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_']*)\s*:\s*(?P<type>[^;]+);"
+)
+INTERFACE_END_RE = re.compile(
+    r"(?m)^\s*end\s+(?P<role>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<port_type>[A-Za-z_][A-Za-z0-9_]*)\s*;"
+)
 
 
 @dataclass(slots=True)
@@ -60,6 +67,8 @@ class ModelElement:
     supertypes: list[str] = field(default_factory=list)
     attributes: list[ModelAttribute] = field(default_factory=list)
     aliases: list[tuple[str, str]] = field(default_factory=list)  # (alias_name, target_name)
+    flow_properties: list[tuple[str, str, str, str]] = field(default_factory=list)  # (direction, kind, name, type)
+    interface_ends: list[tuple[str, str]] = field(default_factory=list)  # (role, port_type) for interface def
 
 
 @dataclass(slots=True)
@@ -167,6 +176,25 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             for alias_match in ALIAS_RE.finditer(body):
                 aliases.append((alias_match.group("alias"), alias_match.group("target")))
 
+        # Flow properties (port def): in/out item|attribute name : type;
+        flow_properties: list[tuple[str, str, str, str]] = []
+        if kind == "port":
+            for fp_match in FLOW_PROPERTY_RE.finditer(body):
+                flow_properties.append(
+                    (
+                        fp_match.group("dir"),
+                        fp_match.group("kind"),
+                        fp_match.group("name").strip("'"),
+                        fp_match.group("type").strip(),
+                    )
+                )
+
+        # Interface ends: end roleName : PortType;
+        interface_ends: list[tuple[str, str]] = []
+        if kind == "interface":
+            for end_match in INTERFACE_END_RE.finditer(body):
+                interface_ends.append((end_match.group("role"), end_match.group("port_type")))
+
         elements.append(
             ModelElement(
                 kind=kind,
@@ -186,6 +214,8 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 supertypes=supertypes,
                 attributes=attributes,
                 aliases=aliases,
+                flow_properties=flow_properties,
+                interface_ends=interface_ends,
             )
         )
     return elements

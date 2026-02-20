@@ -72,9 +72,20 @@ package PIM_View {
         view <InterfaceCatalogSection> 'Interface Catalog' {
             doc
             /* This section presents the catalog of logical interfaces, ports, and service endpoints
-               defined at the PIM level.
+               defined at the PIM level, including signal-typed flow properties and complementary
+               port pairs (AIM S7.5).
              */
             expose PIM::Interfaces::**;
+        }
+
+        view <ComponentStructureAndBoundaryPortsSection> 'Component Structure and Boundary Ports' {
+            doc
+            /* This section describes the logical components and their signal receptions. Ports
+               are only on the system boundary (UpstreamHL7System, HL7AdapterService,
+               DownstreamAPIOwner); the adapter composite exposes fromUpstream and toDownstream
+               ports only.
+             */
+            expose PIM::LogicalArchitecture::**;
         }
 
         view <MessageContractsSection> 'Message Contracts' {

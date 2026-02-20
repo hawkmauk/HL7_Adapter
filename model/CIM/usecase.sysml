@@ -382,10 +382,10 @@ package CIM_UseCases {
 
     /* Requirement satisfaction relationships from CIM use cases to mission requirements. */
 
-    satisfy 'Reliable Event Ingestion' by 'Send MLLP Frame';
-    satisfy 'Reliable Event Ingestion' by 'Receive MLLP Frame';
-    satisfy 'Accurate Clinical Transformation' by 'Handle HL7 Message';
-    satisfy 'Secure Interoperability' by 'Send JSON Payload';
-    satisfy 'Secure Interoperability' by 'Receive JSON Payload';
-    satisfy 'Operational Transparency' by 'Handle Integration Error (CIM)';
+    satisfy 'M1.Reliable Event Ingestion' by 'Send MLLP Frame';
+    satisfy 'M1.Reliable Event Ingestion' by 'Receive MLLP Frame';
+    satisfy 'M2.Accurate Clinical Transformation' by 'Handle HL7 Message';
+    satisfy 'M3.Secure Interoperability' by 'Send JSON Payload';
+    satisfy 'M3.Secure Interoperability' by 'Receive JSON Payload';
+    satisfy 'M4.Operational Transparency' by 'Handle Integration Error (CIM)';
 }

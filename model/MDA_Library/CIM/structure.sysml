@@ -14,7 +14,7 @@ package CIM_Structure {
         doc /* Black-box operational context, environment, and external systems. */
     }
 
-    package Operations {
+    package Actions {
         doc /* High-level operational activities, flows, and scenarios. */
     }
 

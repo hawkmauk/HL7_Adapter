@@ -16,8 +16,8 @@ The aim is to make the **digital thread** explicit: requirements, design, lifecy
 - `model/`
   - `CIM.sysml`: project‑specific CIM for the HL7 Adapter.
   - `PIM.sysml`: project‑specific PIM (logical architecture, interfaces, behavior, requirements, allocations).
-  - `CIM_ProjectViews.sysml`: project CIM viewports, concern mappings, and `DOC_CIM_*` document bindings onto the MDA CIM library.
-  - `PIM_ProjectViews.sysml`: project PIM viewports and `DOC_PIM_*` document bindings onto the MDA PIM library.
+  - `model/CIM/views.sysml`: project CIM viewports, concern mappings, and `DOC_CIM_*` document bindings onto the MDA CIM library.
+  - `model/PIM/views.sysml`: project PIM viewports and `DOC_PIM_*` document bindings onto the MDA PIM library.
   - `MDA_Library/`: reusable MDA assets:
     - `structure.sysml`, `view.sysml`, `viewpoint.sysml`, `lifecycle.sysml` – cross‑cutting MDA structure, abstract viewpoints, render profiles, and lifecycle concepts.
     - `CIM/`: CIM‑specific structure, viewpoints, and document templates (SNRS, ConOps, EICD, RSCM, SCHA, Gateway Signoff).

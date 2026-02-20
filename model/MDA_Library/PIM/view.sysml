@@ -72,9 +72,20 @@ package PIM_View {
         view <InterfaceCatalogSection> 'Interface Catalog' {
             doc
             /* This section presents the catalog of logical interfaces, ports, and service endpoints
-               defined at the PIM level.
+               defined at the PIM level, including signal-typed flow properties and complementary
+               port pairs (AIM S7.5).
              */
             expose PIM::Interfaces::**;
+        }
+
+        view <ComponentStructureAndBoundaryPortsSection> 'Component Structure and Boundary Ports' {
+            doc
+            /* This section describes the logical components and their signal receptions. Ports
+               are only on the system boundary (UpstreamHL7System, HL7AdapterService,
+               DownstreamAPIOwner); the adapter composite exposes fromUpstream and toDownstream
+               ports only.
+             */
+            expose PIM::LogicalArchitecture::**;
         }
 
         view <MessageContractsSection> 'Message Contracts' {
@@ -113,19 +124,20 @@ package PIM_View {
                including how they refine CIM operational scenarios.
              */
             expose PIM::Behavior::**;
+            expose PIM::UseCases::**;
         }
 
         view <NominalFlowsSection> 'Nominal Flows' {
             doc
             /* This section focuses on primary success-oriented flows and their mapping to logical components. */
-            expose PIM::Behavior::ProcessNominalFlow::**;
+            expose PIM::UseCases::IngestAndForwardEvent::**;
         }
 
         view <ErrorFlowsSection> 'Error and Degraded Flows' {
             doc
             /* This section describes how the system behaves under error and degraded conditions at the PIM level. */
-            expose PIM::Behavior::ProcessDegradedFlowParse::**;
-            expose PIM::Behavior::ProcessDegradedFlowDelivery::**;
+            expose PIM::UseCases::HandleParseFailure::**;
+            expose PIM::UseCases::HandleDeliveryFailure::**;
         }
 
         view <StateMachinesSection> 'State Machines and Internal Behavior' {
@@ -194,6 +206,15 @@ package PIM_View {
                untested or partially tested areas at the PIM level.
              */
             expose PIM_Structure::Verification::**;
+        }
+
+        view <ParametricValidationSection> 'Parametric Validation' {
+            doc
+            /* This section documents parametric constraint blocks used to validate that the
+               architecture meets performance MoEs (throughput, latency, reliability). Constraints
+               are traceable to CIM MoEs and PIM requirements.
+             */
+            expose PIM::Parametrics::**;
         }
     }
 

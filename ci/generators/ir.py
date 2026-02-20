@@ -26,6 +26,9 @@ class ExposedElement:
     package_path: tuple[str, ...]
     doc: str
     attributes: list["AttributeIR"] = field(default_factory=list)
+    flow_properties: list["FlowPropertyIR"] = field(default_factory=list)
+    interface_ends: list["InterfaceEndIR"] = field(default_factory=list)
+    constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
 
 
 @dataclass(slots=True)
@@ -40,6 +43,14 @@ class SectionIR:
 
 
 @dataclass(slots=True)
+class AllocationRowIR:
+    """One row in the allocation traceability matrix (requirement -> logical block, optional CIM derive)."""
+    requirement: str
+    logical_block: str
+    cim_derive: str | None = None
+
+
+@dataclass(slots=True)
 class DocumentIR:
     document_id: str
     title: str
@@ -50,6 +61,7 @@ class DocumentIR:
     exposed_elements: list[ExposedElement] = field(default_factory=list)
     coverage_refs: list[str] = field(default_factory=list)
     sections: list[SectionIR] = field(default_factory=list)
+    allocation_matrix: list[AllocationRowIR] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -61,6 +73,22 @@ class CoverageEntry:
     viewport_ids: list[str]
     document_codes: list[str]
     source: SourceRef
+
+
+@dataclass(slots=True)
+class FlowPropertyIR:
+    """Single flow property on a port (item or signal/attribute)."""
+    direction: str  # "in" | "out"
+    kind: str       # "item" | "attribute"
+    name: str
+    type: str | None
+
+
+@dataclass(slots=True)
+class InterfaceEndIR:
+    """One end of an interface (role and port type)."""
+    role: str
+    port_type: str
 
 
 @dataclass(slots=True)

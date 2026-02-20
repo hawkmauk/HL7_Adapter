@@ -1,4 +1,4 @@
-package 'PIM-ProjectViews' {
+package PIM_Views {
 
     private import Views::*;
     private import PIM::*;
@@ -50,20 +50,25 @@ package 'PIM-ProjectViews' {
         view VPT_PIM_003_BehaviorDesign {
             satisfy logicalArchitectureViewpoint;
             expose PIM::Behavior::**;
+            expose PIM::UseCases::**;
+
             render asTextualNotation;
         }
 
         view VPT_PIM_004_VerificationReadiness {
             satisfy pimVerificationReadinessViewpoint;
+            expose PIM::Parametrics::**;
             render asElementTable;
         }
 
         view VPT_PIM_005_PIMGatewayReadiness {
             satisfy pimLifecycleGatewayReadinessViewpoint;
-            expose PIM::LogicalArchitecture::HL7Adapter;
             expose MDA_Lifecycle::PIMConsensusGateway;
             expose MDA_Lifecycle::GatewayCheck;
             expose MDA_Lifecycle::SignoffRecord;
+            expose TechnicalLead;
+            expose SystemsEngineer;
+            expose QualityAssuranceLead;
             render asElementTable;
         }
     }
@@ -132,4 +137,3 @@ package 'PIM-ProjectViews' {
         }
     }
 }
-

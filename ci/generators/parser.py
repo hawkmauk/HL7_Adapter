@@ -8,7 +8,7 @@ from .errors import ParsingError
 
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|use\s+case|occurrence)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -30,6 +30,24 @@ ATTRIBUTE_RE = re.compile(
     r"(?m)^\s*attribute\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
     r"\s*:\s*(?P<type>[^;]+);"
+)
+ALIAS_RE = re.compile(r"(?m)^\s*alias\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\s+for\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;")
+FLOW_PROPERTY_RE = re.compile(
+    r"(?m)^\s*(?P<dir>in|out)\s+(?P<kind>item|attribute)\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_']*)\s*:\s*(?P<type>[^;]+);"
+)
+INTERFACE_END_RE = re.compile(
+    r"(?m)^\s*end\s+(?P<role>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<port_type>[A-Za-z_][A-Za-z0-9_]*)\s*;"
+)
+ALLOCATION_SATISFY_RE = re.compile(
+    r"(?m)^\s*satisfy\s+requirement\s+'([^']+)'\s+by\s+([^;]+);"
+)
+REFINEMENT_DEPENDENCY_RE = re.compile(
+    r"(?m)#refinement\s+dependency\s+'([^']+)'\s+to\s+'([^']+)';"
+)
+# Constraint def parameters: "in name : Type;" (not "in item|attribute ...")
+CONSTRAINT_PARAM_RE = re.compile(
+    r"(?m)^\s*in\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<type>[^;]+);"
 )
 
 
@@ -58,6 +76,12 @@ class ModelElement:
     render_kind: str | None = None
     supertypes: list[str] = field(default_factory=list)
     attributes: list[ModelAttribute] = field(default_factory=list)
+    aliases: list[tuple[str, str]] = field(default_factory=list)  # (alias_name, target_name)
+    flow_properties: list[tuple[str, str, str, str]] = field(default_factory=list)  # (direction, kind, name, type)
+    interface_ends: list[tuple[str, str]] = field(default_factory=list)  # (role, port_type) for interface def
+    allocation_satisfy: list[tuple[str, str]] = field(default_factory=list)  # (requirement_name, logical_block_path)
+    refinement_dependencies: list[tuple[str, str]] = field(default_factory=list)  # (pim_req, cim_req)
+    constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
 
 
 @dataclass(slots=True)
@@ -68,6 +92,7 @@ class ModelIndex:
     by_name: dict[str, list[ModelElement]]
     by_short_name: dict[str, list[ModelElement]]
     declared_ids: dict[str, list[Path]]
+    alias_map: dict[str, str] = field(default_factory=dict)  # logical path -> actual qualified name
 
     def get_single(self, name: str) -> ModelElement | None:
         candidates = self.by_name.get(name, [])
@@ -158,6 +183,53 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                     continue
                 supertypes.append(_strip_quotes(part_clean))
 
+        # Aliases (e.g. \"alias Domain for CIM_Domain;\") in packages
+        aliases: list[tuple[str, str]] = []
+        if kind == "package":
+            for alias_match in ALIAS_RE.finditer(body):
+                aliases.append((alias_match.group("alias"), alias_match.group("target")))
+
+        # Flow properties (port def): in/out item|attribute name : type;
+        flow_properties: list[tuple[str, str, str, str]] = []
+        if kind == "port":
+            for fp_match in FLOW_PROPERTY_RE.finditer(body):
+                flow_properties.append(
+                    (
+                        fp_match.group("dir"),
+                        fp_match.group("kind"),
+                        fp_match.group("name").strip("'"),
+                        fp_match.group("type").strip(),
+                    )
+                )
+
+        # Interface ends: end roleName : PortType;
+        interface_ends: list[tuple[str, str]] = []
+        if kind == "interface":
+            for end_match in INTERFACE_END_RE.finditer(body):
+                interface_ends.append((end_match.group("role"), end_match.group("port_type")))
+
+        # Allocation satisfy: satisfy requirement 'Req' by logicalBlock;
+        allocation_satisfy: list[tuple[str, str]] = []
+        for sat_match in ALLOCATION_SATISFY_RE.finditer(body):
+            allocation_satisfy.append(
+                (sat_match.group(1).strip(), sat_match.group(2).strip())
+            )
+
+        # Refinement: #refinement dependency 'PIM_Req' to 'CIM_Req';
+        refinement_dependencies: list[tuple[str, str]] = []
+        for ref_match in REFINEMENT_DEPENDENCY_RE.finditer(body):
+            refinement_dependencies.append(
+                (ref_match.group(1).strip(), ref_match.group(2).strip())
+            )
+
+        # Constraint def parameters: in name : Type;
+        constraint_params: list[tuple[str, str]] = []
+        if kind == "constraint":
+            for cp_match in CONSTRAINT_PARAM_RE.finditer(body):
+                constraint_params.append(
+                    (cp_match.group("name"), cp_match.group("type").strip())
+                )
+
         elements.append(
             ModelElement(
                 kind=kind,
@@ -176,6 +248,12 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 render_kind=render_kind,
                 supertypes=supertypes,
                 attributes=attributes,
+                aliases=aliases,
+                flow_properties=flow_properties,
+                interface_ends=interface_ends,
+                allocation_satisfy=allocation_satisfy,
+                refinement_dependencies=refinement_dependencies,
+                constraint_params=constraint_params,
             )
         )
     return elements
@@ -224,6 +302,14 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
             by_short_name.setdefault(element.short_name, []).append(element)
             by_name.setdefault(element.short_name, []).append(element)
 
+    # Build alias map so view refs like CIM::Domain::** resolve to CIM_Domain::**
+    alias_map: dict[str, str] = {}
+    for element in all_elements:
+        if element.kind == "package" and element.aliases:
+            for alias_name, target_name in element.aliases:
+                logical = f"{element.qualified_name}::{alias_name}"
+                alias_map[logical] = target_name
+
     return ModelIndex(
         files=files,
         elements=all_elements,
@@ -231,4 +317,5 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
         by_name=by_name,
         by_short_name=by_short_name,
         declared_ids=declared_ids,
+        alias_map=alias_map,
     )

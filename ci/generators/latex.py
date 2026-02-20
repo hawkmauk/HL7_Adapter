@@ -221,9 +221,82 @@ def _render_stakeholder_signoff_table(document: DocumentIR) -> str:
     return "\n".join(lines)
 
 
+def _render_boundary_ports_and_interfaces(section: SectionIR) -> str:
+    """Render boundary port and interface definitions (port name, interface name, flow properties, types) for PIM Interface Design."""
+    ports = [e for e in section.exposed_elements if e.kind == "port"]
+    interfaces = [e for e in section.exposed_elements if e.kind == "interface"]
+    if not ports and not interfaces:
+        return ""
+
+    lines: list[str] = []
+
+    if ports:
+        lines.append("\\subsubsection{Boundary Ports}")
+        lines.append(
+            "\\begin{longtable}{|p{2.2cm}|p{1.8cm}|p{4cm}|p{5.5cm}|}",
+        )
+        lines.append("\\hline")
+        lines.append(
+            "\\textbf{Port} & \\textbf{Direction} & \\textbf{Item flows} & \\textbf{Signal flows} \\\\"
+        )
+        lines.append("\\hline")
+        lines.append("\\endhead")
+        for port in ports:
+            items = [fp for fp in port.flow_properties if fp.kind == "item"]
+            signals = [fp for fp in port.flow_properties if fp.kind == "attribute"]
+            item_str = ", ".join(
+                f"{_escape_latex(fp.name)}: {_escape_latex(fp.type or '')}"
+                for fp in items
+            ) or "---"
+            signal_str = ", ".join(
+                f"{_escape_latex(fp.name)}: {_escape_latex(fp.type or '')}"
+                for fp in signals
+            ) or "---"
+            dirs = {fp.direction for fp in port.flow_properties}
+            dir_str = ", ".join(sorted(dirs)) if dirs else "---"
+            lines.append(
+                f"{_escape_latex(port.name)} & {_escape_latex(dir_str)} & {_escape_latex(item_str)} & {_escape_latex(signal_str)} \\\\"
+            )
+            lines.append("\\hline")
+        lines.append("\\end{longtable}")
+        lines.append("")
+
+    if interfaces:
+        lines.append("\\subsubsection{Interfaces}")
+        lines.append(
+            "\\begin{longtable}{|p{2.5cm}|p{3cm}|p{3cm}|p{4cm}|}",
+        )
+        lines.append("\\hline")
+        lines.append(
+            "\\textbf{Interface} & \\textbf{Supplier port} & \\textbf{Consumer port} & \\textbf{Description} \\\\"
+        )
+        lines.append("\\hline")
+        lines.append("\\endhead")
+        for iface in interfaces:
+            supplier = ""
+            consumer = ""
+            for e in iface.interface_ends:
+                if "supplier" in e.role.lower():
+                    supplier = e.port_type
+                elif "consumer" in e.role.lower():
+                    consumer = e.port_type
+            if not supplier and iface.interface_ends:
+                supplier = iface.interface_ends[0].port_type
+            if not consumer and len(iface.interface_ends) > 1:
+                consumer = iface.interface_ends[1].port_type
+            desc = _escape_latex(iface.doc) if iface.doc else "---"
+            lines.append(
+                f"{_escape_latex(iface.name)} & {_escape_latex(supplier)} & {_escape_latex(consumer)} & {desc} \\\\"
+            )
+            lines.append("\\hline")
+        lines.append("\\end{longtable}")
+
+    return "\n".join(lines)
+
+
 def _render_section_elements_table(section: SectionIR) -> str:
     """Render a section's exposed elements as a (potentially multi-page) table."""
-    items = [e for e in section.exposed_elements if e.kind != "package"]
+    items = [e for e in section.exposed_elements if e.kind not in {"package", "port", "interface"}]
     if not items:
         return "No elements resolved."
 
@@ -283,6 +356,60 @@ def _render_events_table(events: list[ExposedElement]) -> str:
     return "\n".join(lines)
 
 
+def _render_parametric_constraints_table(section: SectionIR) -> str:
+    """Render constraint defs by name with intent (doc) and parameter summary for Parametric Validation section."""
+    constraints = [
+        e for e in section.exposed_elements
+        if getattr(e, "kind", None) == "constraint"
+    ]
+    if not constraints:
+        return ""
+    constraints.sort(key=lambda c: c.name)
+    lines = [
+        "\\subsubsection{Constraint definitions}",
+        "",
+        "\\begin{longtable}{|p{2.8cm}|p{6.5cm}|p{4.2cm}|}",
+        "\\hline",
+        "\\textbf{Constraint} & \\textbf{Intent} & \\textbf{Parameters} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for c in constraints:
+        intent = _escape_latex(c.doc) if c.doc else "---"
+        params = getattr(c, "constraint_params", None) or []
+        param_str = ", ".join(
+            f"{_escape_latex(name)}: {_escape_latex(typ)}"
+            for name, typ in params
+        ) if params else "---"
+        lines.append(f"{_escape_latex(c.name)} & {intent} & {param_str} \\\\")
+        lines.append("\\hline")
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
+def _render_allocation_traceability_matrix(document: DocumentIR) -> str:
+    """Render the allocation traceability matrix (Requirement, Logical block, CIM derive)."""
+    rows = getattr(document, "allocation_matrix", None) or []
+    if not rows:
+        return ""
+
+    lines = [
+        "\\begin{longtable}{|p{5cm}|p{4cm}|p{5cm}|}",
+        "\\hline",
+        "\\textbf{Requirement} & \\textbf{Logical block} & \\textbf{CIM derive} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for row in rows:
+        req = _escape_latex(row.requirement)
+        block = _escape_latex(row.logical_block)
+        cim = _escape_latex(row.cim_derive) if row.cim_derive else "---"
+        lines.append(f"{req} & {block} & {cim} \\\\")
+        lines.append("\\hline")
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
 def _render_by_directive(document: DocumentIR) -> str:
     render_kind = (document.binding.render_kind or "").strip()
     if render_kind == "ElementTable":
@@ -327,27 +454,63 @@ def _build_tex(document: DocumentIR, version: str) -> str:
         lines.append(_escape_latex(document.purpose))
         lines.append("")
 
+    # DOC_PIM_Allocation: dedicated Traceability matrix subsection (satisfy relationships).
+    if document.document_id == "DOC_PIM_Allocation":
+        matrix_tex = _render_allocation_traceability_matrix(document)
+        if matrix_tex:
+            lines.append("\\subsection{Traceability Matrix}")
+            lines.append("")
+            lines.append(matrix_tex)
+            lines.append("")
+
     if document.sections:
         # Section-aware rendering: each SectionIR becomes its own subsection.
         for section in document.sections:
             heading_cmd = _heading_for_depth(section.depth)
-            lines.append(f"{heading_cmd}{{{_escape_latex(section.title)}}}")
+            # PIM template SignoffSection exposes PIM::Allocations::** so section title becomes "Allocations"; match by section.id.
+            is_signoff_section = (
+                section.title.strip().lower() == "stakeholder signoff"
+                or getattr(section, "id", "") == "SignoffSection"
+            )
+            is_gateway_signoff_doc = document.document_id in (
+                "DOC_CIM_GatewaySignoff",
+                "DOC_PIM_GatewaySignoff",
+            )
+            heading_text = (
+                "Stakeholder Signoff"
+                if (is_signoff_section and is_gateway_signoff_doc)
+                else section.title
+            )
+            lines.append(f"{heading_cmd}{{{_escape_latex(heading_text)}}}")
             if section.intro:
                 lines.append(_escape_latex(section.intro))
                 lines.append("")
 
-            # Special-case rendering for the CIM gateway stakeholder signoff table.
-            if (
-                document.document_id == "DOC_CIM_GatewaySignoff"
-                and section.title.strip().lower() == "stakeholder signoff"
-            ):
+            if is_signoff_section and is_gateway_signoff_doc:
                 lines.append(_render_stakeholder_signoff_table(document))
                 lines.append("")
                 continue
 
+            # DOC_PIM_InterfaceDesign: render boundary ports and interfaces (port name, interface name, flow properties, types).
+            if document.document_id == "DOC_PIM_InterfaceDesign":
+                boundary_tex = _render_boundary_ports_and_interfaces(section)
+                if boundary_tex:
+                    lines.append(boundary_tex)
+                    lines.append("")
+
+            # DOC_PIM_Verification: list constraint defs by name with intent and parameter summary (Parametric Validation).
+            if document.document_id == "DOC_PIM_Verification":
+                param_tex = _render_parametric_constraints_table(section)
+                if param_tex:
+                    lines.append(param_tex)
+                    lines.append("")
+
             # Render section elements as a table (name/kind/description).
+            exclude_kinds = {"package", "use case", "port", "interface"}
+            if document.document_id == "DOC_PIM_Verification":
+                exclude_kinds = exclude_kinds | {"constraint"}
             section_items = [
-                e for e in section.exposed_elements if e.kind not in {"package", "use case"}
+                e for e in section.exposed_elements if e.kind not in exclude_kinds
             ]
             if section_items:
                 lines.append(_render_section_elements_table(section))

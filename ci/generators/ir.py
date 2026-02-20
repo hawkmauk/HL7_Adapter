@@ -28,6 +28,7 @@ class ExposedElement:
     attributes: list["AttributeIR"] = field(default_factory=list)
     flow_properties: list["FlowPropertyIR"] = field(default_factory=list)
     interface_ends: list["InterfaceEndIR"] = field(default_factory=list)
+    constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
 
 
 @dataclass(slots=True)

@@ -140,6 +140,7 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 InterfaceEndIR(role=r, port_type=pt)
                 for r, pt in getattr(candidate, "interface_ends", [])
             ]
+            constraint_params = list(getattr(candidate, "constraint_params", []))
             resolved[candidate.qualified_name] = ExposedElement(
                 qualified_name=candidate.qualified_name,
                 kind=candidate.kind,
@@ -152,6 +153,7 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 ],
                 flow_properties=flow_props,
                 interface_ends=interface_ends_ir,
+                constraint_params=constraint_params,
             )
             # If an exposed element is itself a view, include what it exposes.
             if candidate.kind == "view" and candidate.qualified_name not in expanded_views:
@@ -259,6 +261,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                                 AttributeIR(name=attr.name, type=attr.type, doc="")
                                 for attr in getattr(model_el, "attributes", [])
                             ],
+                            constraint_params=list(getattr(model_el, "constraint_params", [])),
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
@@ -279,6 +282,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                         InterfaceEndIR(role=r, port_type=pt)
                         for r, pt in getattr(model_el, "interface_ends", [])
                     ]
+                    constraint_params = list(getattr(model_el, "constraint_params", []))
                     exposed_elements.append(
                         ExposedElement(
                             qualified_name=qname,
@@ -292,6 +296,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                             ],
                             flow_properties=flow_props,
                             interface_ends=interface_ends_ir,
+                            constraint_params=constraint_params,
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)

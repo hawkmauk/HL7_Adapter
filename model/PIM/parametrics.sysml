@@ -10,13 +10,15 @@ package PIM_Parametrics {
      * ----------------------------------------------------------------------- */
 
     constraint def <ThroughputConstraint> 'Throughput Constraint' {
-        doc /* Relates arrival rate, service rate, and queue depth to throughput MoE. Supports CIM M1_MoE1 (99.9% ingestion success). Relevant PIM: SYS1.5 Ingestion Reliability. */
+        doc /* Relates arrival rate, service rate, and queue depth to throughput MoE. Stability: arrivalRate <= serviceRate; capacity meets MoE: serviceRate >= arrivalRate * minThroughputMoE; queue depth non-negative. Supports CIM M1_MoE1 (99.9% ingestion success). Relevant PIM: SYS1.5 Ingestion Reliability. */
         in arrivalRate : Real;
         in serviceRate : Real;
         in queueDepth : Integer;
         in minThroughputMoE : Real;
 
         arrivalRate <= serviceRate and
+        serviceRate >= arrivalRate * minThroughputMoE and
+        queueDepth >= 0 and
         minThroughputMoE <= 1.0
     }
 
@@ -42,12 +44,12 @@ package PIM_Parametrics {
      * ----------------------------------------------------------------------- */
 
     constraint def <ReliabilityConstraint> 'Reliability Constraint' {
-        doc /* Relates retry count and failure rate to availability/observability target. Supports CIM M1_MoE1, M4_MoE1 (99% error observability). Relevant PIM: SYS3.5 Retry Policy, SYS4. */
+        doc /* Effective failure after (retryCount+1) attempts = failureRate^(retryCount+1); require availability 1 - that <= availabilityTarget. Supports CIM M1_MoE1, M4_MoE1 (99% error observability). Relevant PIM: SYS3.5 Retry Policy, SYS4. */
         in retryCount : Integer;
         in failureRate : Real;
         in availabilityTarget : Real;
 
-        failureRate <= (1.0 - availabilityTarget)
+        failureRate^(retryCount + 1) <= (1.0 - availabilityTarget)
     }
 
     /* -----------------------------------------------------------------------

@@ -356,6 +356,37 @@ def _render_events_table(events: list[ExposedElement]) -> str:
     return "\n".join(lines)
 
 
+def _render_parametric_constraints_table(section: SectionIR) -> str:
+    """Render constraint defs by name with intent (doc) and parameter summary for Parametric Validation section."""
+    constraints = [
+        e for e in section.exposed_elements
+        if getattr(e, "kind", None) == "constraint"
+    ]
+    if not constraints:
+        return ""
+    constraints.sort(key=lambda c: c.name)
+    lines = [
+        "\\subsubsection{Constraint definitions}",
+        "",
+        "\\begin{longtable}{|p{2.8cm}|p{6.5cm}|p{4.2cm}|}",
+        "\\hline",
+        "\\textbf{Constraint} & \\textbf{Intent} & \\textbf{Parameters} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for c in constraints:
+        intent = _escape_latex(c.doc) if c.doc else "---"
+        params = getattr(c, "constraint_params", None) or []
+        param_str = ", ".join(
+            f"{_escape_latex(name)}: {_escape_latex(typ)}"
+            for name, typ in params
+        ) if params else "---"
+        lines.append(f"{_escape_latex(c.name)} & {intent} & {param_str} \\\\")
+        lines.append("\\hline")
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
 def _render_allocation_traceability_matrix(document: DocumentIR) -> str:
     """Render the allocation traceability matrix (Requirement, Logical block, CIM derive)."""
     rows = getattr(document, "allocation_matrix", None) or []
@@ -457,9 +488,19 @@ def _build_tex(document: DocumentIR, version: str) -> str:
                     lines.append(boundary_tex)
                     lines.append("")
 
+            # DOC_PIM_Verification: list constraint defs by name with intent and parameter summary (Parametric Validation).
+            if document.document_id == "DOC_PIM_Verification":
+                param_tex = _render_parametric_constraints_table(section)
+                if param_tex:
+                    lines.append(param_tex)
+                    lines.append("")
+
             # Render section elements as a table (name/kind/description).
+            exclude_kinds = {"package", "use case", "port", "interface"}
+            if document.document_id == "DOC_PIM_Verification":
+                exclude_kinds = exclude_kinds | {"constraint"}
             section_items = [
-                e for e in section.exposed_elements if e.kind not in {"package", "use case", "port", "interface"}
+                e for e in section.exposed_elements if e.kind not in exclude_kinds
             ]
             if section_items:
                 lines.append(_render_section_elements_table(section))

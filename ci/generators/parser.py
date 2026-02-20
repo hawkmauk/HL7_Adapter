@@ -45,10 +45,18 @@ ALLOCATION_SATISFY_RE = re.compile(
 REFINEMENT_DEPENDENCY_RE = re.compile(
     r"(?m)#refinement\s+dependency\s+'([^']+)'\s+to\s+'([^']+)';"
 )
+# Nested part declarations (no body): "part name : Type;" or "part <short> 'name' : Type;"
+PART_INLINE_RE = re.compile(
+    r"(?m)^\s*part\s+(?:<(?P<short>[^>]+)>)?\s*"
+    r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<types>[^;]+);"
+)
 # Constraint def parameters: "in name : Type;" (not "in item|attribute ...")
 CONSTRAINT_PARAM_RE = re.compile(
     r"(?m)^\s*in\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<type>[^;]+);"
 )
+# Attribute value/weight assignments in body (for trade-study score: value = N, weight = N)
+ATTR_VALUE_ASSIGN_RE = re.compile(r"attribute\s+::>\s+value\s*=\s*([\d.]+)")
+ATTR_WEIGHT_ASSIGN_RE = re.compile(r"attribute\s+::>\s+weight\s*=\s*([\d.]+)")
 
 
 @dataclass(slots=True)
@@ -82,6 +90,8 @@ class ModelElement:
     allocation_satisfy: list[tuple[str, str]] = field(default_factory=list)  # (requirement_name, logical_block_path)
     refinement_dependencies: list[tuple[str, str]] = field(default_factory=list)  # (pim_req, cim_req)
     constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
+    value_assignments: list[float] = field(default_factory=list)  # attribute ::> value = N (order preserved)
+    weight_assignments: list[float] = field(default_factory=list)  # attribute ::> weight = N (order preserved)
 
 
 @dataclass(slots=True)
@@ -230,6 +240,10 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                     (cp_match.group("name"), cp_match.group("type").strip())
                 )
 
+        # Attribute value/weight assignments (for trade-study score: sum value*weight)
+        value_assignments = [float(m.group(1)) for m in ATTR_VALUE_ASSIGN_RE.finditer(body)]
+        weight_assignments = [float(m.group(1)) for m in ATTR_WEIGHT_ASSIGN_RE.finditer(body)]
+
         elements.append(
             ModelElement(
                 kind=kind,
@@ -254,6 +268,8 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 allocation_satisfy=allocation_satisfy,
                 refinement_dependencies=refinement_dependencies,
                 constraint_params=constraint_params,
+                value_assignments=value_assignments,
+                weight_assignments=weight_assignments,
             )
         )
     return elements
@@ -273,6 +289,34 @@ def _resolve_qualified_names(elements: list[ModelElement]) -> None:
         element.qualified_name = "::".join(path + [element.name]) if path else element.name
 
 
+def _extract_nested_parts(parent: ModelElement) -> list[ModelElement]:
+    """Extract nested part declarations from a part block body (e.g. 'part nodeScored : ScoredX;'). Only part blocks are scanned so package bodies are not traversed (avoiding wrong qualified_name)."""
+    children: list[ModelElement] = []
+    if not parent.body or parent.kind != "part":
+        return children
+    for match in PART_INLINE_RE.finditer(parent.body):
+        name = _strip_quotes(match.group("name"))
+        short = _strip_short_name(match.group("short"))
+        types_str = (match.group("types") or "").strip()
+        supertypes = [t.strip() for t in types_str.split(",") if t.strip()]
+        child = ModelElement(
+            kind="part",
+            name=name,
+            short_name=short,
+            file_path=parent.file_path,
+            start_index=parent.start_index,
+            end_index=parent.end_index,
+            start_line=parent.start_line,
+            end_line=parent.end_line,
+            body="",
+            qualified_name=parent.qualified_name + "::" + name if parent.qualified_name else name,
+            doc="",
+            supertypes=supertypes,
+        )
+        children.append(child)
+    return children
+
+
 def parse_model_directory(model_dir: Path) -> ModelIndex:
     # Recursively include all .sysml files so that library packages under
     # subdirectories (e.g. MDA_Library) are part of the model index.
@@ -290,6 +334,11 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
             declared_ids.setdefault(symbol, []).append(file_path)
 
     _resolve_qualified_names(all_elements)
+    # Extract nested part declarations (e.g. part nodeScored : ScoredX;) so they appear as elements.
+    nested: list[ModelElement] = []
+    for element in all_elements:
+        nested.extend(_extract_nested_parts(element))
+    all_elements.extend(nested)
     all_elements.sort(key=lambda e: (str(e.file_path), e.start_index))
 
     by_qname: dict[str, ModelElement] = {}

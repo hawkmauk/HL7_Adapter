@@ -36,7 +36,11 @@ class ExtractionResult:
 
 
 def _title_from_id(document_id: str) -> str:
-    base = document_id.removeprefix("DOC_CIM_")
+    base = (
+        document_id.removeprefix("DOC_CIM_")
+        .removeprefix("DOC_PIM_")
+        .removeprefix("DOC_PSM_")
+    )
     parts = base.split("_")
     return " ".join(parts)
 
@@ -382,7 +386,7 @@ def extract_documents(
     requirements, but callers can override the prefixes or provide an explicit
     document predicate for other abstraction levels (PSM) or document families.
     """
-    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_", "DOC_PIM_"))
+    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_", "DOC_PIM_", "DOC_PSM_"))
 
     def _default_is_document(element: ModelElement) -> bool:
         if element.kind != "view":

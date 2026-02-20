@@ -1,6 +1,7 @@
-package 'PSM-ViewLibrary' {
+package PSM_Viewpoint {
+
     private import Views::*;
-    private import ViewLibrary::StandardViewpointCatalog::*;
+    private import MDA_Viewpoint::*;
 
     package PSMStandardViewpointCatalog {
         doc /* PSM-specific viewpoint catalog specializing the abstract lifecycle documentation contract. */

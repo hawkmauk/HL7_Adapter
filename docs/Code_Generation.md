@@ -8,16 +8,17 @@ pandoc-style approach: one parser, one generic intermediate representation
 (the model graph), and pluggable output targets.
 
 ```
-.sysml files ─→ parser.py (ModelIndex) ─→ graph_builder.py (ModelGraph) ─→ target
-                                                                           ├── latex
-                                                                           └── typescript
+.sysml files ─→ parsing/ (ModelIndex) ─→ graph/builder.py (ModelGraph) ─→ target
+                                                                         ├── targets/latex
+                                                                         └── targets/typescript
 ```
 
 ## Architecture
 
-### Parser (`parser.py`)
+### Parser (`parsing/`)
 
-Reads `.sysml` files and produces a flat `ModelIndex` of `ModelElement`
+The parsing package (entry point `parsing/driver.py`: `parse_model_directory`) reads
+`.sysml` files and produces a flat `ModelIndex` of `ModelElement`
 objects. Recognises: `package`, `part`, `port`, `interface`, `view`,
 `constraint`, `use case`, `occurrence`, `action`, `state`, `attribute def`,
 `item`, and signal declarations.
@@ -29,10 +30,11 @@ For state machines the parser extracts:
 - Transitions with source-state context (`accept Signal then Target`)
 - State-machine port declarations (`in name : Type;`)
 
-### Graph Builder (`graph_builder.py`)
+### Graph Builder (`graph/builder.py`)
 
-Walks `ModelIndex` and constructs a `ModelGraph`: a directed labelled graph
-where nodes are model elements and edges represent typed relationships.
+`build_model_graph` in `graph/builder.py` walks `ModelIndex` and constructs a
+`ModelGraph`: a directed labelled graph where nodes are model elements and edges
+represent typed relationships.
 
 **Edge labels:**
 
@@ -150,10 +152,12 @@ python -m ci.generators --list-targets
 
 ## Adding a new target
 
-1. Create `ci/generators/<target_name>.py`
-2. Implement a `GeneratorTarget` subclass with a `generate(graph, options)` method
-3. Register it with `@register_target`
-4. Import it in `ci/generators/__main__.py` inside `_build_registry()`
+1. Create a subpackage under `ci/generators/targets/`, e.g. `targets/<target_name>/`, with an `__init__.py` that defines the `GeneratorTarget` subclass and a `@register_target` factory.
+2. Implement `GeneratorTarget` with `generate(graph: ModelGraph, options: GenerationOptions) -> list[GeneratedArtifact]`.
+3. Register with `@register_target` (from `ci.generators.registry`).
+4. Import the target package in `ci/generators/__main__.py` inside `_build_registry()` (e.g. `from .targets import <target_name>`) so it registers when the CLI runs.
 
 The target receives a `ModelGraph` with the full model and `GenerationOptions`
-with output directory, version, and any CLI extras.
+with output directory, version, and any CLI extras. A Python skeleton target
+could be added under `targets/python/` using the same pattern (state enum/class,
+dispatch, config from PSM).

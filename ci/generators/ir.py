@@ -29,6 +29,9 @@ class ExposedElement:
     flow_properties: list["FlowPropertyIR"] = field(default_factory=list)
     interface_ends: list["InterfaceEndIR"] = field(default_factory=list)
     constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
+    supertypes: list[str] = field(default_factory=list)  # part/view supertypes for filtering (e.g. Scored*Alternative)
+    value_assignments: list[float] = field(default_factory=list)  # attribute ::> value = N (for score)
+    weight_assignments: list[float] = field(default_factory=list)  # attribute ::> weight = N (for score)
 
 
 @dataclass(slots=True)

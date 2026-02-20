@@ -93,7 +93,7 @@ package PIM_View {
             /* This section describes the logical message contracts and data structures exchanged over
                the interfaces, independent of serialization technology.
              */
-            expose PIM::DataModel::**;
+            expose PIM::Interfaces::**;
         }
 
         view <ErrorHandlingSection> 'Error Handling' {

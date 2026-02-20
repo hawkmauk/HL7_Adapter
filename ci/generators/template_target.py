@@ -29,7 +29,7 @@ class ExampleGenerator(GeneratorTarget):
 
         artifacts: list[GeneratedArtifact] = []
         for document in documents:
-            filename = f"{document.document_id}-{options.version}.txt"
+            filename = f"{document.document_id}.txt"
             path = output_dir / filename
             path.write_text(
                 f"Document: {document.document_id}\nTitle: {document.title}\n",

@@ -44,7 +44,7 @@ python3 -m ci.generators --target latex --model-dir model --out out --version v0
 
 Outputs:
 
-- `out/<document-id>-<version>.tex` for each document view (CIM/PIM/PSM)
+- `out/<document-id>.tex` for each document view (CIM/PIM/PSM)
 - `out/lyrebird-doc-style.sty`, `out/lyrebird-html.cfg`, and logo assets
 - `out/coverage-report.json`
 
@@ -89,7 +89,7 @@ On every push to `main` (including merges from pull requests), the [Build docs](
 
 Filenames use the document view's stable ID plus the version suffix (no CIM/PIM/PSM prefix):
 
-- filename: `<document-id>-<version>.tex`
+- filename: `<document-id>.tex`
 - examples:
   - `DOC_CIM_SNRS` -> `DOC_CIM_SNRS-v0.1.0.tex`
   - `DOC_PIM_LogicalArchitecture` -> `DOC_PIM_LogicalArchitecture-v0.1.0.tex`

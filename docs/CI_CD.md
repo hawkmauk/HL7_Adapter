@@ -55,3 +55,14 @@ This gives you:
 ### Releases (version tags)
 
 When you push a version tag (e.g. `v0.1.0`), the [Release docs](../.github/workflows/release-docs.yml) workflow builds the docs at that version and creates a **GitHub Release** with all PDFs attached (and a zip of all PDFs). See the [Releases](https://github.com/hawkmauk/HL7_Adapter/releases) page for versioned downloads.
+
+### Version numbering
+
+The generator resolves the **version** used in document metadata (e.g. title block) in this order:
+
+1. **Command line** – If you pass `--version` to `python -m ci.generators`, that value is used.
+2. **Git tag** – If the current HEAD is exactly on an annotated or lightweight tag, the tag name is used (e.g. `v0.1.0`).
+3. **Git commit** – Otherwise the short commit hash is used (e.g. `462c8bb`).
+4. **Fallback** – If git is unavailable or the repo is not a git repository, the version is `undefined`.
+
+Output **filenames** do not include the version: each document is written as `<document-id>.tex` and `<document-id>.pdf` (e.g. `DOC_CIM_ConOps.tex`), so builds are overwritten in place and the version appears only inside the document (title/metadata).

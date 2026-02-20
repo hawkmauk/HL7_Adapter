@@ -36,7 +36,11 @@ class ExtractionResult:
 
 
 def _title_from_id(document_id: str) -> str:
-    base = document_id.removeprefix("DOC_CIM_")
+    base = (
+        document_id.removeprefix("DOC_CIM_")
+        .removeprefix("DOC_PIM_")
+        .removeprefix("DOC_PSM_")
+    )
     parts = base.split("_")
     return " ".join(parts)
 
@@ -141,6 +145,9 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 for r, pt in getattr(candidate, "interface_ends", [])
             ]
             constraint_params = list(getattr(candidate, "constraint_params", []))
+            supertypes = list(getattr(candidate, "supertypes", []))
+            value_assignments = list(getattr(candidate, "value_assignments", []))
+            weight_assignments = list(getattr(candidate, "weight_assignments", []))
             resolved[candidate.qualified_name] = ExposedElement(
                 qualified_name=candidate.qualified_name,
                 kind=candidate.kind,
@@ -154,6 +161,9 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                 flow_properties=flow_props,
                 interface_ends=interface_ends_ir,
                 constraint_params=constraint_params,
+                supertypes=supertypes,
+                value_assignments=value_assignments,
+                weight_assignments=weight_assignments,
             )
             # If an exposed element is itself a view, include what it exposes.
             if candidate.kind == "view" and candidate.qualified_name not in expanded_views:
@@ -262,6 +272,9 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                                 for attr in getattr(model_el, "attributes", [])
                             ],
                             constraint_params=list(getattr(model_el, "constraint_params", [])),
+                            supertypes=list(getattr(model_el, "supertypes", [])),
+                            value_assignments=list(getattr(model_el, "value_assignments", [])),
+                            weight_assignments=list(getattr(model_el, "weight_assignments", [])),
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
@@ -297,6 +310,9 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                             flow_properties=flow_props,
                             interface_ends=interface_ends_ir,
                             constraint_params=constraint_params,
+                            supertypes=list(getattr(model_el, "supertypes", [])),
+                            value_assignments=list(getattr(model_el, "value_assignments", [])),
+                            weight_assignments=list(getattr(model_el, "weight_assignments", [])),
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)
@@ -382,7 +398,7 @@ def extract_documents(
     requirements, but callers can override the prefixes or provide an explicit
     document predicate for other abstraction levels (PSM) or document families.
     """
-    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_", "DOC_PIM_"))
+    effective_doc_prefixes: Sequence[str] = tuple(doc_prefixes or ("DOC_CIM_", "DOC_PIM_", "DOC_PSM_"))
 
     def _default_is_document(element: ModelElement) -> bool:
         if element.kind != "view":

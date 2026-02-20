@@ -2,12 +2,45 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 import sys
 
 from .engine import run_generation
 from .errors import GenerationError
 from .registry import TargetRegistry, build_default_registry
+
+
+def _resolve_version(cwd: Path | None) -> str:
+    """
+    Resolve version from git (in precedence order): tag at HEAD, short commit, else 'undefined'.
+    Uses cwd as the working directory for git (e.g. model_dir or repo root).
+    """
+    work_dir = cwd if cwd is not None and cwd.exists() else Path.cwd()
+    try:
+        # 1. Tag pointing at current HEAD (exact match only)
+        r = subprocess.run(
+            ["git", "describe", "--tags", "--exact-match"],
+            cwd=work_dir,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if r.returncode == 0 and r.stdout:
+            return r.stdout.strip()
+        # 2. Short commit hash
+        r = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=work_dir,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if r.returncode == 0 and r.stdout:
+            return r.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return "undefined"
 
 
 def _build_registry() -> TargetRegistry:
@@ -31,7 +64,12 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--target", required=False, help="Generation target (e.g. latex).")
     parser.add_argument("--model-dir", help="Directory containing .sysml model files.")
     parser.add_argument("--out", help="Output directory for generated artifacts.")
-    parser.add_argument("--version", default="v0.1.0", help="Artifact version suffix.")
+    parser.add_argument(
+        "--version",
+        default=None,
+        metavar="VERSION",
+        help="Artifact version suffix. If omitted: git tag at HEAD, else short commit, else 'undefined'.",
+    )
     parser.add_argument(
         "--coverage-report",
         default="coverage-report.json",
@@ -112,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     if not args.model_dir or not args.out:
         raise SystemExit("Error: --model-dir and --out are required for generation.")
 
+    version = (
+        args.version
+        if args.version is not None
+        else _resolve_version(Path(args.model_dir))
+    )
     extra = _parse_extra_options(args.config, args.option)
 
     try:
@@ -120,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
             target_name=args.target,
             model_dir=Path(args.model_dir),
             output_dir=Path(args.out),
-            version=args.version,
+            version=version,
             extra=extra,
         )
     except GenerationError as exc:

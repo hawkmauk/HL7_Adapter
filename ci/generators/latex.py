@@ -436,16 +436,26 @@ def _build_tex(document: DocumentIR, version: str) -> str:
         # Section-aware rendering: each SectionIR becomes its own subsection.
         for section in document.sections:
             heading_cmd = _heading_for_depth(section.depth)
-            lines.append(f"{heading_cmd}{{{_escape_latex(section.title)}}}")
+            # PIM template SignoffSection exposes PIM::Allocations::** so section title becomes "Allocations"; match by section.id.
+            is_signoff_section = (
+                section.title.strip().lower() == "stakeholder signoff"
+                or getattr(section, "id", "") == "SignoffSection"
+            )
+            is_gateway_signoff_doc = document.document_id in (
+                "DOC_CIM_GatewaySignoff",
+                "DOC_PIM_GatewaySignoff",
+            )
+            heading_text = (
+                "Stakeholder Signoff"
+                if (is_signoff_section and is_gateway_signoff_doc)
+                else section.title
+            )
+            lines.append(f"{heading_cmd}{{{_escape_latex(heading_text)}}}")
             if section.intro:
                 lines.append(_escape_latex(section.intro))
                 lines.append("")
 
-            # Special-case rendering for the CIM gateway stakeholder signoff table.
-            if (
-                document.document_id == "DOC_CIM_GatewaySignoff"
-                and section.title.strip().lower() == "stakeholder signoff"
-            ):
+            if is_signoff_section and is_gateway_signoff_doc:
                 lines.append(_render_stakeholder_signoff_table(document))
                 lines.append("")
                 continue

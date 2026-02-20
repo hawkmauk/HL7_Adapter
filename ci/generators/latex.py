@@ -356,6 +356,32 @@ def _render_events_table(events: list[ExposedElement]) -> str:
     return "\n".join(lines)
 
 
+def _render_technology_selection_table(section: SectionIR) -> str:
+    """Render trade-study packages (name + rationale/doc) for DOC_PSM_PlatformRealization Technology Selection section."""
+    packages = [
+        e for e in section.exposed_elements
+        if e.kind == "package"
+        and e.qualified_name.startswith("PSM_TechnologySelection::")
+    ]
+    if not packages:
+        return ""
+    packages.sort(key=lambda p: p.name)
+    lines = [
+        "\\begin{longtable}{|p{3.2cm}|p{11.3cm}|}",
+        "\\hline",
+        "\\textbf{Selection} & \\textbf{Rationale} \\\\",
+        "\\hline",
+        "\\endhead",
+    ]
+    for p in packages:
+        name = _escape_latex(p.name)
+        rationale = _escape_latex(p.doc) if p.doc else "---"
+        lines.append(f"{name} & {rationale} \\\\")
+        lines.append("\\hline")
+    lines.append("\\end{longtable}")
+    return "\n".join(lines)
+
+
 def _render_parametric_constraints_table(section: SectionIR) -> str:
     """Render constraint defs by name with intent (doc) and parameter summary for Parametric Validation section."""
     constraints = [
@@ -505,6 +531,13 @@ def _build_tex(document: DocumentIR, version: str) -> str:
                     lines.append(param_tex)
                     lines.append("")
 
+            # DOC_PSM_PlatformRealization: Technology Selection section — render trade-study packages (name + rationale).
+            if document.document_id == "DOC_PSM_PlatformRealization":
+                tech_tex = _render_technology_selection_table(section)
+                if tech_tex:
+                    lines.append(tech_tex)
+                    lines.append("")
+
             # Render section elements as a table (name/kind/description).
             exclude_kinds = {"package", "use case", "port", "interface"}
             if document.document_id == "DOC_PIM_Verification":
@@ -558,14 +591,14 @@ def _build_tex(document: DocumentIR, version: str) -> str:
     return "\n".join(lines)
 
 
-def _filename_for_document(document: DocumentIR, version: str) -> str:
+def _filename_for_document(document: DocumentIR) -> str:
     """
     Derive the LaTeX filename for a document.
 
     We use the view's stable ID directly so that CIM/PIM/PSM documents can
-    coexist without a hard-coded prefix, and append the version suffix.
+    coexist without a hard-coded prefix.
     """
-    return f"{document.document_id}-{version}.tex"
+    return f"{document.document_id}.tex"
 
 
 class LatexGenerator(GeneratorTarget):
@@ -610,7 +643,7 @@ class LatexGenerator(GeneratorTarget):
         # overwrite documents that map to the same output path.
         filename_map: dict[str, list[str]] = {}
         for document in documents:
-            filename = _filename_for_document(document, options.version)
+            filename = _filename_for_document(document)
             filename_map.setdefault(filename, []).append(document.document_id)
 
         collisions = {name: ids for name, ids in filename_map.items() if len(ids) > 1}
@@ -628,7 +661,7 @@ class LatexGenerator(GeneratorTarget):
             raise ValidationError(message)
 
         for document in sorted(documents, key=lambda item: item.document_id):
-            filename = _filename_for_document(document, options.version)
+            filename = _filename_for_document(document)
             output_path = output_dir / filename
             output_path.write_text(_build_tex(document, options.version), encoding="utf-8")
             artifacts.append(

@@ -9,6 +9,8 @@ from .ir import (
     CoverageEntry,
     DocumentIR,
     ExposedElement,
+    FlowPropertyIR,
+    InterfaceEndIR,
     SectionIR,
     SourceRef,
     ViewBinding,
@@ -129,6 +131,14 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
 
         for candidate in candidates:
             package_path = tuple(candidate.qualified_name.split("::")[:-1])
+            flow_props = [
+                FlowPropertyIR(direction=d, kind=k, name=n, type=t)
+                for d, k, n, t in getattr(candidate, "flow_properties", [])
+            ]
+            interface_ends_ir = [
+                InterfaceEndIR(role=r, port_type=pt)
+                for r, pt in getattr(candidate, "interface_ends", [])
+            ]
             resolved[candidate.qualified_name] = ExposedElement(
                 qualified_name=candidate.qualified_name,
                 kind=candidate.kind,
@@ -139,6 +149,8 @@ def _resolve_expose_elements(expose_refs: list[str], model_index: ModelIndex) ->
                     AttributeIR(name=attr.name, type=attr.type, doc="")
                     for attr in getattr(candidate, "attributes", [])
                 ],
+                flow_properties=flow_props,
+                interface_ends=interface_ends_ir,
             )
             # If an exposed element is itself a view, include what it exposes.
             if candidate.kind == "view" and candidate.qualified_name not in expanded_views:
@@ -258,6 +270,14 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                 package_path = tuple(model_el.qualified_name.split("::")[:-1])
                 qname = model_el.qualified_name
                 if not any(e.qualified_name == qname for e in exposed_elements):
+                    flow_props = [
+                        FlowPropertyIR(direction=d, kind=k, name=n, type=t)
+                        for d, k, n, t in getattr(model_el, "flow_properties", [])
+                    ]
+                    interface_ends_ir = [
+                        InterfaceEndIR(role=r, port_type=pt)
+                        for r, pt in getattr(model_el, "interface_ends", [])
+                    ]
                     exposed_elements.append(
                         ExposedElement(
                             qualified_name=qname,
@@ -269,6 +289,8 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                                 AttributeIR(name=attr.name, type=attr.type, doc="")
                                 for attr in getattr(model_el, "attributes", [])
                             ],
+                            flow_properties=flow_props,
+                            interface_ends=interface_ends_ir,
                         )
                     )
         exposed_elements = sorted(exposed_elements, key=lambda item: item.qualified_name)

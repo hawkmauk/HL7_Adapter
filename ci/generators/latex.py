@@ -221,9 +221,82 @@ def _render_stakeholder_signoff_table(document: DocumentIR) -> str:
     return "\n".join(lines)
 
 
+def _render_boundary_ports_and_interfaces(section: SectionIR) -> str:
+    """Render boundary port and interface definitions (port name, interface name, flow properties, types) for PIM Interface Design."""
+    ports = [e for e in section.exposed_elements if e.kind == "port"]
+    interfaces = [e for e in section.exposed_elements if e.kind == "interface"]
+    if not ports and not interfaces:
+        return ""
+
+    lines: list[str] = []
+
+    if ports:
+        lines.append("\\subsubsection{Boundary Ports}")
+        lines.append(
+            "\\begin{longtable}{|p{2.2cm}|p{1.8cm}|p{4cm}|p{5.5cm}|}",
+        )
+        lines.append("\\hline")
+        lines.append(
+            "\\textbf{Port} & \\textbf{Direction} & \\textbf{Item flows} & \\textbf{Signal flows} \\\\"
+        )
+        lines.append("\\hline")
+        lines.append("\\endhead")
+        for port in ports:
+            items = [fp for fp in port.flow_properties if fp.kind == "item"]
+            signals = [fp for fp in port.flow_properties if fp.kind == "attribute"]
+            item_str = ", ".join(
+                f"{_escape_latex(fp.name)}: {_escape_latex(fp.type or '')}"
+                for fp in items
+            ) or "---"
+            signal_str = ", ".join(
+                f"{_escape_latex(fp.name)}: {_escape_latex(fp.type or '')}"
+                for fp in signals
+            ) or "---"
+            dirs = {fp.direction for fp in port.flow_properties}
+            dir_str = ", ".join(sorted(dirs)) if dirs else "---"
+            lines.append(
+                f"{_escape_latex(port.name)} & {_escape_latex(dir_str)} & {_escape_latex(item_str)} & {_escape_latex(signal_str)} \\\\"
+            )
+            lines.append("\\hline")
+        lines.append("\\end{longtable}")
+        lines.append("")
+
+    if interfaces:
+        lines.append("\\subsubsection{Interfaces}")
+        lines.append(
+            "\\begin{longtable}{|p{2.5cm}|p{3cm}|p{3cm}|p{4cm}|}",
+        )
+        lines.append("\\hline")
+        lines.append(
+            "\\textbf{Interface} & \\textbf{Supplier port} & \\textbf{Consumer port} & \\textbf{Description} \\\\"
+        )
+        lines.append("\\hline")
+        lines.append("\\endhead")
+        for iface in interfaces:
+            supplier = ""
+            consumer = ""
+            for e in iface.interface_ends:
+                if "supplier" in e.role.lower():
+                    supplier = e.port_type
+                elif "consumer" in e.role.lower():
+                    consumer = e.port_type
+            if not supplier and iface.interface_ends:
+                supplier = iface.interface_ends[0].port_type
+            if not consumer and len(iface.interface_ends) > 1:
+                consumer = iface.interface_ends[1].port_type
+            desc = _escape_latex(iface.doc) if iface.doc else "---"
+            lines.append(
+                f"{_escape_latex(iface.name)} & {_escape_latex(supplier)} & {_escape_latex(consumer)} & {desc} \\\\"
+            )
+            lines.append("\\hline")
+        lines.append("\\end{longtable}")
+
+    return "\n".join(lines)
+
+
 def _render_section_elements_table(section: SectionIR) -> str:
     """Render a section's exposed elements as a (potentially multi-page) table."""
-    items = [e for e in section.exposed_elements if e.kind != "package"]
+    items = [e for e in section.exposed_elements if e.kind not in {"package", "port", "interface"}]
     if not items:
         return "No elements resolved."
 
@@ -345,9 +418,16 @@ def _build_tex(document: DocumentIR, version: str) -> str:
                 lines.append("")
                 continue
 
+            # DOC_PIM_InterfaceDesign: render boundary ports and interfaces (port name, interface name, flow properties, types).
+            if document.document_id == "DOC_PIM_InterfaceDesign":
+                boundary_tex = _render_boundary_ports_and_interfaces(section)
+                if boundary_tex:
+                    lines.append(boundary_tex)
+                    lines.append("")
+
             # Render section elements as a table (name/kind/description).
             section_items = [
-                e for e in section.exposed_elements if e.kind not in {"package", "use case"}
+                e for e in section.exposed_elements if e.kind not in {"package", "use case", "port", "interface"}
             ]
             if section_items:
                 lines.append(_render_section_elements_table(section))

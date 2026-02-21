@@ -6,7 +6,7 @@ package PSM_PhysicalArchitecture {
     private import ScalarValues::*;
     private import CIM::Datatype::*;
 
-    doc /* PSM physical architecture: each PIM logical component refined with technology bindings and implementation-specific attributes (config, library types). Refines PIM::LogicalArchitecture. */
+    doc /* PSM physical architecture: each PIM logical component refined with technology bindings and implementation-specific attributes (config, library types). Refines PIM::LogicalArchitecture. Each part is configured by the binding(s) that are inputs to its initializeFromBinding action: MLLPReceiver by MLLPIngressBinding and RuntimeConfigBinding; Parser, Transformer, ErrorHandler by RuntimeConfigBinding; HTTPForwarder by HTTPEgressBinding and RuntimeConfigBinding. */
 
     part def <MLLPReceiver> 'MLLP Receiver' :> PIM::LogicalArchitecture::MLLPReceiver {
         doc /* Refines PIM::LogicalArchitecture::MLLPReceiver. Technology binding: Node.js net/socket or custom MLLP framing. Implementation comprises TCP socket listener (Node.js net.Server), MLLP framing parser (start/end byte and length), and connection manager (accept/close/timeout). Configurable host/port. */
@@ -21,6 +21,7 @@ package PSM_PhysicalArchitecture {
         perform action buildNak : BuildNak;
         perform action start : StartReceiver;
         perform action stop : StopReceiver;
+        perform action initializeFromBinding : InitializeMLLPReceiver;
 
         rep textualRepresentation language "TypeScript"
         /*
@@ -50,6 +51,7 @@ private _server: net.Server | null = null;
         attribute encodingFallback : String { doc /* Fallback character encoding when not specified in MSH (e.g. UTF-8). */ }
         attribute strictValidation : Integer { doc /* When non-zero, reject messages that violate structural or required-field rules. */ }
         attribute segmentWhitelist : String { doc /* Comma-separated segment IDs in scope for parsing; others may be ignored. */ }
+        perform action initializeFromBinding : InitializeParser;
     }
 
     part def <Transformer> 'Transformer' :> PIM::LogicalArchitecture::Transformer {
@@ -57,6 +59,7 @@ private _server: net.Server | null = null;
         attribute mappingConfigPath : String { doc /* Path or name of the field-mapping configuration (HL7 to JSON). */ }
         attribute jsonPrettyPrint : Integer { doc /* When non-zero, serialize JSON with indentation for readability. */ }
         attribute schemaValidateOutput : Integer { doc /* When non-zero, validate output JSON against a schema before forwarding. */ }
+        perform action initializeFromBinding : InitializeTransformer;
     }
 
     part def <HTTPForwarder> 'HTTP Forwarder' :> PIM::LogicalArchitecture::HTTPForwarder {
@@ -67,6 +70,7 @@ private _server: net.Server | null = null;
         attribute retryBackoffMs : Integer { doc /* Initial backoff delay in milliseconds before first retry. */ }
         attribute tlsMinVersion : String { doc /* Minimum TLS version (e.g. TLSv1.2). */ }
         attribute tlsRejectUnauthorized : Integer { doc /* When non-zero, reject connections with invalid server certificates. */ }
+        perform action initializeFromBinding : InitializeHTTPForwarder;
     }
 
     part def <ErrorHandler> 'Error Handler' :> PIM::LogicalArchitecture::ErrorHandler {
@@ -75,6 +79,7 @@ private _server: net.Server | null = null;
         attribute metricsPrefix : String { doc /* Prefix for exposed metrics (e.g. hl7_adapter). */ }
         attribute deadLetterPath : String { doc /* File path or queue identifier for messages that cannot be delivered after retries. */ }
         attribute classificationTaxonomy : String { doc /* Name or path of the error classification taxonomy (e.g. ParseError, DeliveryError). */ }
+        perform action initializeFromBinding : InitializeErrorHandler;
     }
 
     part def <HL7AdapterService> 'HL7 Adapter Service' :> PIM::LogicalArchitecture::HL7AdapterService {
@@ -87,6 +92,8 @@ private _server: net.Server | null = null;
         part :>> transformer : Transformer;
         part :>> httpForwarder : HTTPForwarder;
         part :>> errorHandler : ErrorHandler;
+
+        perform action bootstrap : BootstrapAdapter;
     }
 
     part def <ParseMllpResult> 'Parse MLLP Result' {

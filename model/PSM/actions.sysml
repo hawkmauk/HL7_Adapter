@@ -3,6 +3,7 @@ package PSM_Actions {
     private import CIM::Actions::*;
     private import ScalarValues::*;
     private import CIM::Datatype::*;
+    private import PSM::Interfaces::*;
     private import PSM::PhysicalArchitecture::*;
 
     doc /* PSM action definitions carrying TypeScript implementations.
@@ -195,5 +196,49 @@ stop(): void {
   });
 }
         */
+    }
+
+    /* =======================================================================
+     * Initialization actions: bindings -> part attributes (construction/bootstrap)
+     * ======================================================================= */
+
+    action def <InitializeMLLPReceiver> 'Initialize MLLP Receiver' {
+        in binding : MLLPIngressBinding;
+        in runtimeConfig : RuntimeConfigBinding;
+        in :> self : MLLPReceiver;
+        doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps binding.bindHost -> self.bindHost, binding.bindPort -> self.bindPort, binding.maxPayloadSizeBytes -> self.maxPayloadSize, runtimeConfig.connectionIdleTimeoutMs -> self.connectionIdleTimeoutMs (with fallbacks from runtimeConfig where binding omits). */
+    }
+
+    action def <InitializeParser> 'Initialize Parser' {
+        in runtimeConfig : RuntimeConfigBinding;
+        in :> self : Parser;
+        doc /* Sets this part's attributes from runtimeConfig (or defaults) for use at construction/bootstrap. Maps encodingFallback, strictValidation, segmentWhitelist from runtimeConfig where present. */
+    }
+
+    action def <InitializeTransformer> 'Initialize Transformer' {
+        in runtimeConfig : RuntimeConfigBinding;
+        in :> self : Transformer;
+        doc /* Sets this part's attributes from runtimeConfig for use at construction/bootstrap. Maps mappingConfigPath, jsonPrettyPrint, schemaValidateOutput from runtimeConfig. */
+    }
+
+    action def <InitializeHTTPForwarder> 'Initialize HTTP Forwarder' {
+        in binding : HTTPEgressBinding;
+        in runtimeConfig : RuntimeConfigBinding;
+        in :> self : HTTPForwarder;
+        doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps baseUrl (from binding.baseUrlPattern or runtimeConfig.baseUrl), requestTimeoutMs, maxRetries, retryBackoffMs, tlsMinVersion, tlsRejectUnauthorized from binding/runtimeConfig. */
+    }
+
+    action def <InitializeErrorHandler> 'Initialize Error Handler' {
+        in runtimeConfig : RuntimeConfigBinding;
+        in :> self : ErrorHandler;
+        doc /* Sets this part's attributes from runtimeConfig for use at construction/bootstrap. Maps logLevel, metricsPrefix, deadLetterPath, classificationTaxonomy from runtimeConfig. */
+    }
+
+    action def <BootstrapAdapter> 'Bootstrap Adapter' {
+        in mllpBinding : MLLPIngressBinding;
+        in httpBinding : HTTPEgressBinding;
+        in runtimeConfig : RuntimeConfigBinding;
+        in :> self : HL7AdapterService;
+        doc /* Supply bindings once and initialize the whole adapter. Composes: invoke InitializeMLLPReceiver on self.mllpReceiver with mllpBinding and runtimeConfig; InitializeParser on self.parser with runtimeConfig; InitializeTransformer on self.transformer with runtimeConfig; InitializeHTTPForwarder on self.httpForwarder with httpBinding and runtimeConfig; InitializeErrorHandler on self.errorHandler with runtimeConfig. */
     }
 }

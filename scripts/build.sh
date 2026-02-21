@@ -22,8 +22,11 @@ PDF_DIR=$OUT_DIR/pdf
 HTML_DIR=$OUT_DIR/html
 
 # remove the target directory and create it again
+echo "Removing target directory..."
 rm -rf $TARGET_DIR
+echo "Creating target directory..."
 mkdir -p $TARGET_DIR
+echo "Target directory created."
 
 # run the generator (pass version from env if set, e.g. in CI)
 echo "Running generator..."
@@ -64,8 +67,13 @@ if [ "$TARGET" == "latex" ]; then
         mv $TARGET_DIR/$latex_file_no_ext.pdf $PDF_DIR
         mv $TARGET_DIR/$latex_file_no_ext.html $HTML_DIR
         mv $TARGET_DIR/$latex_file_no_ext.css $HTML_DIR
-        mv $TARGET_DIR/$latex_file_no_ext.png $HTML_DIR
-        mv $TARGET_DIR/$latex_file_no_ext.svg $HTML_DIR
+        # optionally move the png and svg files to the $HTML_DIR
+        if [ -f "$TARGET_DIR/$latex_file_no_ext.png" ]; then
+            mv $TARGET_DIR/$latex_file_no_ext.png $HTML_DIR
+        fi
+        if [ -f "$TARGET_DIR/$latex_file_no_ext.svg" ]; then
+            mv $TARGET_DIR/$latex_file_no_ext.svg $HTML_DIR
+        fi
     done
     echo "Done."
 fi

@@ -16,6 +16,29 @@ from .queries import (
 )
 
 
+def get_service_constructor_params(
+    graph: ModelGraph, document: object | None = None
+) -> list[dict]:
+    """Return constructor param specs for the service (same logic as _build_service_module).
+
+    Each item: {"param_name": str, "config_type": str, "class_name": str, "config_attrs": list}.
+    Used by the service generator and by vitest to build service test initialisation.
+    """
+    component_map = get_component_map(graph, document=document)
+    result: list[dict] = []
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
+        attrs = _get_config_attributes(psm) if psm else []
+        if attrs:
+            result.append({
+                "param_name": _to_camel(comp["class_name"]),
+                "config_type": f"{comp['class_name']}Config",
+                "class_name": comp["class_name"],
+                "config_attrs": attrs,
+            })
+    return result
+
+
 def _derive_service_class_name(graph: ModelGraph, document: object | None = None) -> str:
     """Derive the service class name from the model's service part def display name."""
     if document is not None and getattr(document, "exposed_elements", None):

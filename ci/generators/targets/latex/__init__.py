@@ -15,7 +15,7 @@ from .document import _build_tex, _filename_for_document
 class LatexGenerator(GeneratorTarget):
     name = "latex"
     supported_renders = {"LaTeX"}
-    supported_viewpoint_types = {"documentation"}
+    # No supported_viewpoint_types: identify LaTeX docs by render type (LaTeXProfile / asLaTeX) only.
 
     def generate(
         self,

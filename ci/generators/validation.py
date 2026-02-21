@@ -151,7 +151,8 @@ def resolve_document_viewpoint_type(
     model_index: ModelIndex,
     graph: ModelGraph,
 ) -> str | None:
-    """Resolve a document's viewpoint type from its satisfy_refs. Returns 'documentation', 'executable', or None."""
+    """Resolve a document's viewpoint type from its satisfy_refs, or from a supertype template's satisfy_refs.
+    Returns 'documentation', 'executable', or None."""
     for ref in satisfy_refs:
         if not _is_viewpoint_ref(ref):
             continue
@@ -160,6 +161,26 @@ def resolve_document_viewpoint_type(
             vp_type = _resolve_viewpoint_type(graph, viewpoint_def_qname)
             if vp_type:
                 return vp_type
+    # Fallback: document view may have no satisfy_refs but subtype a template that does (e.g. PSM doc views).
+    for elem in model_index.by_name.get(document_id, []):
+        if elem.kind != "view":
+            continue
+        for st in getattr(elem, "supertypes", []):
+            seen_qnames: set[str] = set()
+            for cand in list(model_index.by_name.get(st, [])) + list(model_index.by_short_name.get(st, [])):
+                if cand.qualified_name in seen_qnames:
+                    continue
+                seen_qnames.add(cand.qualified_name)
+                if cand.kind != "view":
+                    continue
+                for ref in getattr(cand, "satisfy_refs", []):
+                    if not _is_viewpoint_ref(ref):
+                        continue
+                    viewpoint_def_qname = _resolve_satisfy_ref_to_viewpoint_def(ref, model_index, graph)
+                    if viewpoint_def_qname:
+                        vp_type = _resolve_viewpoint_type(graph, viewpoint_def_qname)
+                        if vp_type:
+                            return vp_type
     return None
 
 

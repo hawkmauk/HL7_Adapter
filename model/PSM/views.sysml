@@ -3,27 +3,78 @@ package PSM_Views {
     private import Views::*;
     private import PSM::*;
     private import PIM::*;
+    private import MDA::Lifecycle::*;
+    private import MDA::Structure::*;
     private import MDA::PSM::View::*;
 
-    package PSMDocumentBlueprints {
-        doc /* PSM document: platform realization and component design. */
+    package ConcernMapping {
+        private import CIM::Stakeholders::*;
+        private import PSM::PhysicalArchitecture::*;
 
-        view DOC_PSM_PlatformRealization : PlatformRealization_Document {
-            doc /* PSM Platform Realization and Technology Selection for the HL7 Adapter. */
+        doc /* PSM-level concerns with trace to stakeholders; coverage requirements reference these concerns. */
+
+        concern def CON_PSM_001_PlatformRealization {
+            doc /* Technology selection, physical architecture, and interface bindings for implementation. Evidence: PSM::TechnologySelection::**, PSM::PhysicalArchitecture::**, PSM::Interfaces::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
+            stakeholder operationsEngineer : OperationsEngineer;
+        }
+        concern platformRealization : CON_PSM_001_PlatformRealization;
+
+        concern def CON_PSM_002_CodeRealization {
+            doc /* Model content selected for TypeScript/code generation. Evidence: PSM::PhysicalArchitecture::**, PSM::Actions::**, PIM::Behavior::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
+        }
+        concern codeRealization : CON_PSM_002_CodeRealization;
+    }
+
+    package Viewpoint {
+        doc /* Concrete project PSM viewports bound to the MDA_PSM viewpoints. */
+
+        view VPT_PSM_001_PlatformRealization {
+            satisfy platformRealizationViewpoint;
             expose PSM::TechnologySelection::**;
             expose PSM::PhysicalArchitecture::**;
             expose PSM::Interfaces::**;
+            render asElementTable;
         }
-    }
 
-    package PSMCodeBlueprints {
-        doc /* PSM code-generation views: one view per target platform. */
-
-        view DOC_PSM_TypeScriptCode : TypeScriptCode_Document {
-            doc /* TypeScript/Node.js code realization for the HL7 Adapter. */
+        view VPT_PSM_002_CodeRealization {
+            satisfy codeRealizationViewpoint;
             expose PSM::PhysicalArchitecture::**;
             expose PSM::Actions::**;
             expose PIM::Behavior::**;
+        }
+    }
+
+    package CoverageMatrix {
+        doc /* PSM-level trace matrix from concerns to viewpoints/viewports and PSM documents/code views. */
+
+        requirement CM_PSM_001 {
+            doc /* platformRealization -> VPT_PSM_001_PlatformRealization -> PlatformRealization_Document. */
+            satisfy ConcernMapping::platformRealization;
+        }
+
+        requirement CM_PSM_002 {
+            doc /* codeRealization -> VPT_PSM_002_CodeRealization -> TypeScriptCode_Document. */
+            satisfy ConcernMapping::codeRealization;
+        }
+    }
+
+    package PSMDocumentBlueprints {
+        doc /* PSM document and code view blueprints represented as model views bound to PSM viewports. */
+
+        view DOC_PSM_PlatformRealization : PlatformRealization_Document {
+            doc /* PSM Platform Realization and Technology Selection for the HL7 Adapter. */
+            expose Viewpoint::VPT_PSM_001_PlatformRealization;
+            expose CoverageMatrix::CM_PSM_001;
+        }
+
+        view DOC_PSM_TypeScriptCode : TypeScriptCode_Document {
+            doc /* TypeScript/Node.js code realization for the HL7 Adapter. */
+            expose Viewpoint::VPT_PSM_002_CodeRealization;
+            expose CoverageMatrix::CM_PSM_002;
         }
     }
 }

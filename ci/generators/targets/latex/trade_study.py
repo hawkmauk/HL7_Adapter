@@ -124,8 +124,13 @@ def _render_technology_selection_table(section: SectionIR) -> str:
             lines.append("\\textbf{Alternative} & \\textbf{Score} \\\\")
             lines.append("\\hline")
             lines.append("\\endhead")
+            seen_alt_qnames: set[str] = set()
             for sp in scored_parts:
                 alt_el = _match_scored_to_alternative(sp, alternatives)
+                key = (alt_el.qualified_name if alt_el else sp.qualified_name)
+                if key in seen_alt_qnames:
+                    continue
+                seen_alt_qnames.add(key)
                 alt_name = _escape_latex(alt_el.name if alt_el else sp.name)
                 score_val = _compute_score(alt_el, weights) if alt_el else "---"
                 lines.append(f"{alt_name} & {score_val} \\\\")

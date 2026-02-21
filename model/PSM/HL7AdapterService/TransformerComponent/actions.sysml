@@ -1,10 +1,9 @@
 package PSM_Transformer_Actions {
 
-    alias Transformer for PSM_Transformer;
+    alias Transformer for PSM_TransformerComponent::Transformer;
 
     private import ScalarValues::*;
-    private import PSM::Interfaces::*;
-    private import PSM::Parser::Structure::*;
+    private import PSM::HL7Adapter::Parser::Structure::*;
 
     doc /* Transformer action definitions (transform to JSON, handle request, initialize). */
 
@@ -35,7 +34,7 @@ package PSM_Transformer_Actions {
     }
 
     action def <HandleTransformRequest> 'Handle Transform Request' {
-        in :> self : Transformer::Transformer;
+        in :> self : Transformer;
         in parsed : ParsedHL7;
         doc /* Transform parsed message, dispatch HL7TransformerCompleteSignal or HL7TransformerFailedSignal and emit transformComplete. */
 
@@ -57,8 +56,7 @@ package PSM_Transformer_Actions {
     }
 
     action def <InitializeTransformer> 'Initialize Transformer' {
-        in runtimeConfig : RuntimeConfigBinding;
-        in :> self : Transformer::Transformer;
+        in :> self : Transformer;
         doc /* Sets this part's attributes from runtimeConfig for use at construction/bootstrap. Maps mappingConfigPath, jsonPrettyPrint, schemaValidateOutput from runtimeConfig. */
     }
 }

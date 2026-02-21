@@ -293,6 +293,16 @@ def _resolve_name(graph: ModelGraph, context: ModelElement, name: str) -> str | 
             return candidate
         parent = _parent_qname(parent)
 
+    # Qualified reference (e.g. PSM_HTTPForwarder_Actions::SendJSONPayload): match by prefix + short_name
+    if "::" in name:
+        prefix, local = name.rsplit("::", 1)
+        for node in graph.nodes.values():
+            node_parent = _parent_qname(node.qname)
+            if node_parent == prefix and (local == (node.short_name or node.name)):
+                return node.qname
+            if node.qname == name:
+                return node.qname
+
     for node in graph.nodes.values():
         if node.name == name or node.short_name == name:
             return node.qname

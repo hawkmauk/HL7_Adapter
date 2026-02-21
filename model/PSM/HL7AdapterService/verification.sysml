@@ -3,7 +3,7 @@ package PSM_HL7AdapterService_Verification {
     alias HL7AdapterService for PSM_HL7AdapterService::HL7AdapterService;
     
     private import PIM_Requirements::*;
-    private import PSM_HL7Adapter::*;
+    private import PSM_HL7AdapterService::*;
 
     doc /* Integration verification cases for HL7AdapterService; SYS1.3, SYS1.4, SYS3.6, SYS4.4. */
 

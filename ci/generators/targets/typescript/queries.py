@@ -443,11 +443,8 @@ def _collect_action_implementations(
         reps = _collect_named_reps(action_node)
         action_params = action_node.properties.get("action_params", [])
         is_method = any(p["name"] == "self" for p in action_params)
-        # Free functions: prefer functionBody (body-only); methods: use full textualRepresentation
-        if is_method:
-            body = reps.get("textualRepresentation", "").strip()
-        else:
-            body = (reps.get("functionBody") or reps.get("textualRepresentation") or "").strip()
+        # Prefer functionBody (body-only); fall back to full textualRepresentation for both methods and free functions
+        body = (reps.get("functionBody") or reps.get("textualRepresentation") or "").strip()
         if not body:
             continue
         result.append((usage_name, body, is_method, action_node))

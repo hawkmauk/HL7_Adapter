@@ -1,6 +1,6 @@
 package PSM_ErrorHandler_Verification {
 
-    alias ErrorHandler for PSM_ErrorHandler::ErrorHandler;
+    alias ErrorHandler for PSM_ErrorHandlerComponent::ErrorHandler;
 
     private import PIM_Requirements::*;
 

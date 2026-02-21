@@ -1,9 +1,9 @@
 package PSM_Transformer_Verification {
 
-    alias Transformer for PSM_Transformer::Transformer;
+    alias Transformer for PSM_TransformerComponent::Transformer;
     
     private import PIM_Requirements::*;
-    private import PSM_HL7Adapter::*;
+    private import PSM_HL7AdapterService::*;
 
     doc /* Verification cases for Transformer component; mapping and segment/field policy (SYS2.3–SYS2.5). */
     rep textualRepresentation language "vitest"

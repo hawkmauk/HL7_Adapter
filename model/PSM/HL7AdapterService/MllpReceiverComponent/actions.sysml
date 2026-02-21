@@ -130,7 +130,7 @@ start(): void {
         if (
           (s === MllpReceiverState.LISTENING || s === MllpReceiverState.FRAME_COMPLETE) &&
           buffer.length > 0 &&
-          buffer.indexOf(MLLP_START) >= 0
+          buffer.indexOf(MLLP_START_BYTE) >= 0
         ) {
           this._dispatch('MLLPFrameReceivedSignal');
         }
@@ -145,7 +145,7 @@ start(): void {
           socket.destroy();
           return;
         }
-        if (!result.done) break;
+        if (!result.success && !result.error) break;
         if (result.payload) {
           this._dispatch('MLLPFrameCompleteSignal');
           this.emit('frameComplete', result.payload);

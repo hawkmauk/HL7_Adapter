@@ -235,6 +235,8 @@ package PIM_Behavior {
             then Success;
         accept HTTP5xxOrNetworkErrorSignal
             then Retrying;
+        accept ForwarderMaxRetriesExceededSignal
+            then Failed;
 
         state Success;
         accept ResetComponentSignal

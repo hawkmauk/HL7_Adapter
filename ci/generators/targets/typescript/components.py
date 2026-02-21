@@ -171,6 +171,9 @@ def _emit_preamble_interfaces(
                     ts_type = _sysml_type_to_ts(base) if base.lower() in ("string", "integer", "boolean", "str", "int", "bool", "real", "natural") else base
                 lines.append(f"  {name}{'?' if optional else ''}: {ts_type};")
             lines.append("}")
+        elif not attrs and not ts_rep_body:
+            # Abstract or attribute-less part def referenced by other preamble types (e.g. SensitiveData)
+            lines.append(f"export type {short} = unknown;")
         else:
             continue
         lines.append("")
@@ -184,6 +187,20 @@ def _action_has_function_body_rep(action_node: GraphNode) -> bool:
         (r.get("name") == "functionBody" and (r.get("language") or "").lower() == "typescript")
         for r in reps_raw
     )
+
+
+def _strip_outer_method_signature(body: str) -> str:
+    """If body is 'methodName(...): type { ... }', return only the inner content to avoid double-wrapping."""
+    stripped = body.strip()
+    # Match first line like "start(): void {" or "async foo(x: number): Promise<void> {"
+    match = re.match(r"^(\s*)(?:async\s+)?\w+\s*\([^)]*\)\s*:\s*[^{]+\s*\{\s*", stripped, re.DOTALL)
+    if not match:
+        return body
+    # Remove the first line; remove one matching trailing "}"
+    rest = stripped[match.end() :].rstrip()
+    if rest.endswith("}"):
+        rest = rest[: rest.rfind("}")].rstrip()
+    return rest
 
 
 def _build_method_params(action_params: list[dict]) -> str:
@@ -368,9 +385,12 @@ def _build_component_module(
         if action_node:
             action_params = action_node.properties.get("action_params", [])
             params_str = _build_method_params(action_params)
+        body_only = _strip_outer_method_signature(action_body)
+        async_suffix = "async " if "await " in action_body or "await(" in action_body else ""
+        return_type = "Promise<void>" if async_suffix else "void"
         lines.append("")
-        lines.append(f"  {action_name}({params_str}): void {{")
-        lines.append(_indent(action_body.strip(), 4))
+        lines.append(f"  {async_suffix}{action_name}({params_str}): {return_type} {{")
+        lines.append(_indent(body_only.strip(), 4))
         lines.append("  }")
     for rep_name, rep_body in reps.items():
         if rep_name in _RESERVED_REP_NAMES:

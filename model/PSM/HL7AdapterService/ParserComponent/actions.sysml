@@ -1,10 +1,9 @@
 package PSM_Parser_Actions {
 
-    alias Parser for PSM_Parser;
+    alias Parser for PSM_ParserComponent::Parser;
     alias Structure for PSM_Parser_Structure;
 
     private import ScalarValues::*;
-    private import PSM::Interfaces::*;
 
     doc /* Parser action definitions (parse message, handle incoming, initialize). */
 
@@ -67,7 +66,7 @@ package PSM_Parser_Actions {
     }
 
     action def <HandleIncomingHL7> 'Handle Incoming HL7' {
-        in :> self : Parser::Parser;
+        in :> self : Parser;
         in rawMessage : String;
         doc /* Parse raw message, dispatch HL7HandlerCompleteSignal or HL7HandlerFailedSignal and emit parseComplete/parseFailed. */
 
@@ -90,8 +89,7 @@ package PSM_Parser_Actions {
     }
 
     action def <InitializeParser> 'Initialize Parser' {
-        in runtimeConfig : RuntimeConfigBinding;
-        in :> self : Parser::Parser;
+        in :> self : Parser;
         doc /* Sets this part's attributes from runtimeConfig (or defaults) for use at construction/bootstrap. Maps encodingFallback, strictValidation, segmentWhitelist from runtimeConfig where present. */
     }
 }

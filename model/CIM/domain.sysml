@@ -2,10 +2,7 @@ package CIM_Domain {
     doc /* Domain ontology for a local HL7 to HTTPS integration context. */
     private import ScalarValues::*;
     private import CIM_Events::*;
-
-    abstract part def <SensitiveData> 'Sensitive Data' {
-        doc /* Sensitive data that is not to be exposed to the system. */
-    }
+    private import CIM_Datatype::*;
 
     part def <Observable> 'Observable' {
         doc /* Observable part that can be observed by the system. */

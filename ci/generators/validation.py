@@ -8,6 +8,7 @@ from .parsing import ModelIndex
 
 DOCUMENTATION_VIEWPOINT_QNAME = "MDA_Viewpoint::DocumentationViewpoint"
 EXECUTABLE_VIEWPOINT_QNAME = "MDA_Viewpoint::ExecutableViewpoint"
+TEST_VIEWPOINT_QNAME = "MDA_Viewpoint::TestViewpoint"
 
 
 def validate_model_index(model_index: ModelIndex) -> None:
@@ -69,12 +70,15 @@ def validate_extraction_graph(extraction: ExtractionResult, model_index: ModelIn
 
 
 def _resolve_viewpoint_type(graph: ModelGraph, viewpoint_def_qname: str) -> str | None:
-    """Walk supertype chain from viewpoint def; return 'documentation', 'executable', or None."""
+    """Walk supertype chain from viewpoint def; return 'documentation', 'executable', 'test', or None."""
     def is_doc(q: str) -> bool:
         return q == DOCUMENTATION_VIEWPOINT_QNAME or q.endswith("::DocumentationViewpoint") or q == "DocumentationViewpoint"
 
     def is_exec(q: str) -> bool:
         return q == EXECUTABLE_VIEWPOINT_QNAME or q.endswith("::ExecutableViewpoint") or q == "ExecutableViewpoint"
+
+    def is_test(q: str) -> bool:
+        return q == TEST_VIEWPOINT_QNAME or q.endswith("::TestViewpoint") or q == "TestViewpoint"
 
     visited: set[str] = set()
     stack = [viewpoint_def_qname]
@@ -87,6 +91,8 @@ def _resolve_viewpoint_type(graph: ModelGraph, viewpoint_def_qname: str) -> str 
             return "documentation"
         if is_exec(qname):
             return "executable"
+        if is_test(qname):
+            return "test"
         node = graph.get(qname)
         if node:
             for edge in graph.outgoing(qname, "supertype"):

@@ -21,5 +21,9 @@ package PSM_Viewpoint {
         viewpoint def CodeRealizationViewpoint :> ExecutableViewpoint {
             doc /* Covers model content selected for code or other executable artifact generation. */
         }
+
+        viewpoint def TestRealizationViewpoint :> TestViewpoint {
+            doc /* Covers model content selected for TypeScript test artifact generation from verification cases. */
+        }
     }
 }

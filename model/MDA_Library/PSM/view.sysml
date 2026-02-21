@@ -7,10 +7,16 @@ package PSM_View {
 
     viewpoint platformRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::PlatformRealizationViewpoint;
     viewpoint codeRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::CodeRealizationViewpoint;
+    viewpoint testRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::TestRealizationViewpoint;
 
     view def <TypeScriptCode_Document> 'TypeScript Code Realization' :> TypeScriptProfile {
         doc /* Selects PSM components, actions, and PIM behavior for Node.js/TypeScript code generation. */
         satisfy codeRealizationViewpoint;
+    }
+
+    view def <TypeScriptTest_Document> 'TypeScript Test Realization' :> TypeScriptProfile {
+        doc /* Selects verification cases for Vitest/TypeScript test generation. */
+        satisfy testRealizationViewpoint;
     }
 
     view def <PlatformRealization_Document> 'PSM Platform Realization and Technology Selection' :> LaTeXProfile {

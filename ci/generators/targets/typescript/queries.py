@@ -1,7 +1,10 @@
-"""Graph query helpers and constants for TypeScript generation."""
-from __future__ import annotations
+"""Graph query helpers for TypeScript generation.
 
-from typing import TYPE_CHECKING
+All component-to-state-machine mappings are derived from the model graph
+via ``exhibit`` edges (part def --exhibit--> state usage) rather than
+hardcoded lookup tables.
+"""
+from __future__ import annotations
 
 from ...ir import ExposedElement, GraphEdge, GraphNode, ModelGraph
 from .naming import _display_name_to_class_name, _sysml_type_to_ts
@@ -9,23 +12,11 @@ from .naming import _display_name_to_class_name, _sysml_type_to_ts
 
 PIM_BEHAVIOR_PKG = "PIM_Behavior"
 
-# PIM part def name -> state def name when not "{Part}States" (e.g. Parser -> HL7HandlerStates, HL7AdapterService -> HL7AdapterControllerStates)
-_PIM_PART_TO_STATE_DEF: dict[str, str] = {
-    "Parser": "HL7HandlerStates",
-    "Transformer": "HL7TransformerStates",
-    "HL7AdapterService": "HL7AdapterControllerStates",
-}
-# Optional class name override (part def short_name -> class_name) when display name would yield something else
-_CLASS_NAME_OVERRIDE: dict[str, str] = {
-    "Parser": "Hl7Parser",
-    "Transformer": "Hl7Transformer",
-}
-
 
 def _resolve_part_def_qname(
     graph: ModelGraph, type_ref: str, prefer_prefix: str | None = None
 ) -> str | None:
-    """Resolve a type reference to a part def qname. If prefer_prefix is set (e.g. 'PSM'), prefer a part def whose qname starts with that."""
+    """Resolve a type reference to a part def qname."""
     last_segment = type_ref.split("::")[-1]
     candidates = [
         n.qname
@@ -44,79 +35,79 @@ def _resolve_part_def_qname(
     return type_ref if type_ref in graph.nodes else candidates[0]
 
 
-def _build_state_def_to_usage(graph: ModelGraph) -> dict[str, str]:
-    """Build map state def name (e.g. MLLPReceiverStates) -> state usage name (e.g. mllpReceiver)."""
-    state_def_to_usage: dict[str, str] = {}
-    for node in graph.nodes.values():
-        if node.kind != "state" or not node.qname.startswith(PIM_BEHAVIOR_PKG + "::"):
+def _get_exhibited_state(graph: ModelGraph, part_def_qname: str) -> str | None:
+    """Follow exhibit edges from a part def (or its supertype chain) to find the state usage name.
+
+    Walks the supertype chain so that PSM part defs that refine PIM part defs
+    inherit the exhibit relationship. Handles unresolved supertype edges by
+    matching the last segment of the target to all candidate nodes.
+    """
+    visited: set[str] = set()
+    queue = [part_def_qname]
+    while queue:
+        qname = queue.pop(0)
+        if qname in visited:
             continue
-        for edge in graph.outgoing(node.qname, "supertype"):
+        visited.add(qname)
+        for edge in graph.outgoing(qname, "exhibit"):
             target_node = graph.get(edge.target)
-            if target_node:
-                state_def_name = target_node.name or (edge.target or "").split("::")[-1]
-                if state_def_name.endswith("States"):
-                    state_def_to_usage[state_def_name] = node.name
-            break
-    return state_def_to_usage
+            if target_node and target_node.kind == "state":
+                return target_node.name
+        for edge in graph.outgoing(qname, "supertype"):
+            target = edge.target
+            if not target or target in visited:
+                continue
+            if target in graph.nodes:
+                queue.append(target)
+            else:
+                for candidate in _resolve_all_part_defs(graph, target):
+                    if candidate not in visited:
+                        queue.append(candidate)
+    return None
+
+
+def _resolve_all_part_defs(graph: ModelGraph, type_ref: str) -> list[str]:
+    """Resolve a type reference to all matching part/part def qnames."""
+    last_segment = type_ref.split("::")[-1]
+    return [
+        n.qname
+        for n in graph.nodes.values()
+        if n.kind in ("part", "part def")
+        and (n.short_name == last_segment or n.name == last_segment)
+    ]
 
 
 def _find_root_adapter_part_def(graph: ModelGraph) -> tuple[str | None, str | None]:
-    """Find the adapter part def and its state machine usage name from package part usages.
+    """Find the adapter part def and its state machine usage name.
 
-    Returns (adapter_part_def_qname, adapter_state_machine_name) or (None, None) if not found.
+    Looks for a part def with 5+ child parts that exhibits a state machine.
+    Prefers PSM-level part defs over PIM-level ones.
     """
-    state_def_to_usage = _build_state_def_to_usage(graph)
     fallback: tuple[str | None, str | None] = (None, None)
     for node in graph.nodes.values():
-        if node.kind != "package":
+        if node.kind not in ("part", "part def"):
             continue
-        if graph.incoming(node.qname, "contains"):
+        component_children = graph.children(node.qname, kind="part")
+        if len(component_children) < 5:
             continue
-        pkg_prefix = node.qname.split("::")[0]
-        for part_def_or_usage in graph.children(node.qname, kind="part") or graph.children(
-            node.qname, kind="part def"
-        ):
-            for edge in graph.outgoing(part_def_or_usage.qname, "supertype"):
-                target_ref = (edge.target or "").strip()
-                if not target_ref:
-                    continue
-                part_def_qname = _resolve_part_def_qname(
-                    graph, target_ref, prefer_prefix=pkg_prefix
-                )
-                if not part_def_qname:
-                    continue
-                part_def_node = graph.get(part_def_qname)
-                if not part_def_node or part_def_node.kind not in ("part", "part def"):
-                    continue
-                component_children = graph.children(part_def_qname, kind="part")
-                if not component_children:
-                    continue
-                pim_part_def_name = target_ref.split("::")[-1]
-                state_def_name = _PIM_PART_TO_STATE_DEF.get(
-                    pim_part_def_name, pim_part_def_name + "States"
-                )
-                adapter_state = state_def_to_usage.get(state_def_name)
-                if not adapter_state:
-                    continue
-                if part_def_qname.startswith("PSM"):
-                    return (part_def_qname, adapter_state)
-                fallback = (part_def_qname, adapter_state)
-    return fallback if fallback else (None, None)
+        state_machine = _get_exhibited_state(graph, node.qname)
+        if not state_machine:
+            continue
+        if node.qname.startswith("PSM"):
+            return (node.qname, state_machine)
+        fallback = (node.qname, state_machine)
+    return fallback
 
 
 def _find_root_adapter_from_exposed(
     graph: ModelGraph, exposed_elements: list[ExposedElement]
 ) -> tuple[str | None, str | None]:
-    """Find the adapter part def and state machine name from a view's exposed elements.
-
-    Returns (adapter_part_def_qname, adapter_state_machine_name) or (None, None) if not found.
-    """
+    """Find the adapter part def and state machine name from a view's exposed elements."""
     exposed_qnames = {
         e.qualified_name
         for e in exposed_elements
         if e.kind in ("part", "part def")
     }
-    state_def_to_usage = _build_state_def_to_usage(graph)
     for qname in sorted(exposed_qnames, key=lambda q: (not q.startswith("PSM"), q)):
         node = graph.get(qname)
         if not node or node.kind not in ("part", "part def"):
@@ -124,14 +115,10 @@ def _find_root_adapter_from_exposed(
         component_children = graph.children(qname, kind="part")
         if len(component_children) < 5:
             continue
-        pim_part_def_name = (node.short_name or node.name or "").replace(" ", "")
-        state_def_name = _PIM_PART_TO_STATE_DEF.get(
-            pim_part_def_name, pim_part_def_name + "States"
-        )
-        adapter_state = state_def_to_usage.get(state_def_name)
-        if not adapter_state:
+        state_machine = _get_exhibited_state(graph, qname)
+        if not state_machine:
             continue
-        return (qname, adapter_state)
+        return (qname, state_machine)
     return (None, None)
 
 
@@ -139,10 +126,11 @@ def get_component_map(
     graph: ModelGraph,
     document: object | None = None,
 ) -> list[dict[str, str]]:
-    """Derive component map from the model or from a document's exposed elements.
+    """Derive component map from the model via exhibit edges.
 
-    When document is provided and has exposed_elements, the root adapter is found from
-    those elements; otherwise structural traversal is used.
+    For each child part of the adapter, resolves its part def, walks the
+    supertype chain to find the exhibit edge, and derives the state machine
+    usage name, output filename, and class name from the model.
     """
     if document is not None and getattr(document, "exposed_elements", None):
         adapter_part_def_qname, _ = _find_root_adapter_from_exposed(
@@ -152,8 +140,6 @@ def get_component_map(
         adapter_part_def_qname, _ = _find_root_adapter_part_def(graph)
     if not adapter_part_def_qname:
         return []
-
-    state_def_to_usage = _build_state_def_to_usage(graph)
 
     adapter_prefix = adapter_part_def_qname.split("::")[0]
     result: list[dict[str, str]] = []
@@ -170,20 +156,12 @@ def get_component_map(
             part_def_node = graph.get(part_def_qname)
             if not part_def_node:
                 continue
-            pim_part_def_name = (
-                part_def_node.short_name or type_ref.split("::")[-1]
-            ).replace(" ", "")
-            state_def_name = _PIM_PART_TO_STATE_DEF.get(
-                pim_part_def_name, pim_part_def_name + "States"
-            )
-            state_machine = state_def_to_usage.get(state_def_name)
+            state_machine = _get_exhibited_state(graph, part_def_qname)
             if not state_machine:
                 continue
             display = (part_def_node.name or part_def_node.short_name or "").strip()
             output_file = display.replace(" ", "_").lower() + ".ts"
-            class_name = _CLASS_NAME_OVERRIDE.get(
-                part_def_node.short_name or "", _display_name_to_class_name(display)
-            )
+            class_name = _display_name_to_class_name(display)
             result.append({
                 "psm_short": part_def_node.short_name or part_def_node.name,
                 "state_machine": state_machine,
@@ -201,7 +179,7 @@ def get_adapter_state_machine(
     graph: ModelGraph,
     document: object | None = None,
 ) -> str | None:
-    """Return the adapter state machine usage name (e.g. hl7AdapterController), or None if no root found."""
+    """Return the adapter state machine usage name (e.g. hl7AdapterController)."""
     if document is not None and getattr(document, "exposed_elements", None):
         _, adapter_state = _find_root_adapter_from_exposed(
             graph, document.exposed_elements

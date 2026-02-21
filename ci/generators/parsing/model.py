@@ -46,6 +46,9 @@ class ModelElement:
     textual_representations: list[tuple[str, str, str]] = field(default_factory=list)  # (name, language, body) for named rep blocks
     perform_actions: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for perform action usages
     action_params: list[tuple[str, str, str | None]] = field(default_factory=list)  # (dir, name, type) for in/out params on action defs
+    verify_refs: list[str] = field(default_factory=list)  # requirement refs from objective { verify X; } in verification def
+    subject_ref: tuple[str, str] | None = None  # (name, type) from subject name : Type; in verification def
+    exhibit_refs: list[str] = field(default_factory=list)  # state usage names from exhibit <name>;
 
 
 @dataclass(slots=True)

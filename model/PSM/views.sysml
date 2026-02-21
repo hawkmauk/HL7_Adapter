@@ -3,6 +3,7 @@ package PSM_Views {
     private import Views::*;
     private import PSM::*;
     private import PIM::*;
+    private import Verification::*;
     private import MDA::Lifecycle::*;
     private import MDA::Structure::*;
     private import MDA::PSM::View::*;
@@ -27,6 +28,13 @@ package PSM_Views {
             stakeholder integrationEngineer : IntegrationEngineer;
         }
         concern codeRealization : CON_PSM_002_CodeRealization;
+
+        concern def CON_PSM_003_TestRealization {
+            doc /* Verification cases selected for TypeScript test generation. Evidence: Verification::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
+        }
+        concern testRealization : CON_PSM_003_TestRealization;
     }
 
     package Viewpoint {
@@ -46,6 +54,11 @@ package PSM_Views {
             expose PSM::Actions::**;
             expose PIM::Behavior::**;
         }
+
+        view VPT_PSM_003_TestRealization {
+            satisfy testRealizationViewpoint;
+            expose Verification::**;
+        }
     }
 
     package CoverageMatrix {
@@ -59,6 +72,11 @@ package PSM_Views {
         requirement CM_PSM_002 {
             doc /* codeRealization -> VPT_PSM_002_CodeRealization -> TypeScriptCode_Document. */
             satisfy ConcernMapping::codeRealization;
+        }
+
+        requirement CM_PSM_003 {
+            doc /* testRealization -> VPT_PSM_003_TestRealization -> TypeScriptTest_Document. */
+            satisfy ConcernMapping::testRealization;
         }
     }
 
@@ -75,6 +93,12 @@ package PSM_Views {
             doc /* TypeScript/Node.js code realization for the HL7 Adapter. */
             expose Viewpoint::VPT_PSM_002_CodeRealization;
             expose CoverageMatrix::CM_PSM_002;
+        }
+
+        view DOC_PSM_TypeScriptTests : TypeScriptTest_Document {
+            doc /* TypeScript/Vitest test realization from verification cases. */
+            expose Viewpoint::VPT_PSM_003_TestRealization;
+            expose CoverageMatrix::CM_PSM_003;
         }
     }
 }

@@ -4,7 +4,7 @@ Reads PSM component definitions and PIM state machines from the ModelGraph
 and emits a Node.js/TypeScript application skeleton:
 
 - One .ts module per PSM component (state enum, transition methods, config).
-- An adapter.ts orchestrator wiring components per HL7AdapterService.
+- A service.ts orchestrator wiring components per HL7AdapterService.
 - package.json with dependencies from PSM technology bindings.
 - tsconfig.json so the skeleton compiles.
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 from ...base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from ...ir import ModelGraph
 from ...registry import register_target
-from .adapter import _build_adapter_module
+from .service import _build_service_module
 from .components import _build_component_module
 from .config import _build_config_json, _build_index, _build_main_module, _build_package_json, _build_tsconfig
 from .queries import get_component_map
@@ -58,11 +58,11 @@ class TypeScriptGenerator(GeneratorTarget):
                 document_id=comp["psm_short"],
             ))
 
-        adapter_source = _build_adapter_module(graph, document=document)
-        if adapter_source:
-            adapter_path = src_dir / "adapter.ts"
-            adapter_path.write_text(adapter_source, encoding="utf-8")
-            artifacts.append(GeneratedArtifact(path=adapter_path, artifact_type="ts-module", document_id="HL7Adapter"))
+        service_source = _build_service_module(graph, document=document)
+        if service_source:
+            service_path = src_dir / "service.ts"
+            service_path.write_text(service_source, encoding="utf-8")
+            artifacts.append(GeneratedArtifact(path=service_path, artifact_type="ts-module", document_id="Service"))
             main_source = _build_main_module(graph, document=document)
             if main_source:
                 main_path = src_dir / "main.ts"

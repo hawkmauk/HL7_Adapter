@@ -10,7 +10,7 @@ cd $PROJECT_ROOT
 TARGET=$1
 if [ -z "$TARGET" ]; then
     echo "Usage: $0 <target>"
-    echo "Target can be: latex, typescript"
+    echo "Target can be: latex, typescript, vitest"
     exit 1
 fi
 
@@ -25,9 +25,13 @@ HTML_DIR=$OUT_DIR/html
 rm -rf $TARGET_DIR
 mkdir -p $TARGET_DIR
 
-# run the generator
+# run the generator (pass version from env if set, e.g. in CI)
 echo "Running generator..."
-python3 -m ci.generators  --model-dir $MODEL_DIR --out $TARGET_DIR --target $TARGET
+GEN_ARGS="--model-dir $MODEL_DIR --out $TARGET_DIR --target $TARGET"
+if [ -n "${VERSION:-}" ]; then
+    GEN_ARGS="$GEN_ARGS --version $VERSION"
+fi
+python3 -m ci.generators $GEN_ARGS
 
 
 # if the target is latex, build the pdfs and html
@@ -60,20 +64,23 @@ if [ "$TARGET" == "latex" ]; then
         mv $TARGET_DIR/$latex_file_no_ext.pdf $PDF_DIR
         mv $TARGET_DIR/$latex_file_no_ext.html $HTML_DIR
         mv $TARGET_DIR/$latex_file_no_ext.css $HTML_DIR
+        mv $TARGET_DIR/$latex_file_no_ext.png $HTML_DIR
+        mv $TARGET_DIR/$latex_file_no_ext.svg $HTML_DIR
     done
     echo "Done."
 fi
 
-# if the target is typescript, build the typescript code
+# if the target is typescript, generate tests then build and run
 if [ "$TARGET" == "typescript" ]; then
-    echo "Building TypeScript code..."
+    echo "Generating tests from verification cases..."
+    python3 -m ci.generators --model-dir $MODEL_DIR --out $TARGET_DIR --target vitest ${VERSION:+--version $VERSION}
     cd $TARGET_DIR
     echo "Installing dependencies..."
     npm install
     echo "Building code..."
     npm run build
-    #echo "Running tests..."
-    # npm run test
+    echo "Running tests..."
+    npm run test
     echo "Starting server..."
     npm run start
     echo "Done."

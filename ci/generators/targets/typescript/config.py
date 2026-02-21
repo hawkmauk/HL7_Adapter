@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 
 from ...ir import ModelGraph
+from .service import _derive_service_class_name
 from .naming import _to_camel
 from .queries import get_adapter_state_machine, get_component_map, _find_psm_node, _get_config_attributes
 
@@ -34,7 +35,7 @@ def _default_config_value_json(ts_type: str, model_default: str | None = None) -
 
 
 def _build_config_json(graph: ModelGraph, document: object | None = None) -> str:
-    """Build default config as JSON keyed by component (camelCase). Returns empty string if no adapter."""
+    """Build default config as JSON keyed by component (camelCase). Returns empty string if no service."""
     if not get_adapter_state_machine(graph, document=document):
         return ""
     component_map = get_component_map(graph, document=document)
@@ -54,26 +55,27 @@ def _build_config_json(graph: ModelGraph, document: object | None = None) -> str
 
 
 def _build_main_module(graph: ModelGraph, document: object | None = None) -> str:
-    """Generate main.ts: load config from config.json, create HL7Adapter, and start the application."""
+    """Generate main.ts: load config, create the service, and start the application."""
     if not get_adapter_state_machine(graph, document=document):
         return ""
+    service_class = _derive_service_class_name(graph, document)
     component_map = get_component_map(graph, document=document)
     lines: list[str] = [
         "import { readFileSync } from 'fs';",
         "import { join } from 'path';",
-        "import { HL7Adapter } from './adapter';",
+        f"import {{ {service_class} }} from './service';",
         "",
         "function main(): void {",
         "  const configPath = join(process.cwd(), 'config.json');",
         "  const config = JSON.parse(readFileSync(configPath, 'utf-8'));",
-        "  const adapter = new HL7Adapter(",
+        f"  const service = new {service_class}(",
     ]
     args = [f"    config.{_to_camel(comp['class_name'])}," for comp in component_map]
     if args:
         args[-1] = args[-1].rstrip(",")
     lines.extend(args)
     lines.append("  );")
-    lines.append("  adapter.mllpReceiver.start();")
+    lines.append("  // Start the service pipeline")
     lines.append("}")
     lines.append("")
     lines.append("main();")
@@ -129,12 +131,13 @@ def _build_tsconfig() -> str:
 
 
 def _build_index(graph: ModelGraph, document: object | None = None) -> str:
-    """Generate src/index.ts that re-exports all component modules and the adapter."""
+    """Generate src/index.ts that re-exports all component modules and the service."""
     lines: list[str] = []
     for comp in get_component_map(graph, document=document):
         module = comp["output_file"].replace(".ts", "")
         lines.append(f"export {{ {comp['class_name']} }} from './{module}';")
     if get_adapter_state_machine(graph, document=document):
-        lines.append("export { HL7Adapter } from './adapter';")
+        service_class = _derive_service_class_name(graph, document)
+        lines.append(f"export {{ {service_class} }} from './service';")
     lines.append("")
     return "\n".join(lines)

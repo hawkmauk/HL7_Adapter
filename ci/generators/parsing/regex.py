@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action|state|attribute|item)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action|state|attribute|item|verification)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -103,6 +103,16 @@ INLINE_STATE_RE = re.compile(
 
 STATE_DEF_RE = re.compile(
     r"(?m)^\s*state\s+def\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;"
+)
+
+# Verification case: objective { verify <requirement>; }
+VERIFY_REF_RE = re.compile(r"verify\s+([A-Za-z0-9_:]+)\s*;")
+# Verification case: subject <name> : <type>;
+SUBJECT_RE = re.compile(r"(?m)^\s*subject\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^;]+);")
+
+# exhibit state <usage_name>; or exhibit <usage_name> { ... }
+EXHIBIT_RE = re.compile(
+    r"(?m)^\s*exhibit\s+(?:state\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*[;{]"
 )
 
 # SysML v2 named rep blocks: rep <name> language "lang" /* body */

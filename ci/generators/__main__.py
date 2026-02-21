@@ -53,6 +53,7 @@ def _build_registry() -> TargetRegistry:
     # Import built-in targets for side-effect registration.
     from .targets import latex as _latex  # noqa: F401
     from .targets import typescript as _typescript  # noqa: F401
+    from .targets import vitest as _vitest  # noqa: F401
 
     return build_default_registry()
 

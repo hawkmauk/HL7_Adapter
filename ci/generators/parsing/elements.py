@@ -19,6 +19,7 @@ from .regex import (
     ENTRY_ACTION_RE,
     ENTRY_THEN_RE,
     DO_ACTION_RE,
+    EXHIBIT_RE,
     EXPOSE_RE,
     FLOW_PROPERTY_RE,
     FRAME_RE,
@@ -30,6 +31,8 @@ from .regex import (
     SATISFY_RE,
     STATE_OR_ACCEPT_RE,
     STATE_PORT_RE,
+    SUBJECT_RE,
+    VERIFY_REF_RE,
 )
 
 
@@ -179,13 +182,18 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             effective_kind = "attribute def"
         if kind == "action" and "def" in raw_text:
             effective_kind = "action def"
+        if kind == "verification" and "def" in raw_text:
+            effective_kind = "verification def"
 
         perform_actions: list[tuple[str, str]] = []
+        exhibit_refs: list[str] = []
         if kind == "part":
             for pa_match in PERFORM_ACTION_RE.finditer(body):
                 perform_actions.append(
                     (pa_match.group("name"), pa_match.group("type").strip())
                 )
+            for ex_match in EXHIBIT_RE.finditer(body):
+                exhibit_refs.append(ex_match.group("name"))
 
         action_params: list[tuple[str, str, str | None]] = []
         if effective_kind == "action def":
@@ -201,6 +209,14 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             rep_body = tr_match.group(3)
             if rep_body is not None:
                 textual_representations.append((rep_name, lang, rep_body))
+
+        verify_refs: list[str] = []
+        subject_ref: tuple[str, str] | None = None
+        if kind == "verification":
+            verify_refs = [m.group(1).strip() for m in VERIFY_REF_RE.finditer(body)]
+            sub_match = SUBJECT_RE.search(body)
+            if sub_match:
+                subject_ref = (sub_match.group(1).strip(), sub_match.group(2).strip())
 
         elements.append(
             ModelElement(
@@ -236,13 +252,16 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 textual_representations=textual_representations,
                 perform_actions=perform_actions,
                 action_params=action_params,
+                verify_refs=verify_refs,
+                subject_ref=subject_ref,
+                exhibit_refs=exhibit_refs,
             )
         )
     return elements
 
 
 def _resolve_qualified_names(elements: list[ModelElement]) -> None:
-    containers = [e for e in elements if e.kind in ("package", "state")]
+    containers = [e for e in elements if e.kind in ("package", "state", "verification def")]
     for element in elements:
         enclosing = [
             c

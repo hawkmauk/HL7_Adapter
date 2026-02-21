@@ -25,6 +25,9 @@ def build_model_graph(index: ModelIndex) -> ModelGraph:
         _add_expose(graph, elem)
         _add_state_ports(graph, elem)
         _add_perform_actions(graph, elem)
+        _add_verify_refs(graph, elem)
+        _add_subject_ref(graph, elem)
+        _add_exhibit_refs(graph, elem)
 
     return graph
 
@@ -97,6 +100,13 @@ def _add_node(graph: ModelGraph, elem: ModelElement) -> None:
         props["action_params"] = [
             {"dir": d, "name": n, "type": t} for d, n, t in elem.action_params
         ]
+    if elem.kind == "verification def":
+        if getattr(elem, "verify_refs", None):
+            props["verify_refs"] = list(elem.verify_refs)
+        if getattr(elem, "subject_ref", None):
+            props["subject_ref"] = {"name": elem.subject_ref[0], "type": elem.subject_ref[1]}
+    if getattr(elem, "exhibit_refs", None):
+        props["exhibit_refs"] = list(elem.exhibit_refs)
 
     graph.add_node(
         GraphNode(
@@ -214,6 +224,57 @@ def _add_perform_actions(graph: ModelGraph, elem: ModelElement) -> None:
             label="performs",
             properties={"usage_name": _name},
         ))
+
+
+def _add_verify_refs(graph: ModelGraph, elem: ModelElement) -> None:
+    if elem.kind != "verification def" or not getattr(elem, "verify_refs", None):
+        return
+    for ref in elem.verify_refs:
+        target_qname = _resolve_name(graph, elem, ref.strip())
+        graph.add_edge(GraphEdge(
+            source=elem.qualified_name,
+            target=target_qname or ref.strip(),
+            label="verify",
+        ))
+
+
+def _add_subject_ref(graph: ModelGraph, elem: ModelElement) -> None:
+    if elem.kind != "verification def" or not getattr(elem, "subject_ref", None):
+        return
+    _name, type_ref = elem.subject_ref
+    target_qname = _resolve_name(graph, elem, type_ref.strip())
+    graph.add_edge(GraphEdge(
+        source=elem.qualified_name,
+        target=target_qname or type_ref.strip(),
+        label="subject",
+        properties={"subject_name": _name},
+    ))
+
+
+def _add_exhibit_refs(graph: ModelGraph, elem: ModelElement) -> None:
+    if elem.kind not in ("part", "part def") or not getattr(elem, "exhibit_refs", None):
+        return
+    for ref in elem.exhibit_refs:
+        target_qname = _resolve_exhibit_target(graph, elem, ref.strip())
+        graph.add_edge(GraphEdge(
+            source=elem.qualified_name,
+            target=target_qname or ref.strip(),
+            label="exhibit",
+        ))
+
+
+def _resolve_exhibit_target(graph: ModelGraph, context: ModelElement, name: str) -> str | None:
+    """Resolve an exhibit reference, preferring state nodes over part nodes."""
+    candidates: list[str] = []
+    for node in graph.nodes.values():
+        if node.name == name or node.short_name == name:
+            candidates.append(node.qname)
+    if not candidates:
+        return _resolve_name(graph, context, name)
+    state_candidates = [q for q in candidates if graph.nodes[q].kind == "state"]
+    if state_candidates:
+        return state_candidates[0]
+    return candidates[0]
 
 
 def _resolve_name(graph: ModelGraph, context: ModelElement, name: str) -> str | None:

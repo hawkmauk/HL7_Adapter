@@ -24,6 +24,37 @@ The aim is to make the **digital thread** explicit: requirements, design, lifecy
     - `PIM/`: PIM‑specific structure, viewpoints, and document templates (Logical Architecture, Interface Design, Behavior Design, Allocation, Verification, PIM Gateway Signoff).
 - `ci/generators/`: Python framework that parses SysML and generates LaTeX/HTML documentation based on the view library.
 - `docs/`: narrative documentation, build logs, design notes, and [CI/CD and generated documentation](docs/CI_CD.md).
+- `scripts/`: helper scripts for building and running generated artifacts.
+
+### Building
+
+The script **`scripts/build.sh`** runs the code generators and then builds the resulting artifacts. It can be run from anywhere; it switches to the project root automatically.
+
+**Usage:**
+
+```bash
+./scripts/build.sh <target>
+```
+
+**Targets:**
+
+| Target       | What it does |
+|-------------|----------------|
+| `latex`     | Runs the LaTeX generator (`model/` → `out/latex/`), then builds PDFs and HTML with `pdflatex` and `make4ht`. Outputs go to `out/pdf/` and `out/html/`. Build intermediates (`.aux`, `.4ct`, etc.) are removed. |
+| `typescript`| Runs the TypeScript generator (`model/` → `out/typescript/`), then runs `npm install`, `npm run build`, `npm run test`, and `npm run start` in the generated output directory. |
+
+**Prerequisites:**
+
+- **All targets:** Python 3 and the project’s generator dependencies (see `ci/generators/`).
+- **`latex`:** `pdflatex` and `make4ht` (e.g. TeX Live and tex4ht).
+- **`typescript`:** Node.js and npm (for install, build, test, and start in `out/typescript/`).
+
+**Examples:**
+
+```bash
+./scripts/build.sh latex       # generate docs and build PDFs/HTML
+./scripts/build.sh typescript  # generate TypeScript app, install, build, test, and start
+```
 
 ### Documentation
 

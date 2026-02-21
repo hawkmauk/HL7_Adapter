@@ -10,6 +10,7 @@ Documentation and blog for the [Lyrebird Technical Challenge](https://www.lyrebi
 | 18 Feb 2026 | [Day Two: Blogger Agent, Standard Views Library, and Project Lifecycle](day-2-blogger-views-and-lifecycle.md) |
 | 19 Feb 2026 | [Day Three: Diagrams, the GitHub CI Agent, and a Proper Git Workflow](day-3-diagrams-ci-and-workflow.md) |
 | 20 Feb 2026 | [Day Four: Progress Picking Up, Product Owner in the Loop, and Agent-Led Dev Reviews](day-4-progress-and-agents.md) |
+| 21 Feb 2026 | [Day Five: The Codegen Decision](day-5-the-codegen-decision.md) |
 
 ---
 

@@ -1,11 +1,13 @@
-"""Adapter orchestrator module generation."""
+"""Service orchestrator module generation."""
 from __future__ import annotations
 
 from ...ir import ModelGraph
-from .naming import _to_camel, _to_screaming_snake
+from .naming import _display_name_to_class_name, _to_camel, _to_screaming_snake
 from .queries import (
-    ADAPTER_STATE_MACHINE,
-    COMPONENT_MAP,
+    _find_root_adapter_part_def,
+    _find_root_adapter_from_exposed,
+    get_adapter_state_machine,
+    get_component_map,
     PIM_BEHAVIOR_PKG,
     _collect_states,
     _collect_transitions,
@@ -14,9 +16,51 @@ from .queries import (
 )
 
 
-def _build_adapter_module(graph: ModelGraph) -> str:
-    """Generate the adapter.ts orchestrator that wires all components together."""
-    machine_qname = f"{PIM_BEHAVIOR_PKG}::{ADAPTER_STATE_MACHINE}"
+def get_service_constructor_params(
+    graph: ModelGraph, document: object | None = None
+) -> list[dict]:
+    """Return constructor param specs for the service (same logic as _build_service_module).
+
+    Each item: {"param_name": str, "config_type": str, "class_name": str, "config_attrs": list}.
+    Used by the service generator and by vitest to build service test initialisation.
+    """
+    component_map = get_component_map(graph, document=document)
+    result: list[dict] = []
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
+        attrs = _get_config_attributes(psm) if psm else []
+        if attrs:
+            result.append({
+                "param_name": _to_camel(comp["class_name"]),
+                "config_type": f"{comp['class_name']}Config",
+                "class_name": comp["class_name"],
+                "config_attrs": attrs,
+            })
+    return result
+
+
+def _derive_service_class_name(graph: ModelGraph, document: object | None = None) -> str:
+    """Derive the service class name from the model's service part def display name."""
+    if document is not None and getattr(document, "exposed_elements", None):
+        qname, _ = _find_root_adapter_from_exposed(graph, document.exposed_elements)
+    else:
+        qname, _ = _find_root_adapter_part_def(graph)
+    if qname:
+        node = graph.get(qname)
+        if node:
+            display = (node.name or node.short_name or "").strip()
+            return _display_name_to_class_name(display)
+    return "Service"
+
+
+def _build_service_module(graph: ModelGraph, document: object | None = None) -> str:
+    """Generate the service.ts orchestrator that wires all components together."""
+    component_map = get_component_map(graph, document=document)
+    service_state_machine = get_adapter_state_machine(graph, document=document)
+    if not service_state_machine:
+        return ""
+    service_class = _derive_service_class_name(graph, document)
+    machine_qname = f"{PIM_BEHAVIOR_PKG}::{service_state_machine}"
     states = _collect_states(graph, machine_qname)
     transitions = _collect_transitions(graph, machine_qname)
     machine_node = graph.get(machine_qname)
@@ -25,9 +69,9 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines: list[str] = []
 
     imports: list[str] = []
-    for comp in COMPONENT_MAP:
+    for comp in component_map:
         module = comp["output_file"].replace(".ts", "")
-        psm = _find_psm_node(graph, comp["psm_short"])
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             imports.append(f"import {{ {comp['class_name']}, {comp['class_name']}Config }} from './{module}';")
@@ -37,10 +81,10 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines.append("import { EventEmitter } from 'events';")
     lines.append("import pino from 'pino';")
     lines.append("")
-    lines.append("const logger = pino({ name: 'HL7Adapter' });")
+    lines.append(f"const logger = pino({{ name: '{service_class}' }});")
     lines.append("")
 
-    enum_name = "AdapterState"
+    enum_name = "ServiceState"
     lines.append(f"export enum {enum_name} {{")
     for state in states:
         lines.append(f"  {_to_screaming_snake(state)} = '{state}',")
@@ -49,29 +93,29 @@ def _build_adapter_module(graph: ModelGraph) -> str:
 
     signal_names = sorted({t["signal"] for t in transitions})
     if signal_names:
-        lines.append("export type AdapterSignal =")
+        lines.append("export type ServiceSignal =")
         for i, sig in enumerate(signal_names):
             sep = ";" if i == len(signal_names) - 1 else ""
             lines.append(f"  | '{sig}'{sep}")
         lines.append("")
 
-    lines.append("export class HL7Adapter extends EventEmitter {")
+    lines.append(f"export class {service_class} extends EventEmitter {{")
     lines.append(f"  private _state: {enum_name};")
-    for comp in COMPONENT_MAP:
+    for comp in component_map:
         field = _to_camel(comp["class_name"])
         lines.append(f"  readonly {field}: {comp['class_name']};")
     lines.append("")
 
     constructor_params: list[str] = []
-    for comp in COMPONENT_MAP:
-        psm = _find_psm_node(graph, comp["psm_short"])
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             constructor_params.append(f"{_to_camel(comp['class_name'])}Config: {comp['class_name']}Config")
 
     config_imports: list[str] = []
-    for comp in COMPONENT_MAP:
-        psm = _find_psm_node(graph, comp["psm_short"])
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             config_imports.append(f"{comp['class_name']}Config")
@@ -80,9 +124,9 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines.append(f"  constructor({param_str}) {{")
     lines.append("    super();")
     lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(initial_state or 'Idle')};")
-    for comp in COMPONENT_MAP:
+    for comp in component_map:
         field = _to_camel(comp["class_name"])
-        psm = _find_psm_node(graph, comp["psm_short"])
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             lines.append(f"    this.{field} = new {comp['class_name']}({_to_camel(comp['class_name'])}Config);")
@@ -97,7 +141,7 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines.append("")
 
     if signal_names:
-        lines.append("  dispatch(signal: AdapterSignal): void {")
+        lines.append("  dispatch(signal: ServiceSignal): void {")
     else:
         lines.append("  dispatch(signal: string): void {")
     lines.append("    const prev = this._state;")
@@ -130,7 +174,7 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines.append("        break;")
     lines.append("    }")
     lines.append("    if (this._state !== prev) {")
-    lines.append("      logger.info({ from: prev, to: this._state, signal }, 'adapter state transition');")
+    lines.append("      logger.info({ from: prev, to: this._state, signal }, 'service state transition');")
     lines.append("      this.emit('transition', { from: prev, to: this._state, signal });")
     lines.append("    }")
     lines.append("  }")

@@ -4,6 +4,7 @@ package CIM_Actions {
     private import ScalarValues::*;
     private import CIM_Domain::*;
     private import CIM_Events::*;
+    private import CIM_Datatype::*;
 
     action def <SendMLLPFrame> 'Send MLLP Frame' {
         doc /* Upstream actor publishes a framed HL7 event to the adapter listener. */
@@ -13,6 +14,8 @@ package CIM_Actions {
 
     action def <ReceiveMLLPFrame> 'Receive MLLP Frame' {
         doc /* Adapter accepts inbound framed data from a TCP connection. */
+        in buffer : Buffer;
+        in maxPayloadSize : Integer;
         out mllpFrame : MLLPFrame;
     }
 

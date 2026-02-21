@@ -10,6 +10,7 @@ from .nested import (
     _extract_action_usages,
     _extract_inline_states,
     _extract_nested_parts,
+    _extract_package_part_usages,
     _extract_signal_defs,
     _extract_state_defs,
 )
@@ -45,6 +46,11 @@ def parse_model_directory(model_dir: Path) -> ModelIndex:
     nested: list[ModelElement] = []
     for element in all_elements:
         nested.extend(_extract_nested_parts(element))
+    for element in all_elements:
+        if element.kind == "package":
+            for part_usage in _extract_package_part_usages(element):
+                part_usage.qualified_name = element.qualified_name + "::" + part_usage.name
+                nested.append(part_usage)
     for element in all_elements:
         children = _extract_inline_states(element)
         existing_qnames = {e.qualified_name for e in all_elements} | {e.qualified_name for e in nested}

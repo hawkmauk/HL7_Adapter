@@ -10,7 +10,12 @@ from .graph import build_model_graph
 from .ir import ModelGraph
 from .parsing import ModelIndex, parse_model_directory
 from .registry import TargetRegistry
-from .validation import validate_extraction_graph, validate_model_index
+from .validation import (
+    resolve_document_viewpoint_type,
+    validate_documents_for_target,
+    validate_extraction_graph,
+    validate_model_index,
+)
 
 
 @dataclass(slots=True)
@@ -47,9 +52,42 @@ def run_generation(
         ) from exc
 
     effective_extra = dict(extra or {})
-    effective_extra["_documents"] = extraction.documents
+    documents = list(extraction.documents)
+    view_name = effective_extra.get("_view_name")
+    if view_name is not None:
+        documents = [d for d in documents if d.document_id == view_name]
+        if not documents:
+            raise GenerationError(
+                f"View '{view_name}' not found. Available views: "
+                f"{', '.join(sorted(d.document_id for d in extraction.documents)) or 'none'}."
+            )
+    else:
+        target = registry.get(target_name)
+        supported_renders = getattr(target, "supported_renders", None)
+        if supported_renders:
+            documents = [
+                d for d in documents
+                if (d.binding.render_kind or "") in supported_renders
+            ]
+        supported_vp = getattr(target, "supported_viewpoint_types", None)
+        if supported_vp:
+            documents = [
+                d
+                for d in documents
+                if resolve_document_viewpoint_type(
+                    d.document_id, d.binding.satisfy_refs, model_index, graph
+                )
+                in supported_vp
+            ]
+    effective_extra["_documents"] = documents
 
     target = registry.get(target_name)
+    validate_documents_for_target(
+        documents=documents,
+        model_index=model_index,
+        graph=graph,
+        target=target,
+    )
     options = GenerationOptions(
         version=version,
         model_dir=model_dir,

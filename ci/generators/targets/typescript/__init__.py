@@ -4,7 +4,7 @@ Reads PSM component definitions and PIM state machines from the ModelGraph
 and emits a Node.js/TypeScript application skeleton:
 
 - One .ts module per PSM component (state enum, transition methods, config).
-- An adapter.ts orchestrator wiring components per HL7AdapterService.
+- A service.ts orchestrator wiring components per HL7AdapterService.
 - package.json with dependencies from PSM technology bindings.
 - tsconfig.json so the skeleton compiles.
 """
@@ -15,15 +15,16 @@ from pathlib import Path
 from ...base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from ...ir import ModelGraph
 from ...registry import register_target
-from .adapter import _build_adapter_module
+from .service import _build_service_module
 from .components import _build_component_module
-from .config import _build_index, _build_package_json, _build_tsconfig
-from .queries import COMPONENT_MAP
+from .config import _build_config_json, _build_index, _build_main_module, _build_package_json, _build_tsconfig
+from .queries import get_component_map
 
 
 class TypeScriptGenerator(GeneratorTarget):
     name = "typescript"
-    supported_renders: set[str] = set()
+    supported_renders: set[str] = {"TypeScript"}
+    supported_viewpoint_types: set[str] = {"executable"}
 
     def generate(
         self,
@@ -44,7 +45,10 @@ class TypeScriptGenerator(GeneratorTarget):
         tsc_path.write_text(_build_tsconfig(), encoding="utf-8")
         artifacts.append(GeneratedArtifact(path=tsc_path, artifact_type="tsconfig"))
 
-        for comp in COMPONENT_MAP:
+        documents = options.extra.get("_documents", [])
+        document = documents[0] if len(documents) == 1 else None
+        component_map = get_component_map(graph, document=document)
+        for comp in component_map:
             source = _build_component_module(graph, comp)
             out_path = src_dir / comp["output_file"]
             out_path.write_text(source, encoding="utf-8")
@@ -54,12 +58,23 @@ class TypeScriptGenerator(GeneratorTarget):
                 document_id=comp["psm_short"],
             ))
 
-        adapter_source = _build_adapter_module(graph)
-        adapter_path = src_dir / "adapter.ts"
-        adapter_path.write_text(adapter_source, encoding="utf-8")
-        artifacts.append(GeneratedArtifact(path=adapter_path, artifact_type="ts-module", document_id="HL7Adapter"))
+        service_source = _build_service_module(graph, document=document)
+        if service_source:
+            service_path = src_dir / "service.ts"
+            service_path.write_text(service_source, encoding="utf-8")
+            artifacts.append(GeneratedArtifact(path=service_path, artifact_type="ts-module", document_id="Service"))
+            main_source = _build_main_module(graph, document=document)
+            if main_source:
+                main_path = src_dir / "main.ts"
+                main_path.write_text(main_source, encoding="utf-8")
+                artifacts.append(GeneratedArtifact(path=main_path, artifact_type="ts-module", document_id="main"))
+                config_json = _build_config_json(graph, document=document)
+                if config_json:
+                    config_path = output_dir / "config.json"
+                    config_path.write_text(config_json, encoding="utf-8")
+                    artifacts.append(GeneratedArtifact(path=config_path, artifact_type="config-json"))
 
-        index_source = _build_index(graph)
+        index_source = _build_index(graph, document=document)
         index_path = src_dir / "index.ts"
         index_path.write_text(index_source, encoding="utf-8")
         artifacts.append(GeneratedArtifact(path=index_path, artifact_type="ts-module"))

@@ -53,6 +53,7 @@ def _build_registry() -> TargetRegistry:
     # Import built-in targets for side-effect registration.
     from .targets import latex as _latex  # noqa: F401
     from .targets import typescript as _typescript  # noqa: F401
+    from .targets import vitest as _vitest  # noqa: F401
 
     return build_default_registry()
 
@@ -91,6 +92,12 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         default=[],
         metavar="KEY=VALUE",
         help="Override or add a single target option (may be repeated).",
+    )
+    parser.add_argument(
+        "--view",
+        default=None,
+        metavar="VIEW_NAME",
+        help="Optional view name to generate (e.g. DOC_PSM_PlatformRealization). If omitted, all matching views are used.",
     )
     return parser.parse_args(argv)
 
@@ -157,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
         else _resolve_version(Path(args.model_dir))
     )
     extra = _parse_extra_options(args.config, args.option)
+    if args.view is not None:
+        extra["_view_name"] = args.view
 
     try:
         result = run_generation(

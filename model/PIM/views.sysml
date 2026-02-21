@@ -6,26 +6,47 @@ package PIM_Views {
     private import MDA::Structure::*;
     private import MDA::PIM::View::*;
 
-    package StakeholderCatalog {
-        doc /* PIM-level stakeholder catalog for logical design, allocation, and verification documentation. */
-
+    package ConcernMapping {
         private import CIM::Stakeholders::*;
+        private import PIM::LogicalArchitecture::*;
 
-        part STK_PIM_IntegrationEngineer : IntegrationEngineer {
-            doc /* Focus: logical architecture and interface design fit for implementation. Needs: clear component responsibilities and interface contracts. */
-        }
+        doc /* PIM-level concerns with trace to stakeholders; coverage requirements reference these concerns. */
 
-        part STK_PIM_OperationsEngineer : OperationsEngineer {
-            doc /* Focus: operability and failure handling at the logical design level. Needs: explicit degraded flows and error handling behavior. */
+        concern def CON_PIM_001_LogicalCoherence {
+            doc /* Logical architecture and component design fit for implementation. Evidence: PIM::LogicalArchitecture::**, PIM::Interfaces::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
         }
+        concern logicalCoherance : CON_PIM_001_LogicalCoherence;
 
-        part STK_PIM_ClinicalSystemOwner : ClinicalSystemOwner {
-            doc /* Focus: preservation of clinical meaning in the logical mapping and error handling. Needs: traceability from requirements to logical design. */
+        concern def CON_PIM_002_InterfaceContractClarity {
+            doc /* Logical interface contracts, payload structure, and error behavior. Evidence: PIM::Interfaces::**, PIM::Behavior::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder clinicalSystemOwner : ClinicalSystemOwner;
+            stakeholder StakeholderCatalog : DownstreamAPIOwner;
         }
+        concern interfaceContractClarity : CON_PIM_002_InterfaceContractClarity;
 
-        part STK_PIM_DownstreamAPIOwner : DownstreamAPIOwner {
-            doc /* Focus: logical payload structure, interface behavior, and error contracts. Needs: stable, well-specified logical interface design. */
+        concern def CON_PIM_003_AllocationCompleteness {
+            doc /* PIM requirements fully allocated to logical architecture, interfaces, and behaviors. Evidence: PIM::Requirements::**, PIM::Allocations::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
+            stakeholder operationsEngineer : OperationsEngineer;
         }
+        concern allocationCompleteness : CON_PIM_003_AllocationCompleteness;
+
+        concern def CON_PIM_004_VerificationReadiness {
+            doc /* Verification objectives, test approach, and coverage of PIM requirements. Evidence: PIM::Parametrics::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
+            stakeholder operationsEngineer : OperationsEngineer;
+        }
+        concern verificationReadiness : CON_PIM_004_VerificationReadiness;
+
+        concern def CON_PIM_005_GatewayReadiness {
+            doc /* PIM gate entry criteria, design risks, and signoff evidence before entering PSM. Evidence: MDA_Lifecycle::PIMConsensusGateway, signoff roles. */
+        }
+        concern gatewayReadiness : CON_PIM_005_GatewayReadiness;
     }
 
     package Viewpoint {
@@ -77,23 +98,28 @@ package PIM_Views {
         doc /* PIM-level trace matrix from stakeholders and concerns to viewpoints/viewports and PIM documents. */
 
         requirement CM_PIM_001 {
-            doc /* STK_PIM_IntegrationEngineer -> PIM logical coherence -> VPT_PIM_001_LogicalArchitecture -> LogicalArchitecture_Document. */
+            doc /* CON_PIM_001_LogicalCoherence -> VPT_PIM_001_LogicalArchitecture -> LogicalArchitecture_Document. */
+            satisfy ConcernMapping::logicalCoherance;
         }
 
         requirement CM_PIM_002 {
-            doc /* STK_PIM_ClinicalSystemOwner + STK_PIM_DownstreamAPIOwner -> PIM interface contract clarity -> VPT_PIM_001_LogicalArchitecture + VPT_PIM_003_BehaviorDesign -> InterfaceDesign_Document. */
+            doc /* CON_PIM_002_InterfaceContractClarity -> VPT_PIM_001_LogicalArchitecture + VPT_PIM_003_BehaviorDesign -> InterfaceDesign_Document. */
+            satisfy ConcernMapping::interfaceContractClarity;
         }
 
         requirement CM_PIM_003 {
-            doc /* STK_PIM_IntegrationEngineer + STK_PIM_OperationsEngineer -> PIM allocation completeness -> VPT_PIM_002_RequirementAllocation -> Allocation_Document. */
+            doc /* CON_PIM_003_AllocationCompleteness -> VPT_PIM_002_RequirementAllocation -> Allocation_Document. */
+            satisfy ConcernMapping::allocationCompleteness;
         }
 
         requirement CM_PIM_004 {
-            doc /* STK_PIM_IntegrationEngineer + STK_PIM_OperationsEngineer -> PIM verification readiness -> VPT_PIM_004_VerificationReadiness -> Verification_Document. */
+            doc /* CON_PIM_004_VerificationReadiness -> VPT_PIM_004_VerificationReadiness -> Verification_Document. */
+            satisfy ConcernMapping::verificationReadiness;
         }
 
         requirement CM_PIM_005 {
-            doc /* SystemsEngineer + TechnicalLead + ProjectManager -> PIM gateway readiness -> VPT_PIM_005_PIMGatewayReadiness -> PIMGatewaySignoff_Document. */
+            doc /* CON_PIM_005_GatewayReadiness -> VPT_PIM_005_PIMGatewayReadiness -> PIMGatewaySignoff_Document. */
+            satisfy ConcernMapping::gatewayReadiness;
         }
     }
 

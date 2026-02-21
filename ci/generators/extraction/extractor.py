@@ -89,6 +89,48 @@ def _by_reference(ref: str, model_index: ModelIndex) -> list[ModelElement]:
     return sorted(candidates, key=lambda item: item.qualified_name)
 
 
+def _resolve_supertype_to_element(st_ref: str, model_index: ModelIndex) -> ModelElement | None:
+    """Resolve a supertype reference to a single ModelElement, if any."""
+    ref = st_ref.strip()
+    if not ref:
+        return None
+    expanded = _expand_alias_ref(ref, model_index)
+    if expanded in model_index.by_qualified_name:
+        return model_index.by_qualified_name[expanded]
+    st_token = ref.split("::")[-1].strip()
+    if model_index.by_name.get(st_token):
+        candidates = model_index.by_name.get(st_token, [])
+        match = next(
+            (c for c in candidates if c.qualified_name == ref or c.qualified_name.endswith("::" + st_token)),
+            candidates[0] if candidates else None,
+        )
+        return match
+    return None
+
+
+def _resolve_render_kind_from_supertypes(element: ModelElement, model_index: ModelIndex) -> str | None:
+    """
+    If the view has supertypes, resolve them and return the first render_kind found
+    (following one level of supertype chain so TypeScriptCode_Document -> TypeScriptProfile works).
+    """
+    if not element.supertypes:
+        return None
+    seen: set[str] = set()
+    for st_ref in element.supertypes:
+        supertype_elem = _resolve_supertype_to_element(st_ref, model_index)
+        if not supertype_elem or supertype_elem.qualified_name in seen:
+            continue
+        seen.add(supertype_elem.qualified_name)
+        if getattr(supertype_elem, "render_kind", None):
+            return supertype_elem.render_kind
+        # Follow one more level (e.g. TypeScriptCode_Document extends TypeScriptProfile)
+        for st2_ref in getattr(supertype_elem, "supertypes", []) or []:
+            elem2 = _resolve_supertype_to_element(st2_ref, model_index)
+            if elem2 and elem2.qualified_name not in seen and getattr(elem2, "render_kind", None):
+                return elem2.render_kind
+    return None
+
+
 def _title_from_expose_refs(expose_refs: list[str]) -> str | None:
     """Derive a section title from the first expose ref (e.g. CIM::Actions::** -> Actions)."""
     if not expose_refs:
@@ -322,6 +364,16 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                 )
         allocation_matrix.sort(key=lambda r: (r.requirement, r.logical_block))
 
+    satisfy_refs = [ref.strip() for ref in element.satisfy_refs]
+    if not satisfy_refs and element.supertypes:
+        for st in element.supertypes:
+            supertype_elem = _resolve_supertype_to_element(st, model_index)
+            if supertype_elem and getattr(supertype_elem, "satisfy_refs", None):
+                satisfy_refs = [ref.strip() for ref in supertype_elem.satisfy_refs]
+                break
+
+    effective_render_kind = element.render_kind or _resolve_render_kind_from_supertypes(element, model_index)
+
     return DocumentIR(
         document_id=element.name,
         title=_title_from_id(element.name),
@@ -333,9 +385,9 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
             end_line=element.end_line,
         ),
         binding=ViewBinding(
-            satisfy_refs=[ref.strip() for ref in element.satisfy_refs],
+            satisfy_refs=satisfy_refs,
             expose_refs=[ref.strip() for ref in element.expose_refs],
-            render_kind=element.render_kind,
+            render_kind=effective_render_kind,
         ),
         exposed_elements=exposed_elements,
         coverage_refs=coverage_refs,

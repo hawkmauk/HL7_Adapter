@@ -4,76 +4,69 @@ package 'CIM-ProjectViews' {
     private import MDA::Lifecycle::*;
     private import MDA::Structure::*;
     private import MDA::CIM::View::*;
-    
-    package StakeholderCatalog {
-        doc /* Stakeholder catalog for CIM-level documentation products. */
-
-        part STK_IntegrationEngineer : Stakeholders::IntegrationEngineer {
-            doc /* Scope: adapter design and configuration. Needs: traceable context, scenarios, and assumptions. Success: can implement and evolve integration with low ambiguity. Level: CIM primary. */
-        }
-
-        part STK_ClinicalSystemOwner : Stakeholders::ClinicalSystemOwner {
-            doc /* Scope: upstream data semantics and event quality. Needs: mission outcomes and message intent traceability. Success: clinical meaning preserved in transformation. Level: CIM primary. */
-        }
-
-        part STK_UpstreamHL7System : Stakeholders::UpstreamHL7System {
-            doc /* Scope: sender behavior and framing assumptions. Needs: external interface context and scenario triggers. Success: predictable ingestion contract at system boundary. Level: CIM primary. */
-        }
-
-        part STK_DownstreamAPIOwner : Stakeholders::DownstreamAPIOwner {
-            doc /* Scope: downstream payload consumption and contract clarity. Needs: payload intent, context boundaries, and error outcomes. Success: reliable API handoff expectations. Level: CIM primary. */
-        }
-
-        part STK_SecurityCompliance : Stakeholders::SecurityAndComplianceOfficer {
-            doc /* Scope: PHI handling and security posture. Needs: constraints and compliance obligations. Success: obligations are explicit and verifiable. Level: CIM and cross-level. */
-        }
-
-        part STK_OperationsEngineer : Stakeholders::OperationsEngineer {
-            doc /* Scope: runtime operability and incident handling. Needs: degraded scenarios and operational transparency concerns. Success: clear failure handling and monitoring expectations. Level: CIM primary. */
-        }
-    }
 
     package ConcernMapping {
-        doc /* Normalized stakeholder concerns with trace hooks back to CIM model content. */
+        doc /* Normalized stakeholder concerns with subject and stakeholder definitions; coverage requirements reference these concerns. */
 
-        concern def CON_001_IngestionReliability_Def {
+        private import CIM::Stakeholders::*;
+        private import CIM::Context::*;
+
+        concern def CON_001_IngestionReliability {
             doc /* System shall reliably ingest framed HL7 events from upstream sources under normal operations. Evidence source: CIM::Operations::PublishHL7Event, CIM::Operations::ReceiveMLLPMessage, CIM::Mission::ReliableEventIngestion. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder integrationEngineer : IntegrationEngineer;
         }
-        concern CON_001_IngestionReliability : CON_001_IngestionReliability_Def;
+        concern ingestionReliability : CON_001_IngestionReliability;
 
-        concern def CON_002_ClinicalSemanticPreservation_Def {
+        concern def CON_002_ClinicalSemanticPreservation {
             doc /* Transformation shall preserve key clinical identifiers and message intent at concept level. Evidence source: CIM::Domain::HL7Message, CIM::Domain::PatientDemographics, CIM::Mission::AccurateClinicalTransformation. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder clinicalSystemOwner : ClinicalSystemOwner;
         }
-        concern CON_002_ClinicalSemanticPreservation : CON_002_ClinicalSemanticPreservation_Def;
+        concern clinicalSemanticPreservation : CON_002_ClinicalSemanticPreservation;
 
-        concern def CON_003_InterfaceBoundaryClarity_Def {
+        concern def CON_003_InterfaceBoundaryClarity {
             doc /* External context shall clearly define ingress and egress boundaries. Evidence source: CIM::Context::**, CIM::Domain::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder upstreamHL7System : UpstreamHL7System;
         }
-        concern CON_003_InterfaceBoundaryClarity : CON_003_InterfaceBoundaryClarity_Def;
+        concern interfaceBoundaryClarity : CON_003_InterfaceBoundaryClarity;
 
-        concern def CON_004_DownstreamDeliveryExpectation_Def {
+        concern def CON_004_DownstreamDeliveryExpectation {
             doc /* Conceptual contract shall identify intended payload handoff and delivery outcomes. Evidence source: CIM::Domain::**, CIM::Operations::PostPayloadToAPI, CIM::Mission::SecureInteroperability. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder downstreamAPIOwner : DownstreamAPIOwner;
         }
-        concern CON_004_DownstreamDeliveryExpectation : CON_004_DownstreamDeliveryExpectation_Def;
+        concern downstreamDeliveryExpectation : CON_004_DownstreamDeliveryExpectation;
 
-        concern def CON_005_ComplianceObligations_Def {
+        concern def CON_005_ComplianceObligations {
             doc /* Data handling and transport obligations shall be explicit at context level. Evidence source: CIM::Assumptions::**, CIM::Mission::**. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder securityAndComplianceOfficer : SecurityAndComplianceOfficer;
         }
-        concern CON_005_ComplianceObligations : CON_005_ComplianceObligations_Def;
+        concern complianceObligations : CON_005_ComplianceObligations;
 
-        concern def CON_006_DegradedModeTransparency_Def {
+        concern def CON_006_DegradedModeTransparency {
             doc /* Degraded operational behavior shall be explicit for support and incident response planning. Evidence source: CIM::Operations::DegradedFlow, CIM::Domain::IntegrationError, CIM::Mission::OperationalTransparency. */
+            subject hl7AdapterService : HL7AdapterService;
+            stakeholder operationsEngineer : OperationsEngineer;
         }
-        concern CON_006_DegradedModeTransparency : CON_006_DegradedModeTransparency_Def;
+        concern degradedModeTransparency : CON_006_DegradedModeTransparency;
+
+        concern def CON_007_GatewayReadiness {
+            doc /* CIM stakeholder consensus and gateway signoff before progression to PIM. Evidence: CIM::LifecycleAlignment::cimConsensusMilestone, cimGatewayCheck, cimSignoffRecord, signoff roles. */
+        }
+        concern gatewayReadiness : CON_007_GatewayReadiness;
     }
 
     package Viewpoint {
-
+        private import CIM::Stakeholders::*;
         private import MDA::CIM::Viewpoint::*;
         doc /* Concrete project viewports; structured only by standard CIM packages for reuse. */
 
         view VPT_001_StakeholderNeedsMatrix {
-            expose StakeholderCatalog::**;
+            satisfy stakeholderNeedsViewpoint;
+            expose Stakeholders::**;
             expose ConcernMapping::**;
             expose CIM::Mission::**;
             render asElementTable;
@@ -125,34 +118,41 @@ package 'CIM-ProjectViews' {
     }
 
     package CoverageMatrix {
-        doc /* Trace matrix from stakeholder concerns to viewpoints/viewports and planned CIM document sections. */
+        doc /* Trace matrix from concerns to viewpoints/viewports and planned CIM document sections. */
 
         requirement CM_001 {
-            doc /* STK_IntegrationEngineer -> CON_001_IngestionReliability -> CIM -> VP_001_StakeholderNeeds -> VPT_001_StakeholderNeedsMatrix -> SNRS.S1,S2 */
+            doc /* ingestionReliability -> VPT_001_StakeholderNeedsMatrix -> SNRS.S1,S2 */
+            satisfy ConcernMapping::ingestionReliability;
         }
 
         requirement CM_002 {
-            doc /* STK_ClinicalSystemOwner -> CON_002_ClinicalSemanticPreservation -> CIM -> VP_001_StakeholderNeeds -> VPT_001_StakeholderNeedsMatrix -> SNRS.S2,S3 */
+            doc /* clinicalSemanticPreservation -> VPT_001_StakeholderNeedsMatrix -> SNRS.S2,S3 */
+            satisfy ConcernMapping::clinicalSemanticPreservation;
         }
 
         requirement CM_003 {
-            doc /* STK_UpstreamHL7System -> CON_003_InterfaceBoundaryClarity -> CIM -> VP_004_InterfaceContext -> VPT_004_ExternalInterfaceContext -> EICD.S1,S2 */
+            doc /* interfaceBoundaryClarity -> VPT_004_ExternalInterfaceContext -> EICD.S1,S2 */
+            satisfy ConcernMapping::interfaceBoundaryClarity;
         }
 
         requirement CM_004 {
-            doc /* STK_DownstreamAPIOwner -> CON_004_DownstreamDeliveryExpectation -> CIM -> VP_004_InterfaceContext -> VPT_004_ExternalInterfaceContext -> EICD.S2,S3 */
+            doc /* downstreamDeliveryExpectation -> VPT_004_ExternalInterfaceContext -> EICD.S2,S3 */
+            satisfy ConcernMapping::downstreamDeliveryExpectation;
         }
 
         requirement CM_005 {
-            doc /* STK_SecurityCompliance -> CON_005_ComplianceObligations -> CIM/Cross -> VP_005_ComplianceAndSafety -> VPT_005_ComplianceAndSafety -> RSCM.S1,S2; SCHA.S2 */
+            doc /* complianceObligations -> VPT_005_ComplianceAndSafety -> RSCM.S1,S2; SCHA.S2 */
+            satisfy ConcernMapping::complianceObligations;
         }
 
         requirement CM_006 {
-            doc /* STK_OperationsEngineer -> CON_006_DegradedModeTransparency -> CIM -> VP_003_OperationalScenarios + VP_005_ComplianceAndSafety -> VPT_003_OperationalFlows + VPT_005_ComplianceAndSafety -> OSS.S2,S3; SCHA.S3 */
+            doc /* degradedModeTransparency -> VPT_003_OperationalFlows + VPT_005_ComplianceAndSafety -> OSS.S2,S3; SCHA.S3 */
+            satisfy ConcernMapping::degradedModeTransparency;
         }
 
         requirement CM_007 {
-            doc /* Customer/ProjectManager/SystemsEngineer/ComplianceOfficer/OperationsOwner -> CON_001 + CON_005 + CON_006 -> CIM Gate -> VP_006_CIMGatewayReadiness -> VPT_006_CIMGatewayReadiness -> SIG_CIM_GATE.S1,S2,S3 */
+            doc /* gatewayReadiness -> VPT_006_CIMGatewayReadiness -> SIG_CIM_GATE.S1,S2,S3 */
+            satisfy ConcernMapping::gatewayReadiness;
         }
     }
 

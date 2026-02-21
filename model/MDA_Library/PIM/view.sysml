@@ -10,10 +10,9 @@ package PIM_View {
     viewpoint pimVerificationReadinessViewpoint : PIM_Viewpoint::PIMVerificationReadinessViewpoint;
     viewpoint pimLifecycleGatewayReadinessViewpoint : PIM_Viewpoint::PIMLifecycleGatewayReadinessViewpoint;
 
-    view def <LogicalArchitecture_Document> 'PIM Logical Architecture Specification' {
+    view def <LogicalArchitecture_Document> 'PIM Logical Architecture Specification' :> LaTeXProfile {
         doc /* Captures the platform-independent logical architecture, components, connectors, and responsibilities. */
         satisfy logicalArchitectureViewpoint;
-        render asElementTable;
 
         view <OverviewSection> 'Overview' {
             doc
@@ -56,10 +55,9 @@ package PIM_View {
         }
     }
 
-    view def <InterfaceDesign_Document> 'PIM Interface Design Description' {
+    view def <InterfaceDesign_Document> 'PIM Interface Design Description' :> LaTeXProfile {
         doc /* Captures platform-independent interface definitions, message contracts, and error handling behavior. */
         satisfy logicalArchitectureViewpoint;
-        render asElementTable;
 
         view <ContextSection> 'Interface Context' {
             doc
@@ -113,10 +111,9 @@ package PIM_View {
         }
     }
 
-    view def <BehaviorDesign_Document> 'PIM Behavior and Use Case Design Document' {
+    view def <BehaviorDesign_Document> 'PIM Behavior and Use Case Design Document' :> LaTeXProfile {
         doc /* Captures PIM-level behavioral descriptions, nominal and degraded flows, and use case refinements. */
         satisfy logicalArchitectureViewpoint;
-        render asTextualNotation;
 
         view <ScenarioOverviewSection> 'Scenario Overview' {
             doc
@@ -149,10 +146,9 @@ package PIM_View {
         }
     }
 
-    view def <Allocation_Document> 'PIM Requirements and Allocation Specification' {
+    view def <Allocation_Document> 'PIM Requirements and Allocation Specification' :> LaTeXProfile {
         doc /* Captures PIM-level requirements, their allocations to logical elements, and traceability to CIM. */
         satisfy requirementAllocationViewpoint;
-        render asElementTable;
 
         view <RequirementsOverviewSection> 'Requirements Overview' {
             doc
@@ -179,10 +175,9 @@ package PIM_View {
         }
     }
 
-    view def <Verification_Document> 'PIM Verification Readiness and Test Intent Document' {
+    view def <Verification_Document> 'PIM Verification Readiness and Test Intent Document' :> LaTeXProfile {
         doc /* Captures PIM-level verification objectives, planned test approaches, and coverage of PIM requirements. */
         satisfy pimVerificationReadinessViewpoint;
-        render asElementTable;
 
         view <VerificationObjectivesSection> 'Verification Objectives' {
             doc
@@ -218,10 +213,9 @@ package PIM_View {
         }
     }
 
-    view def <PIMGatewaySignoff_Document> 'PIM Gateway Readiness and Design Review Document' {
+    view def <PIMGatewaySignoff_Document> 'PIM Gateway Readiness and Design Review Document' :> LaTeXProfile {
         doc /* Captures PIM gate entry criteria, design risks, and signoff evidence before entering PSM. */
         satisfy pimLifecycleGatewayReadinessViewpoint;
-        render asElementTable;
 
         view <OverviewSection> 'Overview' {
             doc

@@ -6,11 +6,22 @@ package PSM_View {
     private import PSM::*;
 
     viewpoint platformRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::PlatformRealizationViewpoint;
+    viewpoint codeRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::CodeRealizationViewpoint;
+    viewpoint testRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::TestRealizationViewpoint;
 
-    view def <PlatformRealization_Document> 'PSM Platform Realization and Technology Selection' {
+    view def <TypeScriptCode_Document> 'TypeScript Code Realization' :> TypeScriptProfile {
+        doc /* Selects PSM components, actions, and PIM behavior for Node.js/TypeScript code generation. */
+        satisfy codeRealizationViewpoint;
+    }
+
+    view def <TypeScriptTest_Document> 'TypeScript Test Realization' :> TypeScriptProfile {
+        doc /* Selects verification cases for Vitest/TypeScript test generation. */
+        satisfy testRealizationViewpoint;
+    }
+
+    view def <PlatformRealization_Document> 'PSM Platform Realization and Technology Selection' :> LaTeXProfile {
         doc /* Captures technology selections and PSM physical architecture with implementation attributes. */
         satisfy platformRealizationViewpoint;
-        render asElementTable;
 
         view <TechnologySelectionSection> 'Technology Selection' {
             doc /* Technology trade studies and selection rationale. */

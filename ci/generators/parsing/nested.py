@@ -105,10 +105,38 @@ def _extract_state_defs(file_path: Path, text: str) -> list[ModelElement]:
     return defs
 
 
+def _extract_package_part_usages(package_elem: ModelElement) -> list[ModelElement]:
+    """Extract part usages from a package body (e.g. 'part hl7AdapterService : PhysicalArchitecture::HL7AdapterService;'). Caller must set qualified_name to package.qualified_name + '::' + name."""
+    usages: list[ModelElement] = []
+    if not package_elem.body or package_elem.kind != "package":
+        return usages
+    for match in PART_INLINE_RE.finditer(package_elem.body):
+        name = _strip_quotes(match.group("name"))
+        short = _strip_short_name(match.group("short"))
+        types_str = (match.group("types") or "").strip()
+        supertypes = [t.strip() for t in types_str.split(",") if t.strip()]
+        usages.append(
+            ModelElement(
+                kind="part",
+                name=name,
+                short_name=short,
+                file_path=package_elem.file_path,
+                start_index=package_elem.start_index,
+                end_index=package_elem.end_index,
+                start_line=package_elem.start_line,
+                end_line=package_elem.end_line,
+                body="",
+                doc="",
+                supertypes=supertypes,
+            )
+        )
+    return usages
+
+
 def _extract_nested_parts(parent: ModelElement) -> list[ModelElement]:
-    """Extract nested part declarations from a part block body (e.g. 'part nodeScored : ScoredX;'). Only part blocks are scanned so package bodies are not traversed (avoiding wrong qualified_name)."""
+    """Extract nested part declarations from a part block body (e.g. 'part nodeScored : ScoredX;'). Only part blocks are scanned so package bodies are not traversed (avoiding wrong qualified_name). Accepts both part usages and part defs so nested parts under part defs (e.g. HL7AdapterService) are included."""
     children: list[ModelElement] = []
-    if not parent.body or parent.kind != "part":
+    if not parent.body or parent.kind not in ("part", "part def"):
         return children
     for match in PART_INLINE_RE.finditer(parent.body):
         name = _strip_quotes(match.group("name"))

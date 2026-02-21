@@ -6,6 +6,7 @@ from pathlib import Path
 from ..errors import ParsingError
 from .model import ModelAttribute, ModelElement, _strip_quotes, _strip_short_name
 from .regex import (
+    ACTION_PARAM_RE,
     ALIAS_RE,
     ALLOCATION_SATISFY_RE,
     ATTR_VALUE_ASSIGN_RE,
@@ -18,15 +19,20 @@ from .regex import (
     ENTRY_ACTION_RE,
     ENTRY_THEN_RE,
     DO_ACTION_RE,
+    EXHIBIT_RE,
     EXPOSE_RE,
     FLOW_PROPERTY_RE,
     FRAME_RE,
     INTERFACE_END_RE,
+    NAMED_REP_RE,
+    PERFORM_ACTION_RE,
     REFINEMENT_DEPENDENCY_RE,
     RENDER_RE,
     SATISFY_RE,
     STATE_OR_ACCEPT_RE,
     STATE_PORT_RE,
+    SUBJECT_RE,
+    VERIFY_REF_RE,
 )
 
 
@@ -174,6 +180,43 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         raw_text = text[match.start():open_brace_index]
         if kind == "attribute" and "def" in raw_text:
             effective_kind = "attribute def"
+        if kind == "action" and "def" in raw_text:
+            effective_kind = "action def"
+        if kind == "verification" and "def" in raw_text:
+            effective_kind = "verification def"
+
+        perform_actions: list[tuple[str, str]] = []
+        exhibit_refs: list[str] = []
+        if kind == "part":
+            for pa_match in PERFORM_ACTION_RE.finditer(body):
+                perform_actions.append(
+                    (pa_match.group("name"), pa_match.group("type").strip())
+                )
+            for ex_match in EXHIBIT_RE.finditer(body):
+                exhibit_refs.append(ex_match.group("name"))
+
+        action_params: list[tuple[str, str, str | None]] = []
+        if effective_kind == "action def":
+            for ap_match in ACTION_PARAM_RE.finditer(body):
+                action_params.append(
+                    (ap_match.group("dir"), ap_match.group("name"), (ap_match.group("type") or "").strip() or None)
+                )
+
+        textual_representations: list[tuple[str, str, str]] = []
+        for tr_match in NAMED_REP_RE.finditer(body):
+            rep_name = tr_match.group(1)
+            lang = tr_match.group(2).strip()
+            rep_body = tr_match.group(3)
+            if rep_body is not None:
+                textual_representations.append((rep_name, lang, rep_body))
+
+        verify_refs: list[str] = []
+        subject_ref: tuple[str, str] | None = None
+        if kind == "verification":
+            verify_refs = [m.group(1).strip() for m in VERIFY_REF_RE.finditer(body)]
+            sub_match = SUBJECT_RE.search(body)
+            if sub_match:
+                subject_ref = (sub_match.group(1).strip(), sub_match.group(2).strip())
 
         elements.append(
             ModelElement(
@@ -206,13 +249,19 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 entry_action=entry_action,
                 do_action=do_action,
                 state_ports=state_ports,
+                textual_representations=textual_representations,
+                perform_actions=perform_actions,
+                action_params=action_params,
+                verify_refs=verify_refs,
+                subject_ref=subject_ref,
+                exhibit_refs=exhibit_refs,
             )
         )
     return elements
 
 
 def _resolve_qualified_names(elements: list[ModelElement]) -> None:
-    containers = [e for e in elements if e.kind in ("package", "state")]
+    containers = [e for e in elements if e.kind in ("package", "state", "verification def")]
     for element in elements:
         enclosing = [
             c

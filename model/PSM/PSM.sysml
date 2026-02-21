@@ -4,4 +4,8 @@ package PSM {
     alias TechnologySelection for PSM_TechnologySelection;
     alias PhysicalArchitecture for PSM_PhysicalArchitecture;
     alias Interfaces for PSM_Interfaces;
+    alias Actions for PSM_Actions;
+
+    /* Our main object */
+    part hl7AdapterService : PhysicalArchitecture::HL7AdapterService;
 }

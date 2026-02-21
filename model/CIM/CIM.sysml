@@ -10,4 +10,5 @@ package CIM {
     alias Mission for CIM_Mission;
     alias Assumptions for CIM_Assumptions;
     alias LifecycleAlignment for CIM_LifecycleAlignment;
+    alias Datatype for CIM_Datatype;
 }

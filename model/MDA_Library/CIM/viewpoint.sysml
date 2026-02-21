@@ -66,7 +66,7 @@
 
         /* CIM viewpoints specialized from the abstract MDA viewpoints */
 
-        viewpoint def StakeholderNeedsViewpoint :> StakeholderConcernsViewpoint {
+        viewpoint def StakeholderNeedsViewpoint :> StakeholderConcernsViewpoint, DocumentationViewpoint {
             doc /* Covers stakeholder intent, outcomes, and traceability concerns. */
 
             frame 'CIM stakeholder needs coverage';
@@ -76,7 +76,7 @@
             }
         }
 
-        viewpoint def ConOpsViewpoint :> ArchitectureAndBehaviorViewpoint {
+        viewpoint def ConOpsViewpoint :> ArchitectureAndBehaviorViewpoint, DocumentationViewpoint {
             doc /* Covers mission, operational context, and assumptions for system use. */
 
             frame 'CIM context and mission clarity';
@@ -86,7 +86,7 @@
             }
         }
 
-        viewpoint def OperationalScenariosViewpoint :> ArchitectureAndBehaviorViewpoint {
+        viewpoint def OperationalScenariosViewpoint :> ArchitectureAndBehaviorViewpoint, DocumentationViewpoint {
             doc /* Covers nominal and degraded operational scenario narratives. */
 
             frame 'CIM operational scenario transparency';
@@ -96,7 +96,7 @@
             }
         }
 
-        viewpoint def InterfaceContextViewpoint :> ArchitectureAndBehaviorViewpoint {
+        viewpoint def InterfaceContextViewpoint :> ArchitectureAndBehaviorViewpoint, DocumentationViewpoint {
             doc /* Covers external boundaries and exchanged conceptual artifacts. */
 
             frame 'CIM interface boundary clarity';
@@ -106,7 +106,7 @@
             }
         }
 
-        viewpoint def ComplianceAndSafetyViewpoint :> VerificationAndComplianceViewpoint {
+        viewpoint def ComplianceAndSafetyViewpoint :> VerificationAndComplianceViewpoint, DocumentationViewpoint {
             doc /* Covers policy/constraint obligations and operational hazard posture. */
 
             frame 'CIM compliance and safety posture';
@@ -116,7 +116,7 @@
             }
         }
 
-        viewpoint def LifecycleGatewayReadinessViewpoint :> LifecycleGateReadinessViewpoint {
+        viewpoint def LifecycleGatewayReadinessViewpoint :> LifecycleGateReadinessViewpoint, DocumentationViewpoint {
             doc /* Covers CIM gateway entry criteria, stakeholder consensus status, and signoff evidence. */
 
             frame 'CIM gateway readiness';

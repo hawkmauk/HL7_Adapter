@@ -6,7 +6,7 @@ from .assets import STYLE_FILE_NAME
 from .escape import _escape_latex, _label_key
 from .rendering import (
     _heading_for_depth,
-    _render_by_directive,
+    _render_element_table,
     _render_exposed_package_structure,
     _render_stakeholder_signoff_table,
 )
@@ -158,7 +158,7 @@ def _build_tex(document: DocumentIR, version: str) -> str:
             lines.append("")
 
     lines.append("\\subsection{Render Directive Snapshot}")
-    lines.append(_render_by_directive(document))
+    lines.append(_render_element_table(document))
     lines.append("")
     lines.append("\\end{document}")
     return "\n".join(lines)

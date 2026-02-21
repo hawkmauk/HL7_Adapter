@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action|state|attribute|item)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action|state|attribute|item|verification)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -47,7 +47,7 @@ REFINEMENT_DEPENDENCY_RE = re.compile(
     r"(?m)#refinement\s+dependency\s+'([^']+)'\s+to\s+'([^']+)';"
 )
 PART_INLINE_RE = re.compile(
-    r"(?m)^\s*part\s+(?:<(?P<short>[^>]+)>)?\s*"
+    r"(?m)^\s*part\s+(?::>>\s*)?(?:<(?P<short>[^>]+)>)?\s*"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<types>[^;]+);"
 )
 CONSTRAINT_PARAM_RE = re.compile(
@@ -89,6 +89,14 @@ ACTION_USAGE_RE = re.compile(
     r"(?m)^\s*action\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<type>[^;{]+);"
 )
 
+PERFORM_ACTION_RE = re.compile(
+    r"(?m)^\s*perform\s+action\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?P<type>[^;{]+);"
+)
+
+ACTION_PARAM_RE = re.compile(
+    r"(?m)^\s*(?P<dir>in|out)\s+(?:attribute\s+)?(?::>\s*)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*(?P<type>[^;{]+))?\s*;"
+)
+
 INLINE_STATE_RE = re.compile(
     r"(?m)^\s*state\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;"
 )
@@ -96,3 +104,20 @@ INLINE_STATE_RE = re.compile(
 STATE_DEF_RE = re.compile(
     r"(?m)^\s*state\s+def\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;"
 )
+
+# Verification case: objective { verify <requirement>; }
+VERIFY_REF_RE = re.compile(r"verify\s+([A-Za-z0-9_:]+)\s*;")
+# Verification case: subject <name> : <type>;
+SUBJECT_RE = re.compile(r"(?m)^\s*subject\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^;]+);")
+
+# exhibit state <usage_name>; or exhibit <usage_name> { ... }
+EXHIBIT_RE = re.compile(
+    r"(?m)^\s*exhibit\s+(?:state\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*[;{]"
+)
+
+# SysML v2 named rep blocks: rep <name> language "lang" /* body */
+NAMED_REP_RE = re.compile(
+    r"rep\s+(\w+)\s+language\s+\"([^\"]+)\"\s*/\*(.*?)\*/",
+    re.DOTALL,
+)
+TEXTUAL_REPRESENTATION_RE = NAMED_REP_RE

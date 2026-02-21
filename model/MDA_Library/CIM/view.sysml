@@ -13,10 +13,9 @@ package CIM_View {
     viewpoint complianceAndSafetyViewpoint : ComplianceAndSafetyViewpoint;
     viewpoint lifecycleGatewayReadinessViewpoint : LifecycleGatewayReadinessViewpoint;
 
-    view def <SNRS_Document> 'CIM Stakeholder Needs and Requirements Document' {
+    view def <SNRS_Document> 'CIM Stakeholder Needs and Requirements Document' :> LaTeXProfile {
         doc /* Captures CIM-level stakeholder identities, needs, and traceable requirements at the CIM level. */
         satisfy stakeholderNeedsViewpoint;
-        render asElementTable;
 
         view <StakeholderOverviewSection> 'Stakeholder Overview' {
             doc
@@ -56,10 +55,9 @@ package CIM_View {
         }
     }
 
-    view def <ConOps_Document> 'CIM Concept of Operations Document' {
+    view def <ConOps_Document> 'CIM Concept of Operations Document' :> LaTeXProfile {
         doc /* Captures CIM-level mission, stakeholders, context, operational scenarios, and assumptions. */
         satisfy conOpsViewpoint;
-        render asTreeDiagram;
 
         view <DomainSection> 'Domain' {
             doc
@@ -135,10 +133,9 @@ package CIM_View {
         }
     }
 
-    view def <OperationalScenarios_Document> 'CIM Operational Scenarios and Use Case Document' {
+    view def <OperationalScenarios_Document> 'CIM Operational Scenarios and Use Case Document' :> LaTeXProfile {
         doc /* Captures CIM-level nominal and degraded operational scenarios and use-case narratives. */
         satisfy operationalScenariosViewpoint;
-        render asTextualNotation;
 
         view <ScenarioOverviewSection> 'Scenario Overview' {
             doc
@@ -168,10 +165,9 @@ package CIM_View {
         }
     }
 
-    view def <EICD_Document> 'CIM External Interface Context Document' {
+    view def <EICD_Document> 'CIM External Interface Context Document' :> LaTeXProfile {
         doc /* Captures CIM-level external context, actors, and conceptual interface boundaries. */
         satisfy interfaceContextViewpoint;
-        render asElementTable;
 
         view <ContextOverviewSection> 'Context Overview' {
             doc
@@ -212,10 +208,9 @@ package CIM_View {
         }
     }
 
-    view def <RSCM_Document> 'CIM Regulatory and Standards Compliance Matrix' {
+    view def <RSCM_Document> 'CIM Regulatory and Standards Compliance Matrix' :> LaTeXProfile {
         doc /* Captures CIM-level regulatory, standards, and policy obligations and their context mapping. */
         satisfy complianceAndSafetyViewpoint;
-        render asElementTable;
 
         view <RegulatoryLandscapeSection> 'Regulatory Landscape' {
             doc
@@ -255,10 +250,9 @@ package CIM_View {
         }
     }
 
-    view def <SCHA_Document> 'CIM Safety Case and Hazard Analysis Summary' {
+    view def <SCHA_Document> 'CIM Safety Case and Hazard Analysis Summary' :> LaTeXProfile {
         doc /* Captures CIM-level safety case summary, key hazards, and mitigation posture. */
         satisfy complianceAndSafetyViewpoint;
-        render asElementTable;
 
         view <SafetyObjectivesSection> 'Safety Objectives' {
             doc
@@ -296,10 +290,9 @@ package CIM_View {
         }
     }
 
-    view def <GatewaySignoff_Document> 'CIM Gateway Readiness and Signoff Document' {
+    view def <GatewaySignoff_Document> 'CIM Gateway Readiness and Signoff Document' :> LaTeXProfile {
         doc /* Captures CIM gateway entry criteria, stakeholder consensus status, and signoff evidence. */
         satisfy lifecycleGatewayReadinessViewpoint;
-        render asElementTable;
 
         view <OverviewSection> 'Overview' {
             doc

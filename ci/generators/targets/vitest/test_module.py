@@ -36,6 +36,7 @@ def build_test_file(
     descriptors: list[dict],
     config_attrs: list[dict[str, str]] | None = None,
     extra_imports: list[str] | None = None,
+    preamble: str | None = None,
 ) -> str:
     """Generate a single .test.ts file for one component (e.g. mllp_receiver.test.ts)."""
     lines: list[str] = []
@@ -45,12 +46,16 @@ def build_test_file(
     import_path = f"../{module_file}"
     lines.append("import { describe, it, expect, beforeEach } from 'vitest';")
     import_symbols = [class_name]
-    if config_attrs:
+    if config_attrs or preamble:
         import_symbols.append(f"{class_name}Config")
     import_symbols.extend(extra_imports)
     lines.append(f"import {{ {', '.join(import_symbols)} }} from '{import_path}';")
     lines.append("")
-    if config_attrs:
+    if preamble:
+        for line in preamble.strip().splitlines():
+            lines.append(line)
+        lines.append("")
+    elif config_attrs:
         config_type = f"{class_name}Config"
         default_config_lines = [
             f"  {attr['name']}: {_default_config_value_ts(attr['type'])},"
@@ -70,7 +75,8 @@ def build_test_file(
         lines.append("")
         lines.append("  beforeEach(() => {")
         if config_attrs:
-            lines.append(f"    {desc['subject_name']} = new {class_name}(defaultConfig);")
+            config_var = desc.get("config_var") or "defaultConfig"
+            lines.append(f"    {desc['subject_name']} = new {class_name}({config_var});")
         else:
             lines.append(f"    {desc['subject_name']} = new {class_name}();")
         lines.append("  });")

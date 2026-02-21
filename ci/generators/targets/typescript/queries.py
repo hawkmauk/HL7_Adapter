@@ -6,6 +6,8 @@ hardcoded lookup tables.
 """
 from __future__ import annotations
 
+import re
+
 from ...ir import ExposedElement, GraphEdge, GraphNode, ModelGraph
 from .naming import _display_name_to_class_name, _sysml_type_to_ts
 
@@ -32,7 +34,159 @@ def _resolve_part_def_qname(
         for q in candidates:
             if q.startswith(prefer_prefix):
                 return q
+    # Prefer PSM over PIM when prefer_prefix did not match (e.g. MLLPReceiver -> PSM_MLLPReceiver::...)
+    psm = [q for q in candidates if q.startswith("PSM_")]
+    if psm:
+        return psm[0]
     return type_ref if type_ref in graph.nodes else candidates[0]
+
+
+def _resolve_param_type_to_part_def_qname(
+    graph: ModelGraph,
+    type_str: str | None,
+    prefer_prefix: str | None = None,
+) -> str | None:
+    """Resolve an action param or attribute type to a part def qname. Strips [0..1] etc.
+    If prefer_prefix is set (e.g. 'PSM'), prefer part defs whose qname starts with that prefix.
+    """
+    if not type_str:
+        return None
+    raw = type_str.strip().split("[0..1]")[0].strip().split("=")[0].strip()
+    last = raw.split("::")[-1].strip()
+    if not last:
+        return None
+    candidates = [
+        n.qname
+        for n in graph.nodes.values()
+        if n.kind in ("part", "part def")
+        and (n.short_name == last or n.name == last)
+    ]
+    if not candidates:
+        return None
+    if prefer_prefix:
+        for q in candidates:
+            if q.startswith(prefer_prefix):
+                return q
+    return candidates[0]
+
+
+def get_preamble_type_part_defs(
+    graph: ModelGraph, psm_node: GraphNode | None
+) -> list[GraphNode]:
+    """Collect part defs referenced by this component's performed actions (param types and type names in action bodies), and their attribute types, in dependency order.
+
+    Used to emit interfaces/type aliases for preamble types from the model (no project-specific lists).
+    """
+    if not psm_node:
+        return []
+    # Prefer part defs from the same top-level namespace as the component (e.g. PSM_* when component is PSM_*)
+    first_seg = (psm_node.qname or "").split("::")[0]
+    prefer_prefix = (first_seg.split("_")[0] + "_") if first_seg else None
+
+    seen: set[str] = set()
+    qnames: list[str] = []
+    perform_decls = psm_node.properties.get("perform_actions", [])
+    performs_edges = graph.outgoing(psm_node.qname, "performs")
+    target_map: dict[str, str] = {}
+    for edge in performs_edges:
+        if edge.target:
+            target_map[edge.properties.get("usage_name", "")] = edge.target
+
+    # All part def short names for body-scan matching (generic: no project names)
+    part_def_short_names = {
+        n.short_name or n.name
+        for n in graph.nodes.values()
+        if n.kind in ("part", "part def") and (n.short_name or n.name)
+    }
+
+    def add(q: str) -> None:
+        if q in seen:
+            return
+        if q == psm_node.qname:
+            return  # Exclude the component itself from preamble types
+        seen.add(q)
+        node = graph.get(q)
+        if not node or node.kind not in ("part", "part def"):
+            return
+        for a in node.properties.get("attributes") or []:
+            ref = _resolve_param_type_to_part_def_qname(
+                graph, a.get("type"), prefer_prefix=prefer_prefix
+            )
+            if ref:
+                add(ref)
+        for edge in graph.outgoing(q, "supertype"):
+            if edge.target:
+                add(edge.target)
+        # Collect types referenced in this node's TypeScript rep body (e.g. MappingConfig rep "MappingConfigEntry[]")
+        for r in node.properties.get("textual_representations") or []:
+            if (r.get("language") or "").lower() != "typescript":
+                continue
+            body = r.get("body") or ""
+            for short in part_def_short_names:
+                if re.search(rf"\b{re.escape(short)}\b", body):
+                    ref = _resolve_param_type_to_part_def_qname(
+                        graph, short, prefer_prefix=prefer_prefix
+                    )
+                    if ref:
+                        add(ref)
+        qnames.append(q)
+
+    for decl in perform_decls:
+        usage_name = decl.get("name", "")
+        action_qname = target_map.get(usage_name)
+        if not action_qname:
+            continue
+        action_node = graph.get(action_qname)
+        if not action_node:
+            continue
+        for p in action_node.properties.get("action_params") or []:
+            ref = _resolve_param_type_to_part_def_qname(
+                graph, p.get("type"), prefer_prefix=prefer_prefix
+            )
+            if ref:
+                add(ref)
+        # Also collect type names that appear in action rep bodies (e.g. ParsedHL7, MSHFields in function body)
+        for r in action_node.properties.get("textual_representations") or []:
+            if (r.get("language") or "").lower() != "typescript":
+                continue
+            body = r.get("body") or ""
+            for short in part_def_short_names:
+                if re.search(rf"\b{re.escape(short)}\b", body):
+                    ref = _resolve_param_type_to_part_def_qname(
+                        graph, short, prefer_prefix=prefer_prefix
+                    )
+                    if ref:
+                        add(ref)
+
+    # Topological sort: part def A before B if B has an attribute of type A (or B has supertype A)
+    dep: dict[str, set[str]] = {q: set() for q in qnames}
+    for q in qnames:
+        node = graph.get(q)
+        if not node:
+            continue
+        for a in node.properties.get("attributes") or []:
+            ref = _resolve_param_type_to_part_def_qname(graph, a.get("type"))
+            if ref and ref in dep:
+                dep[q].add(ref)
+        for edge in graph.outgoing(q, "supertype"):
+            if edge.target and edge.target in dep:
+                dep[q].add(edge.target)
+
+    sorted_qnames: list[str] = []
+    while dep:
+        ready = [q for q in dep if not dep[q]]
+        if not ready:
+            break
+        for q in sorted(ready):
+            sorted_qnames.append(q)
+            del dep[q]
+        for q in dep:
+            dep[q] -= set(ready)
+    for q in qnames:
+        if q not in sorted_qnames:
+            sorted_qnames.append(q)
+
+    return [graph.get(q) for q in sorted_qnames if graph.get(q)]
 
 
 def _get_exhibited_state(graph: ModelGraph, part_def_qname: str) -> str | None:

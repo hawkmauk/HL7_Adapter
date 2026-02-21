@@ -46,6 +46,10 @@ def _add_node(graph: ModelGraph, elem: ModelElement) -> None:
         props["attributes"] = [
             {"name": a.name, "type": a.type} for a in elem.attributes
         ]
+    if getattr(elem, "constants", None):
+        props["constants"] = [
+            {"name": n, "type": t, "value": v} for n, t, v in elem.constants
+        ]
     if elem.flow_properties:
         props["flow_properties"] = [
             {"direction": d, "kind": k, "name": n, "type": t}

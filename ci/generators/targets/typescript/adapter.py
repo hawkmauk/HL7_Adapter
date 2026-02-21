@@ -4,8 +4,8 @@ from __future__ import annotations
 from ...ir import ModelGraph
 from .naming import _to_camel, _to_screaming_snake
 from .queries import (
-    ADAPTER_STATE_MACHINE,
-    COMPONENT_MAP,
+    get_adapter_state_machine,
+    get_component_map,
     PIM_BEHAVIOR_PKG,
     _collect_states,
     _collect_transitions,
@@ -14,9 +14,13 @@ from .queries import (
 )
 
 
-def _build_adapter_module(graph: ModelGraph) -> str:
+def _build_adapter_module(graph: ModelGraph, document: object | None = None) -> str:
     """Generate the adapter.ts orchestrator that wires all components together."""
-    machine_qname = f"{PIM_BEHAVIOR_PKG}::{ADAPTER_STATE_MACHINE}"
+    component_map = get_component_map(graph, document=document)
+    adapter_state_machine = get_adapter_state_machine(graph, document=document)
+    if not adapter_state_machine:
+        return ""
+    machine_qname = f"{PIM_BEHAVIOR_PKG}::{adapter_state_machine}"
     states = _collect_states(graph, machine_qname)
     transitions = _collect_transitions(graph, machine_qname)
     machine_node = graph.get(machine_qname)
@@ -25,9 +29,9 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines: list[str] = []
 
     imports: list[str] = []
-    for comp in COMPONENT_MAP:
+    for comp in component_map:
         module = comp["output_file"].replace(".ts", "")
-        psm = _find_psm_node(graph, comp["psm_short"])
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             imports.append(f"import {{ {comp['class_name']}, {comp['class_name']}Config }} from './{module}';")
@@ -57,21 +61,21 @@ def _build_adapter_module(graph: ModelGraph) -> str:
 
     lines.append("export class HL7Adapter extends EventEmitter {")
     lines.append(f"  private _state: {enum_name};")
-    for comp in COMPONENT_MAP:
+    for comp in component_map:
         field = _to_camel(comp["class_name"])
         lines.append(f"  readonly {field}: {comp['class_name']};")
     lines.append("")
 
     constructor_params: list[str] = []
-    for comp in COMPONENT_MAP:
-        psm = _find_psm_node(graph, comp["psm_short"])
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             constructor_params.append(f"{_to_camel(comp['class_name'])}Config: {comp['class_name']}Config")
 
     config_imports: list[str] = []
-    for comp in COMPONENT_MAP:
-        psm = _find_psm_node(graph, comp["psm_short"])
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             config_imports.append(f"{comp['class_name']}Config")
@@ -80,9 +84,9 @@ def _build_adapter_module(graph: ModelGraph) -> str:
     lines.append(f"  constructor({param_str}) {{")
     lines.append("    super();")
     lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(initial_state or 'Idle')};")
-    for comp in COMPONENT_MAP:
+    for comp in component_map:
         field = _to_camel(comp["class_name"])
-        psm = _find_psm_node(graph, comp["psm_short"])
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
             lines.append(f"    this.{field} = new {comp['class_name']}({_to_camel(comp['class_name'])}Config);")

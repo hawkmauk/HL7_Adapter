@@ -1,10 +1,84 @@
-"""Config file generators: package.json, tsconfig.json, index.ts."""
+"""Config file generators: package.json, tsconfig.json, index.ts, main.ts."""
 from __future__ import annotations
 
 import json
 
 from ...ir import ModelGraph
-from .queries import COMPONENT_MAP
+from .naming import _to_camel
+from .queries import get_adapter_state_machine, get_component_map, _find_psm_node, _get_config_attributes
+
+
+def _default_config_value_json(ts_type: str, model_default: str | None = None) -> str | int | bool:
+    """Return a JSON-serializable default for a config attribute.
+
+    Prefer model_default when present (from model attribute default).
+    Otherwise use a type-based fallback only; no project-specific values.
+    """
+    if model_default is not None and model_default.strip():
+        raw = model_default.strip()
+        if ts_type == "number":
+            try:
+                return int(raw) if "." not in raw else float(raw)
+            except ValueError:
+                return 0
+        if ts_type == "boolean":
+            return raw.lower() in ("true", "1", "yes")
+        return raw.strip("'\"")
+    if ts_type == "string":
+        return ""
+    if ts_type == "number":
+        return 0
+    if ts_type == "boolean":
+        return False
+    return ""
+
+
+def _build_config_json(graph: ModelGraph, document: object | None = None) -> str:
+    """Build default config as JSON keyed by component (camelCase). Returns empty string if no adapter."""
+    if not get_adapter_state_machine(graph, document=document):
+        return ""
+    component_map = get_component_map(graph, document=document)
+    config: dict[str, dict[str, str | int | bool]] = {}
+    for comp in component_map:
+        psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
+        attrs = _get_config_attributes(psm) if psm else []
+        if not attrs:
+            continue
+        key = _to_camel(comp["class_name"])
+        config[key] = {}
+        for attr in attrs:
+            name = attr["name"]
+            ts_type = attr["type"]
+            config[key][name] = _default_config_value_json(ts_type, attr.get("default"))
+    return json.dumps(config, indent=2) + "\n"
+
+
+def _build_main_module(graph: ModelGraph, document: object | None = None) -> str:
+    """Generate main.ts: load config from config.json, create HL7Adapter, and start the application."""
+    if not get_adapter_state_machine(graph, document=document):
+        return ""
+    component_map = get_component_map(graph, document=document)
+    lines: list[str] = [
+        "import { readFileSync } from 'fs';",
+        "import { join } from 'path';",
+        "import { HL7Adapter } from './adapter';",
+        "",
+        "function main(): void {",
+        "  const configPath = join(process.cwd(), 'config.json');",
+        "  const config = JSON.parse(readFileSync(configPath, 'utf-8'));",
+        "  const adapter = new HL7Adapter(",
+    ]
+    args = [f"    config.{_to_camel(comp['class_name'])}," for comp in component_map]
+    if args:
+        args[-1] = args[-1].rstrip(",")
+    lines.extend(args)
+    lines.append("  );")
+    lines.append("  adapter.mllpReceiver.start();")
+    lines.append("}")
+    lines.append("")
+    lines.append("main();")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _build_package_json() -> str:
@@ -13,10 +87,12 @@ def _build_package_json() -> str:
         "name": "hl7-adapter",
         "version": "0.1.0",
         "description": "HL7 Adapter service generated from SysML model",
-        "main": "dist/adapter.js",
+        "main": "dist/main.js",
         "scripts": {
             "build": "tsc",
-            "start": "node dist/adapter.js",
+            "start": "node dist/main.js",
+            "test": "vitest run",
+            "test:watch": "vitest",
         },
         "dependencies": {
             "hl7-standard": "^1.0.0",
@@ -26,6 +102,7 @@ def _build_package_json() -> str:
         "devDependencies": {
             "@types/node": "^22.0.0",
             "typescript": "^5.7.0",
+            "vitest": "^2.0.0",
         },
     }
     return json.dumps(pkg, indent=2) + "\n"
@@ -44,18 +121,20 @@ def _build_tsconfig() -> str:
             "esModuleInterop": True,
             "declaration": True,
             "sourceMap": True,
+            "skipLibCheck": True,
         },
         "include": ["src"],
     }
     return json.dumps(config, indent=2) + "\n"
 
 
-def _build_index(graph: ModelGraph) -> str:
+def _build_index(graph: ModelGraph, document: object | None = None) -> str:
     """Generate src/index.ts that re-exports all component modules and the adapter."""
     lines: list[str] = []
-    for comp in COMPONENT_MAP:
+    for comp in get_component_map(graph, document=document):
         module = comp["output_file"].replace(".ts", "")
         lines.append(f"export {{ {comp['class_name']} }} from './{module}';")
-    lines.append("export { HL7Adapter } from './adapter';")
+    if get_adapter_state_machine(graph, document=document):
+        lines.append("export { HL7Adapter } from './adapter';")
     lines.append("")
     return "\n".join(lines)

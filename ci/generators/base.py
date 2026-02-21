@@ -28,6 +28,7 @@ class GeneratorTarget(ABC):
 
     name: str
     supported_renders: set[str]
+    supported_viewpoint_types: set[str] | None = None  # e.g. {"documentation"} or {"executable"}; None = no validation
 
     @abstractmethod
     def generate(

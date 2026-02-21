@@ -6,6 +6,13 @@ package PSM_View {
     private import PSM::*;
 
     viewpoint platformRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::PlatformRealizationViewpoint;
+    viewpoint codeRealizationViewpoint : PSM_Viewpoint::PSMStandardViewpointCatalog::CodeRealizationViewpoint;
+
+    view def <TypeScriptCode_Document> 'TypeScript Code Realization' {
+        doc /* Selects PSM components, actions, and PIM behavior for Node.js/TypeScript code generation. */
+        satisfy codeRealizationViewpoint;
+        render asTypeScriptApplication;
+    }
 
     view def <PlatformRealization_Document> 'PSM Platform Realization and Technology Selection' {
         doc /* Captures technology selections and PSM physical architecture with implementation attributes. */

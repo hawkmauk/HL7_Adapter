@@ -322,6 +322,21 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
                 )
         allocation_matrix.sort(key=lambda r: (r.requirement, r.logical_block))
 
+    satisfy_refs = [ref.strip() for ref in element.satisfy_refs]
+    if not satisfy_refs and element.supertypes:
+        for st in element.supertypes:
+            st_token = st.strip().split("::")[-1]
+            supertype_elem = model_index.by_qualified_name.get(st.strip())
+            if not supertype_elem and model_index.by_name.get(st_token):
+                candidates = model_index.by_name.get(st_token, [])
+                supertype_elem = next(
+                    (c for c in candidates if c.qualified_name == st.strip() or c.qualified_name.endswith("::" + st_token)),
+                    candidates[0] if candidates else None,
+                )
+            if supertype_elem and getattr(supertype_elem, "satisfy_refs", None):
+                satisfy_refs = [ref.strip() for ref in supertype_elem.satisfy_refs]
+                break
+
     return DocumentIR(
         document_id=element.name,
         title=_title_from_id(element.name),
@@ -333,7 +348,7 @@ def _extract_document_ir(element: ModelElement, model_index: ModelIndex) -> Docu
             end_line=element.end_line,
         ),
         binding=ViewBinding(
-            satisfy_refs=[ref.strip() for ref in element.satisfy_refs],
+            satisfy_refs=satisfy_refs,
             expose_refs=[ref.strip() for ref in element.expose_refs],
             render_kind=element.render_kind,
         ),

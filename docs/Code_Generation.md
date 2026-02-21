@@ -20,8 +20,8 @@ pandoc-style approach: one parser, one generic intermediate representation
 The parsing package (entry point `parsing/driver.py`: `parse_model_directory`) reads
 `.sysml` files and produces a flat `ModelIndex` of `ModelElement`
 objects. Recognises: `package`, `part`, `port`, `interface`, `view`,
-`constraint`, `use case`, `occurrence`, `action`, `state`, `attribute def`,
-`item`, and signal declarations.
+`constraint`, `use case`, `occurrence`, `action`, `action def`, `state`,
+`attribute def`, `item`, signal declarations, and `perform action` usages.
 
 For state machines the parser extracts:
 
@@ -29,6 +29,10 @@ For state machines the parser extracts:
 - State bodies with entry/do actions
 - Transitions with source-state context (`accept Signal then Target`)
 - State-machine port declarations (`in name : Type;`)
+
+For PSM parts the parser also extracts `perform action` usages
+(`perform action <name> : <Type>;`) which link a component to its
+PSM action defs.
 
 ### Graph Builder (`graph/builder.py`)
 
@@ -40,23 +44,24 @@ represent typed relationships.
 
 | Label              | Meaning                                        |
 |--------------------|------------------------------------------------|
-| `contains`         | Parent–child containment                       |
+| `contains`         | Parent-child containment                       |
 | `supertype`        | `:>` / `:` inheritance                         |
 | `transition`       | `accept Signal then Target` (carries `signal_name`, `machine`) |
 | `initial_transition` | `entry; then State`                          |
-| `entry_action`     | State → action (entry)                         |
-| `do_action`        | State → action (do)                            |
+| `entry_action`     | State -> action (entry)                        |
+| `do_action`        | State -> action (do)                           |
+| `performs`          | Part -> action def (`perform action`)          |
 | `satisfy`          | Requirement satisfaction                       |
-| `expose`           | View → exposed element                         |
-| `state_port`       | State → port type                              |
+| `expose`           | View -> exposed element                        |
+| `state_port`       | State -> port type                             |
 
 **Query helpers on `ModelGraph`:**
 
-- `children(qname, kind=)` — direct children by containment
-- `outgoing(qname, label=)` / `incoming(qname, label=)` — edge queries
-- `descendants(qname, kind=)` — recursive containment
-- `nodes_of_kind(kind)` — all nodes of a given kind
-- `get(qname)` — lookup by qualified name
+- `children(qname, kind=)` -- direct children by containment
+- `outgoing(qname, label=)` / `incoming(qname, label=)` -- edge queries
+- `descendants(qname, kind=)` -- recursive containment
+- `nodes_of_kind(kind)` -- all nodes of a given kind
+- `get(qname)` -- lookup by qualified name
 
 ### Targets
 
@@ -100,12 +105,54 @@ out/
     index.ts           # Re-exports
 ```
 
-### What each module contains
+### Assembly pipeline (named rep hooks + PSM action defs)
 
-- **State enum** — one member per child state of the PIM state machine
-- **Signal type** — union of all signal names triggering transitions
-- **Config interface** — typed configuration attributes from the PSM part definition
-- **Component class** — extends `EventEmitter`, implements `dispatch(signal)` with a
+The TypeScript generator **always** produces an auto-generated skeleton from the
+PIM state machine (enum, signals, config, class with dispatch). PSM part
+definitions can carry **multiple named `rep` blocks** whose content is injected at
+specific hook points during assembly, and **`perform action` usages** that pull
+in implementations from PSM action defs. All TypeScript code resides exclusively
+in the PSM; CIM and PIM remain technology-agnostic.
+
+Performed actions are partitioned by the `in self;` convention:
+
+- **No `in self`** -- emitted as module-level free functions (step 2)
+- **Has `in self`** -- emitted as class methods inside the component class (step 10)
+
+Assembly order:
+
+1. Emit `textualRepresentation` rep body (module preamble: imports, constants, interfaces)
+2. Emit performed action implementations **without** `in self` as free functions (in `perform` declaration order)
+3. Emit skeleton standard imports (`EventEmitter`, `pino`) and logger
+4. Emit auto-generated enum, signal type, config interface
+5. Open class extending `EventEmitter`
+6. Emit skeleton fields (`_state`, `_config`)
+7. Inject `classMembers` rep body (extra field declarations)
+8. Emit constructor, state getter
+9. Emit `_dispatch()` (private) + `dispatch()` (public wrapper) -- or plain `dispatch()` when no method actions or method reps exist
+10. Emit performed action implementations **with** `in self` as class methods, then any remaining named reps
+11. Close class
+
+PSM action defs live in `model/PSM/actions.sysml`. Each carries either a
+`rep textualRepresentation` (full implementation, emitted verbatim) or a
+`rep functionBody` (body-only): when `functionBody` is present, the generator
+builds the function signature from the action's `in`/`out` parameters and wraps
+the body (so the model defines the contract). CIM-mapped actions specialise
+their CIM counterpart (e.g. `action def ParseMllpFrame :> ReceiveMLLPFrame`);
+PSM-only helpers stand alone. Method actions declare `in self;` and use
+`textualRepresentation` with the full method body.
+
+When a PSM part has **no** reps and **no** performed actions, the generator
+produces the skeleton only.
+See [Embedded_Code_Syntax.md](Embedded_Code_Syntax.md) for the SysML rep syntax
+and hook categories.
+
+### What each module contains (skeleton mode)
+
+- **State enum** -- one member per child state of the PIM state machine
+- **Signal type** -- union of all signal names triggering transitions
+- **Config interface** -- typed configuration attributes from the PSM part definition
+- **Component class** -- extends `EventEmitter`, implements `dispatch(signal)` with a
   nested `switch` implementing the state machine transitions
 
 ### How transitions are mapped

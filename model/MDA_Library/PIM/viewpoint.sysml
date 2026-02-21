@@ -55,7 +55,7 @@ package PIM_Viewpoint {
 
     /* PIM viewpoints specialized from the abstract MDA viewpoints */
 
-    viewpoint def LogicalArchitectureViewpoint :> ArchitectureAndBehaviorViewpoint {
+    viewpoint def LogicalArchitectureViewpoint :> ArchitectureAndBehaviorViewpoint, DocumentationViewpoint {
         doc /* Covers platform-independent decomposition, interfaces, and behavioral refinement. */
 
         frame 'PIM logical coherence';
@@ -65,7 +65,7 @@ package PIM_Viewpoint {
         }
     }
 
-    viewpoint def RequirementAllocationViewpoint :> StakeholderConcernsViewpoint {
+    viewpoint def RequirementAllocationViewpoint :> StakeholderConcernsViewpoint, DocumentationViewpoint {
         doc /* Covers system requirements, allocations, and traceability from CIM concerns to PIM design. */
 
         frame 'PIM allocation completeness';
@@ -75,7 +75,7 @@ package PIM_Viewpoint {
         }
     }
 
-    viewpoint def PIMVerificationReadinessViewpoint :> VerificationAndComplianceViewpoint {
+    viewpoint def PIMVerificationReadinessViewpoint :> VerificationAndComplianceViewpoint, DocumentationViewpoint {
         doc /* Covers platform-independent verification intent and criteria before PSM realization. */
 
         frame 'PIM verification readiness';
@@ -85,7 +85,7 @@ package PIM_Viewpoint {
         }
     }
 
-    viewpoint def PIMLifecycleGatewayReadinessViewpoint :> LifecycleGateReadinessViewpoint {
+    viewpoint def PIMLifecycleGatewayReadinessViewpoint :> LifecycleGateReadinessViewpoint, DocumentationViewpoint {
         doc /* Covers PIM gate readiness, unresolved design risks, and signoff evidence. */
 
         frame 'PIM gateway readiness';

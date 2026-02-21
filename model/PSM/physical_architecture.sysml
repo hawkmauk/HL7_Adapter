@@ -2,7 +2,9 @@ package PSM_PhysicalArchitecture {
 
     private import PIM::*;
     private import PSM::Interfaces::*;
+    private import PSM::Actions::*;
     private import ScalarValues::*;
+    private import CIM::Datatype::*;
 
     doc /* PSM physical architecture: each PIM logical component refined with technology bindings and implementation-specific attributes (config, library types). Refines PIM::LogicalArchitecture. */
 
@@ -12,6 +14,35 @@ package PSM_PhysicalArchitecture {
         attribute bindPort : Integer { doc /* TCP port for MLLP listener (e.g. 2575). */ }
         attribute maxPayloadSize : Integer { doc /* Maximum MLLP payload size in bytes; frames exceeding this are rejected. */ }
         attribute connectionIdleTimeoutMs : Integer { doc /* Idle timeout in milliseconds before closing a connection. */ }
+
+        perform action parseMllpFrame : ParseMllpFrame;
+        perform action buildMllpMessage : BuildMllpMessage;
+        perform action buildAck : BuildAck;
+        perform action buildNak : BuildNak;
+        perform action start : StartReceiver;
+        perform action stop : StopReceiver;
+
+        rep textualRepresentation language "TypeScript"
+        /*
+import * as net from 'net';
+
+// MLLP framing constants (0x0B start, 0x1C 0x0D end).
+export const MLLP_START = 0x0b;
+export const MLLP_END_1 = 0x1c;
+export const MLLP_END_2 = 0x0d;
+
+export interface ParseMllpResult {
+  payload?: Buffer;
+  done: boolean;
+  error?: string;
+  consumed: number;
+}
+        */
+
+        rep classMembers language "TypeScript"
+        /*
+private _server: net.Server | null = null;
+        */
     }
 
     part def <Parser> 'Parser' :> PIM::LogicalArchitecture::Parser {
@@ -56,5 +87,13 @@ package PSM_PhysicalArchitecture {
         part :>> transformer : Transformer;
         part :>> httpForwarder : HTTPForwarder;
         part :>> errorHandler : ErrorHandler;
+    }
+
+    part def <ParseMllpResult> 'Parse MLLP Result' {
+        doc /* Refines PIM::LogicalArchitecture::ParseMllpResult. Technology binding: Node.js net/socket or custom MLLP framing. Implementation comprises TCP socket listener (Node.js net.Server), MLLP framing parser (start/end byte and length), and connection manager (accept/close/timeout). Configurable host/port. */
+        attribute payload : Buffer;
+        attribute success : Boolean;
+        attribute error : String;
+        attribute consumed : Integer;
     }
 }

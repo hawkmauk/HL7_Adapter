@@ -24,6 +24,7 @@ def build_model_graph(index: ModelIndex) -> ModelGraph:
         _add_satisfy(graph, elem)
         _add_expose(graph, elem)
         _add_state_ports(graph, elem)
+        _add_perform_actions(graph, elem)
 
     return graph
 
@@ -81,6 +82,20 @@ def _add_node(graph: ModelGraph, elem: ModelElement) -> None:
         props["state_ports"] = [
             {"direction": d, "name": n, "type": t}
             for d, n, t in elem.state_ports
+        ]
+    if getattr(elem, "textual_representations", None):
+        props["textual_representations"] = [
+            {"name": n, "language": l, "body": b}
+            for n, l, b in elem.textual_representations
+        ]
+    if getattr(elem, "perform_actions", None):
+        props["perform_actions"] = [
+            {"name": n, "type": t}
+            for n, t in elem.perform_actions
+        ]
+    if getattr(elem, "action_params", None):
+        props["action_params"] = [
+            {"dir": d, "name": n, "type": t} for d, n, t in elem.action_params
         ]
 
     graph.add_node(
@@ -188,6 +203,19 @@ def _add_state_ports(graph: ModelGraph, elem: ModelElement) -> None:
         ))
 
 
+def _add_perform_actions(graph: ModelGraph, elem: ModelElement) -> None:
+    if elem.kind not in ("part", "part def") or not getattr(elem, "perform_actions", None):
+        return
+    for _name, action_type in elem.perform_actions:
+        target_qname = _resolve_name(graph, elem, action_type)
+        graph.add_edge(GraphEdge(
+            source=elem.qualified_name,
+            target=target_qname or action_type,
+            label="performs",
+            properties={"usage_name": _name},
+        ))
+
+
 def _resolve_name(graph: ModelGraph, context: ModelElement, name: str) -> str | None:
     """Try to resolve a short name to a qualified name in the graph, searching from the context outward."""
     if name in graph.nodes:
@@ -201,7 +229,7 @@ def _resolve_name(graph: ModelGraph, context: ModelElement, name: str) -> str | 
         parent = _parent_qname(parent)
 
     for node in graph.nodes.values():
-        if node.name == name:
+        if node.name == name or node.short_name == name:
             return node.qname
 
     return None

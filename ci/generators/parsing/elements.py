@@ -6,6 +6,7 @@ from pathlib import Path
 from ..errors import ParsingError
 from .model import ModelAttribute, ModelElement, _strip_quotes, _strip_short_name
 from .regex import (
+    ACTION_PARAM_RE,
     ALIAS_RE,
     ALLOCATION_SATISFY_RE,
     ATTR_VALUE_ASSIGN_RE,
@@ -22,6 +23,8 @@ from .regex import (
     FLOW_PROPERTY_RE,
     FRAME_RE,
     INTERFACE_END_RE,
+    NAMED_REP_RE,
+    PERFORM_ACTION_RE,
     REFINEMENT_DEPENDENCY_RE,
     RENDER_RE,
     SATISFY_RE,
@@ -174,6 +177,30 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         raw_text = text[match.start():open_brace_index]
         if kind == "attribute" and "def" in raw_text:
             effective_kind = "attribute def"
+        if kind == "action" and "def" in raw_text:
+            effective_kind = "action def"
+
+        perform_actions: list[tuple[str, str]] = []
+        if kind == "part":
+            for pa_match in PERFORM_ACTION_RE.finditer(body):
+                perform_actions.append(
+                    (pa_match.group("name"), pa_match.group("type").strip())
+                )
+
+        action_params: list[tuple[str, str, str | None]] = []
+        if effective_kind == "action def":
+            for ap_match in ACTION_PARAM_RE.finditer(body):
+                action_params.append(
+                    (ap_match.group("dir"), ap_match.group("name"), (ap_match.group("type") or "").strip() or None)
+                )
+
+        textual_representations: list[tuple[str, str, str]] = []
+        for tr_match in NAMED_REP_RE.finditer(body):
+            rep_name = tr_match.group(1)
+            lang = tr_match.group(2).strip()
+            rep_body = tr_match.group(3)
+            if rep_body is not None:
+                textual_representations.append((rep_name, lang, rep_body))
 
         elements.append(
             ModelElement(
@@ -206,6 +233,9 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 entry_action=entry_action,
                 do_action=do_action,
                 state_ports=state_ports,
+                textual_representations=textual_representations,
+                perform_actions=perform_actions,
+                action_params=action_params,
             )
         )
     return elements

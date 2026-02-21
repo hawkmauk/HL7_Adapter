@@ -43,6 +43,9 @@ class ModelElement:
     entry_action: str | None = None  # "entry actionName { ... }"
     do_action: str | None = None  # "do actionName { ... }"
     state_ports: list[tuple[str, str, str]] = field(default_factory=list)  # (dir, name, type) for in/out ports on states
+    textual_representations: list[tuple[str, str, str]] = field(default_factory=list)  # (name, language, body) for named rep blocks
+    perform_actions: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for perform action usages
+    action_params: list[tuple[str, str, str | None]] = field(default_factory=list)  # (dir, name, type) for in/out params on action defs
 
 
 @dataclass(slots=True)

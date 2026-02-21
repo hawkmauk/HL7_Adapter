@@ -15,6 +15,7 @@ from .document import _build_tex, _filename_for_document
 class LatexGenerator(GeneratorTarget):
     name = "latex"
     supported_renders = {"ElementTable", "TreeDiagram", "TextualNotation"}
+    supported_viewpoint_types = {"documentation"}
 
     def generate(
         self,

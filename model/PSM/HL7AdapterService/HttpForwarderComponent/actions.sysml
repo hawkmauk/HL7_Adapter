@@ -25,27 +25,55 @@ package PSM_HTTPForwarder_Actions {
   const timeoutMs = this._config.requestTimeoutMs;
   const maxRetries = this._config.maxRetries;
   const backoffMs = this._config.retryBackoffMs;
+  const useTlsAgent = url.startsWith('https:') && typeof process !== 'undefined' && process.versions?.node && (this._config.tlsRejectUnauthorized !== undefined || this._config.tlsMinVersion);
+  const doOneRequest = async (): Promise<{ ok: boolean; status: number; text: () => Promise<string> }> => {
+    if (useTlsAgent) {
+      const u = new URL(url);
+      const agent = new https.Agent({
+        rejectUnauthorized: this._config.tlsRejectUnauthorized !== 0,
+        minVersion: (this._config.tlsMinVersion || undefined) as 'TLSv1' | 'TLSv1.1' | 'TLSv1.2' | 'TLSv1.3' | undefined,
+      });
+      return new Promise((resolve, reject) => {
+        const req = https.request({
+          hostname: u.hostname,
+          port: u.port || 443,
+          path: u.pathname + u.search,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          agent,
+        }, (res) => {
+          let body = '';
+          res.on('data', (ch: Buffer) => { body += ch.toString(); });
+          res.on('end', () => resolve({
+            ok: (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300,
+            status: res.statusCode ?? 0,
+            text: async () => body,
+          }));
+        });
+        req.on('error', reject);
+        req.setTimeout(timeoutMs, () => { req.destroy(); reject(new Error('timeout')); });
+        req.write(jsonPayload);
+        req.end();
+      });
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: jsonPayload, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return { ok: res.ok, status: res.status, text: () => res.text() };
+  };
   let attempt = 0;
   let lastError: Error | undefined;
   while (attempt <= maxRetries) {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      const opts: RequestInit = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: jsonPayload,
-        signal: controller.signal,
-      };
-      const res = await fetch(url, opts);
-      clearTimeout(timeoutId);
+      const res = await doOneRequest();
       if (res.ok) {
         this._dispatch('HTTP2xxSignal');
         this.emit('deliverySuccess', { status: res.status });
         return;
       }
       if (res.status >= 400 && res.status < 500) {
-        this._dispatch('HTTP5xxOrNetworkErrorSignal');
+        this._dispatch('HTTP4xxSignal');
         this.emit('deliveryFailed', { status: res.status, message: await res.text() });
         return;
       }

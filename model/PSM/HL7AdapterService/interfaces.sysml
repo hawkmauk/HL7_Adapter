@@ -15,7 +15,7 @@ package PSM_HL7AdapterService_Interfaces {
     }
 
     part def <HTTPResponseMapping> 'HTTP Response Mapping' {
-        doc /* HTTP status to delivery outcome. 2xx -> delivery success (HTTP2xxSignal); 4xx/5xx -> delivery failure (HTTP5xxOrNetworkErrorSignal); 503 -> retry; network error -> retry or fail after maxRetries. */
+        doc /* HTTP status to delivery outcome. 2xx -> delivery success (HTTP2xxSignal); 4xx -> non-retryable failure (HTTP4xxSignal, SENDING -> FAILED); 5xx/503 -> retry (HTTP5xxOrNetworkErrorSignal, SENDING -> RETRYING); network error -> retry or fail after maxRetries. */
     }
 
     /* =======================================================================

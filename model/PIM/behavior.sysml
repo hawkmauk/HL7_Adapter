@@ -35,6 +35,7 @@ package PIM_Behavior {
 
     attribute def SendJSONRequestedSignal;
     attribute def HTTP2xxSignal;
+    attribute def HTTP4xxSignal;
     attribute def HTTP5xxOrNetworkErrorSignal;
     attribute def ForwarderMaxRetriesExceededSignal;
 
@@ -50,8 +51,8 @@ package PIM_Behavior {
     /* Signal-to-CIM event mapping (conceptual)
        - MLLPFrameReceivedSignal / MLLPFrameCompleteSignal correspond to CIM::Events::MLLPFrameReceived.
        - HL7TransformSucceededSignal corresponds to CIM::Events::HL7MessageTransformed.
-       - SendJSONRequestedSignal / HTTP2xxSignal / HTTP5xxOrNetworkErrorSignal align with
-         CIM::Events::JSONPayloadSent / JSONPayloadReceived and IntegrationError handling.
+       - SendJSONRequestedSignal / HTTP2xxSignal / HTTP4xxSignal / HTTP5xxOrNetworkErrorSignal align with
+         CIM::Events::JSONPayloadSent / JSONPayloadReceived and IntegrationError handling (4xx non-retryable → Failed).
        - IntegrationErrorRaisedSignal is raised when CIM-level errors (e.g. parse/delivery)
          are detected and propagated into PIM ErrorHandler behavior.
        These signals are PIM-level triggers for the state machines below. */
@@ -233,6 +234,8 @@ package PIM_Behavior {
         }
         accept HTTP2xxSignal
             then Success;
+        accept HTTP4xxSignal
+            then Failed;
         accept HTTP5xxOrNetworkErrorSignal
             then Retrying;
         accept ForwarderMaxRetriesExceededSignal

@@ -24,6 +24,8 @@ package PSM_HTTPForwarderComponent {
 
         rep textualRepresentation language "TypeScript"
         /*
+import https from 'https';
+import { URL } from 'url';
         */
     }
 }

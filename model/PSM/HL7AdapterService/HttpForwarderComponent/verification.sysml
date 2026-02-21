@@ -5,9 +5,10 @@ package PSM_HTTPForwarder_Verification {
     private import PIM_Requirements::*;
     private import PSM_HL7AdapterService::*;
 
-    doc /* Verification cases for HTTP Forwarder component; cover SYS3.1–SYS3.5. */
+    doc /* Verification cases for HTTP Forwarder component; cover SYS3.1–SYS3.5 and integration with mock server. */
     rep textualRepresentation language "vitest"
     /*
+import * as http from 'http';
 const defaultConfig: HttpForwarderConfig = {
   baseUrl: 'http://localhost:0',
   requestTimeoutMs: 100,
@@ -162,6 +163,80 @@ await forwarder.sendJSONPayload(SAMPLE_PAYLOAD);
             rep functionBody language "vitest"
             /*
 expect(forwarder.state).toBe(HttpForwarderState.FAILED);
+            */
+        }
+    }
+
+    verification def SuccessfulPostWithMockServer {
+        doc /* Integration: mock server returns 200; assert successful POST and state SUCCESS. */
+        subject forwarder : HTTPForwarder;
+        action runIntegration {
+            doc /* Start server, POST, assert success. */
+            rep functionBody language "vitest"
+            /*
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end();
+});
+await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+const port = (server.address() as import('net').AddressInfo).port;
+const fwd = new HttpForwarder({ ...defaultConfig, baseUrl: `http://localhost:${port}` });
+fwd.dispatch('SendJSONRequestedSignal');
+await fwd.sendJSONPayload(SAMPLE_PAYLOAD);
+expect(fwd.state).toBe(HttpForwarderState.SUCCESS);
+await new Promise<void>((resolve) => server.close(() => resolve()));
+            */
+        }
+    }
+
+    verification def RetryOn503ThenSuccessWithMockServer {
+        doc /* Integration: mock server returns 503 then 200; assert retry and eventual success. */
+        subject forwarder : HTTPForwarder;
+        action runIntegration {
+            doc /* Server returns 503 then 200; forwarder retries and succeeds. */
+            rep functionBody language "vitest"
+            /*
+let requestCount = 0;
+const server = http.createServer((req, res) => {
+  requestCount++;
+  if (requestCount === 1) {
+    res.writeHead(503);
+    res.end();
+  } else {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end();
+  }
+});
+await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+const port = (server.address() as import('net').AddressInfo).port;
+const fwd = new HttpForwarder({ ...defaultConfig, baseUrl: `http://localhost:${port}`, maxRetries: 2, requestTimeoutMs: 500 });
+fwd.dispatch('SendJSONRequestedSignal');
+await fwd.sendJSONPayload(SAMPLE_PAYLOAD);
+expect(fwd.state).toBe(HttpForwarderState.SUCCESS);
+expect(requestCount).toBe(2);
+await new Promise<void>((resolve) => server.close(() => resolve()));
+            */
+        }
+    }
+
+    verification def FourxxGoesToFailedWithMockServer {
+        doc /* Integration: mock server returns 4xx; assert non-retryable failure and state FAILED. */
+        subject forwarder : HTTPForwarder;
+        action runIntegration {
+            doc /* Server returns 400; forwarder goes to FAILED (HTTP4xxSignal). */
+            rep functionBody language "vitest"
+            /*
+const server = http.createServer((req, res) => {
+  res.writeHead(400, { 'Content-Type': 'text/plain' });
+  res.end('Bad Request');
+});
+await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+const port = (server.address() as import('net').AddressInfo).port;
+const fwd = new HttpForwarder({ ...defaultConfig, baseUrl: `http://localhost:${port}` });
+fwd.dispatch('SendJSONRequestedSignal');
+await fwd.sendJSONPayload(SAMPLE_PAYLOAD);
+expect(fwd.state).toBe(HttpForwarderState.FAILED);
+await new Promise<void>((resolve) => server.close(() => resolve()));
             */
         }
     }

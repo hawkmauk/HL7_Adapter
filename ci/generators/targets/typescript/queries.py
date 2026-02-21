@@ -290,6 +290,8 @@ def get_component_map(
         adapter_part_def_qname, _ = _find_root_adapter_from_exposed(
             graph, document.exposed_elements
         )
+        if not adapter_part_def_qname:
+            adapter_part_def_qname, _ = _find_root_adapter_part_def(graph)
     else:
         adapter_part_def_qname, _ = _find_root_adapter_part_def(graph)
     if not adapter_part_def_qname:
@@ -338,6 +340,8 @@ def get_adapter_state_machine(
         _, adapter_state = _find_root_adapter_from_exposed(
             graph, document.exposed_elements
         )
+        if not adapter_state:
+            _, adapter_state = _find_root_adapter_part_def(graph)
     else:
         _, adapter_state = _find_root_adapter_part_def(graph)
     return adapter_state

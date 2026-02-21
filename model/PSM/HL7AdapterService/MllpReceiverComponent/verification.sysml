@@ -1,6 +1,9 @@
-package VER_MLLPReceiver {
+package PSM_MLLPReceiver_Verification {
+
+    alias MLLPReceiver for PSM_MLLPReceiver::MLLPReceiver;
+    
     private import PIM_Requirements::*;
-    private import PSM_PhysicalArchitecture::*;
+    private import PSM_HL7Adapter::*;
 
     doc /* Verification cases for MLLP Receiver component; cover SYS1.1–SYS1.5. */
     rep textualRepresentation language "vitest"

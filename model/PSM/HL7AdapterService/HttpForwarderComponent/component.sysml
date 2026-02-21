@@ -1,10 +1,10 @@
-package PSM_HTTPForwarder {
+package PSM_HTTPForwarderComponent {
 
-    private import PIM::*;
-    private import PSM::Interfaces::*;
-    private import PSM::Actions::*;
+    alias Action for PSM_HTTPForwarder_Actions;
+    alias Interface for PSM_HTTPForwarderComponent_Interface;
+    alias InitializeHTTPForwarder for PSM_HTTPForwarder_Actions::InitializeHTTPForwarder;
+
     private import ScalarValues::*;
-    private import CIM::Datatype::*;
 
     doc /* PSM HTTP Forwarder component. Refines PIM::LogicalArchitecture::HTTPForwarder. */
 

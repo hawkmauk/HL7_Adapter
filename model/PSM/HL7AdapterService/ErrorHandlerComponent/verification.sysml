@@ -1,6 +1,8 @@
-package VER_ErrorHandler {
+package PSM_ErrorHandler_Verification {
+
+    alias ErrorHandler for PSM_ErrorHandler::ErrorHandler;
+
     private import PIM_Requirements::*;
-    private import PSM_PhysicalArchitecture::*;
 
     doc /* Verification cases for Error Handler component; cover SYS4.1–SYS4.5. */
 

@@ -31,7 +31,11 @@ def get_verification_cases(
             continue
         if exposed_qnames is not None and node.qname not in exposed_qnames:
             continue
-        if "::" in node.qname and node.qname.split("::")[0].startswith("VER_"):
+        if "::" not in node.qname:
+            continue
+        first_segment = node.qname.split("::")[0]
+        # Include verification defs under VER_* or *_Verification packages (e.g. PSM_MLLPReceiver_Verification)
+        if first_segment.startswith("VER_") or first_segment.endswith("_Verification"):
             result.append(node)
     result.sort(key=lambda n: n.qname)
     return result

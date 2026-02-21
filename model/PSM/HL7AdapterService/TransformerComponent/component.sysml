@@ -1,11 +1,10 @@
-package PSM_Transformer {
+package PSM_TransformerComponent {
 
-    private import PIM::*;
-    private import PSM::Interfaces::*;
-    private import PSM::Actions::*;
+    alias Actions for PSM_Transformer_Actions;
+    private import Actions::*;
+
     private import ScalarValues::*;
-    private import CIM::Datatype::*;
-
+    
     doc /* PSM Transformer component. Refines PIM::LogicalArchitecture::Transformer. */
 
     part def <Transformer> 'Transformer' :> PIM::LogicalArchitecture::Transformer {

@@ -1,6 +1,9 @@
-package VER_HTTPForwarder {
+package PSM_HTTPForwarder_Verification {
+
+    alias HTTPForwarder for PSM_HTTPForwarder::HTTPForwarder;
+    
     private import PIM_Requirements::*;
-    private import PSM_PhysicalArchitecture::*;
+    private import PSM_HL7Adapter::*;
 
     doc /* Verification cases for HTTP Forwarder component; cover SYS3.1–SYS3.5. */
 

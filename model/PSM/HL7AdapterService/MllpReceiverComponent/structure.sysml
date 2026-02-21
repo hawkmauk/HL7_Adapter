@@ -1,4 +1,4 @@
-package MLLPReceiver_Structure {
+package PSM_MLLPReceiver_Structure {
 
     private import ScalarValues::*;
     private import CIM::Datatype::*;

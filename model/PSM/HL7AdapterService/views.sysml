@@ -1,4 +1,6 @@
-package PSM_Views {
+package PSM_HL7AdapterService_Views {
+
+    alias Verification for PSM_HL7AdapterService_Verification;
 
     private import Views::*;
     private import PSM::*;
@@ -10,7 +12,6 @@ package PSM_Views {
 
     package ConcernMapping {
         private import CIM::Stakeholders::*;
-        private import PSM::PhysicalArchitecture::*;
 
         doc /* PSM-level concerns with trace to stakeholders; coverage requirements reference these concerns. */
 
@@ -43,15 +44,13 @@ package PSM_Views {
         view VPT_PSM_001_PlatformRealization {
             satisfy platformRealizationViewpoint;
             expose PSM::TechnologySelection::**;
-            expose PSM::PhysicalArchitecture::**;
-            expose PSM::Interfaces::**;
+            expose PSM::HL7Adapter::ErrorHandler::*;
+            expose PSM::HL7Adapter::Interface::*;
             render asElementTable;
         }
 
         view VPT_PSM_002_CodeRealization {
             satisfy codeRealizationViewpoint;
-            expose PSM::PhysicalArchitecture::**;
-            expose PSM::Actions::**;
             expose PIM::Behavior::**;
         }
 

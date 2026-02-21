@@ -43,6 +43,8 @@ def _derive_service_class_name(graph: ModelGraph, document: object | None = None
     """Derive the service class name from the model's service part def display name."""
     if document is not None and getattr(document, "exposed_elements", None):
         qname, _ = _find_root_adapter_from_exposed(graph, document.exposed_elements)
+        if not qname:
+            qname, _ = _find_root_adapter_part_def(graph)
     else:
         qname, _ = _find_root_adapter_part_def(graph)
     if qname:

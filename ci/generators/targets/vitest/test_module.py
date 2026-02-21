@@ -44,7 +44,7 @@ def build_test_file(
     extra_imports = extra_imports or []
     # Tests live in src/__tests__/, components in src/
     import_path = f"../{module_file}"
-    lines.append("import { describe, it, expect, beforeEach } from 'vitest';")
+    lines.append("import { describe, it, expect, beforeAll } from 'vitest';")
     import_symbols = [class_name]
     if config_attrs or preamble:
         import_symbols.append(f"{class_name}Config")
@@ -73,7 +73,7 @@ def build_test_file(
             lines.append(f"  // Verifies: {req_comment}")
         lines.append(f"  let {desc['subject_name']}: {class_name};")
         lines.append("")
-        lines.append("  beforeEach(() => {")
+        lines.append("  beforeAll(() => {")
         if config_attrs:
             config_var = desc.get("config_var") or "defaultConfig"
             lines.append(f"    {desc['subject_name']} = new {class_name}({config_var});")
@@ -86,7 +86,8 @@ def build_test_file(
             step_title = _step_title(step.get("name", "step"))
             step_doc = (step.get("doc") or "").strip()
             ts_body = step.get("ts_body")
-            lines.append(f"  it('{step_title}', () => {{")
+            async_suffix = "async " if ts_body and ("await " in ts_body or "await(" in ts_body) else ""
+            lines.append(f"  it('{step_title}', {async_suffix}() => {{")
             if ts_body:
                 for body_line in ts_body.splitlines():
                     lines.append("    " + body_line)

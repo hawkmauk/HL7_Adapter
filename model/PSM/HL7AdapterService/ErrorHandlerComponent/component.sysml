@@ -1,10 +1,8 @@
-package PSM_ErrorHandler {
+package PSM_ErrorHandlerComponent {
 
-    private import PIM::*;
-    private import PSM::Interfaces::*;
-    private import PSM::Actions::*;
+    alias Actions for PSM_ErrorHandler_Actions;
+
     private import ScalarValues::*;
-    private import CIM::Datatype::*;
 
     doc /* PSM Error Handler component. Refines PIM::LogicalArchitecture::ErrorHandler. */
 
@@ -14,6 +12,6 @@ package PSM_ErrorHandler {
         attribute metricsPrefix : String { doc /* Prefix for exposed metrics (e.g. hl7_adapter). */ }
         attribute deadLetterPath : String { doc /* File path or queue identifier for messages that cannot be delivered after retries. */ }
         attribute classificationTaxonomy : String { doc /* Name or path of the error classification taxonomy (e.g. ParseError, DeliveryError). */ }
-        perform action initializeFromBinding : InitializeErrorHandler;
+        perform action initializeFromBinding : Actions::InitializeErrorHandler;
     }
 }

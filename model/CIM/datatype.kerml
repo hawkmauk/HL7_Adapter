@@ -3,4 +3,5 @@ package CIM_Datatype {
 	private import ScalarValues::*;
 
     datatype Buffer specializes ScalarValue;
+    datatype SensitiveData specializes String;
 }

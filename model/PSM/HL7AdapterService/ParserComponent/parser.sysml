@@ -1,14 +1,13 @@
-package PSM_Parser {
+package PSM_ParserComponent {
 
-    private import PIM::*;
-    private import PSM::Interfaces::*;
-    private import PSM::Actions::*;
     private import ScalarValues::*;
-    private import CIM::Datatype::*;
+
+    alias Structure for PSM_Parser_Structure;
+    alias Actions for PSM_Parser_Actions;
+
+    private import Actions::*;
 
     doc /* PSM Parser component. Refines PIM::LogicalArchitecture::Parser. */
-
-    alias Structure for Parser_Structure;
 
     part def <Parser> 'Parser' :> PIM::LogicalArchitecture::Parser {
         doc /* Refines PIM::LogicalArchitecture::Parser. Technology binding: node-hl7-complete. Implementation uses HL7 segment iterator, field extractor, and validation rules engine; library-specific API in use. */

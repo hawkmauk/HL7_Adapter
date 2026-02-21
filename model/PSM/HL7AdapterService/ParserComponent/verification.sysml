@@ -1,6 +1,9 @@
-package VER_Parser {
+package PSM_Parser_Verification {
+
+    alias Parser for PSM_ParserComponent::Parser;
+    
     private import PIM_Requirements::*;
-    private import PSM_PhysicalArchitecture::*;
+    private import PSM_HL7AdapterService::*;
 
     doc /* Verification cases for Parser component; cover SYS2.1–SYS2.5. */
     rep textualRepresentation language "vitest"

@@ -1,4 +1,4 @@
-package Parser_Structure {
+package PSM_Parser_Structure {
 
     private import ScalarValues::*;
 

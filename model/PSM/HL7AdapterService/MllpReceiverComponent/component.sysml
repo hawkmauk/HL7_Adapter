@@ -1,14 +1,13 @@
-package PSM_MLLPReceiver {
+package PSM_MllpReceiverComponent {
 
-    private import PIM::*;
-    private import PSM::Interfaces::*;
-    private import PSM::Actions::*;
+    alias Structure for PSM_MLLPReceiver_Structure;
+    alias Action for PSM_MLLPReceiver_Actions;
+    alias Interface for PSM_MLLPReceiverComponent_Interface;
+
+    private import Action::*;
     private import ScalarValues::*;
-    private import CIM::Datatype::*;
 
     doc /* PSM MLLP Receiver component. Refines PIM::LogicalArchitecture::MLLPReceiver. */
-
-    alias Structure for MLLPReceiver_Structure;
 
     part def <MLLPReceiver> 'MLLP Receiver' :> PIM::LogicalArchitecture::MLLPReceiver {
         doc /* Refines PIM::LogicalArchitecture::MLLPReceiver. Technology binding: Node.js net/socket or custom MLLP framing. Implementation comprises TCP socket listener (Node.js net.Server), MLLP framing parser (start/end byte and length), and connection manager (accept/close/timeout). Configurable host/port. */

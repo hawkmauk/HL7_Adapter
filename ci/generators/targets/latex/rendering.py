@@ -66,17 +66,6 @@ def _render_textual(document: DocumentIR) -> str:
     return "\n".join(content)
 
 
-def _render_by_directive(document: DocumentIR) -> str:
-    render_kind = (document.binding.render_kind or "").strip()
-    if render_kind == "ElementTable":
-        return _render_element_table(document)
-    if render_kind == "TreeDiagram":
-        return _render_tree(document)
-    if render_kind == "TextualNotation":
-        return _render_textual(document)
-    return _render_textual(document)
-
-
 def _render_exposed_package_structure(document: DocumentIR) -> str:
     elements = document.exposed_elements
     if not elements:

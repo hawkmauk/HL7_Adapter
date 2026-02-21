@@ -11,7 +11,7 @@ package PSM_View {
     view def <TypeScriptCode_Document> 'TypeScript Code Realization' {
         doc /* Selects PSM components, actions, and PIM behavior for Node.js/TypeScript code generation. */
         satisfy codeRealizationViewpoint;
-        render asTypeScriptApplication;
+        render asTypeScript;
     }
 
     view def <PlatformRealization_Document> 'PSM Platform Realization and Technology Selection' {

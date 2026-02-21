@@ -23,7 +23,7 @@ from .queries import get_component_map
 
 class TypeScriptGenerator(GeneratorTarget):
     name = "typescript"
-    supported_renders: set[str] = {"TypeScriptApplication"}
+    supported_renders: set[str] = {"TypeScript"}
     supported_viewpoint_types: set[str] = {"executable"}
 
     def generate(

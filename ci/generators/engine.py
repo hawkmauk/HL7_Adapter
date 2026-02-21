@@ -63,10 +63,14 @@ def run_generation(
             )
     else:
         target = registry.get(target_name)
+        supported_renders = getattr(target, "supported_renders", None)
+        if supported_renders:
+            documents = [
+                d for d in documents
+                if (d.binding.render_kind or "") in supported_renders
+            ]
         supported_vp = getattr(target, "supported_viewpoint_types", None)
-        if supported_vp == {"executable"}:
-            documents = []
-        elif supported_vp:
+        if supported_vp:
             documents = [
                 d
                 for d in documents

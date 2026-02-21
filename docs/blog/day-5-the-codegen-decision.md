@@ -8,6 +8,8 @@ It’s the **last day—day five**—and there’s a decision to make about how 
 
 **First bit of day five:** I spent time getting a **helper script** up and running to manage the generation tasks. **LaTeX output is now a lot cleaner**—generated docs go into **`pdf/` and `html/`** directories instead of cluttering a single folder. The **TypeScript output** is **run and build** as part of the same flow. **All from one command:** `./scripts/build.sh`. So we have a single entry point for “generate docs, generate code, build the app”—which makes the last-day push much easier.
 
+I had a **realization**: when we generate the **executable application**, the **model should still be the single source of truth**. The **software realization is just a view of that model at a point in time**—exactly like our PDF and HTML documents. They're all **views** over the same model; the only difference is the target format. That prompted me to **get the generator to use the view** as it does for LaTeX generation—so the codegen is driven by the same view/viewpoint machinery that produces the docs. That **standardizes things nicely**: one model, one view layer, multiple targets (docs and code). The executable isn't a second-class citizen; it's another artifact of the digital thread.
+
 **Option 1: Continue with a purely generated solution.**  
 This has **high risk**. A more robust approach would be to generate code from the **SysML abstract syntax**, so we’d have an **additional translation** step (model → AS → code). We’d be looking at **replacing the generator’s graph with a database** that can be queried to build the structures we want before codegen—a **great solution** long term, but we’re **not going to get it done in a day**.
 

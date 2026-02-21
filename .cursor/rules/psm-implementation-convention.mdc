@@ -1,0 +1,12 @@
+---
+description: PSM implementation issues — implementation may live in action definitions
+alwaysApply: true
+---
+
+# PSM implementation convention
+
+When reviewing or implementing PSM (Physical Architecture) work:
+
+- **Where implementation lives:** The authoritative implementation for a component may live in the **action definitions** performed by that component (e.g. in `model/PSM/actions.sysml`), not only on the part definition in `model/PSM/physical_architecture.sysml`.
+- **Part def:** The part def may hold types, interfaces, and config; the runnable logic can be in the actions (e.g. `rep functionBody language "TypeScript"` or `rep textualRepresentation language "TypeScript"` on action defs).
+- **Acceptance criteria:** For criteria like "model contains Parser/Transformer implementation", treat implementation in the component's **action defs** as satisfying the requirement; do not require the same code to be duplicated on the part def.

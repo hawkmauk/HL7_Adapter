@@ -1,0 +1,18 @@
+---
+description: Generator in ci/generators is generic — no project-specific implementation detail
+alwaysApply: true
+globs: ci/generators/**/*
+---
+
+# Generator is generic and reusable
+
+The code under **`ci/generators/`** is a **generic MDA/SysML generator framework**. It is intended to be **reusable across projects**, not tied to this repository (e.g. HL7 Adapter).
+
+When editing or adding code in `ci/generators/`:
+
+- **Do not** add project-specific implementation details: no HL7, MLLP, adapter, or other domain logic that belongs only to this project.
+- **Do not** hardcode names, file paths, or behavior that assume the current project’s structure or content.
+- **Do** derive all behavior from the **model** (parsed SysML) and from **generic** configuration (e.g. target type, output paths). The generator should work for any SysML model that follows the same structural conventions.
+- **Do** keep project-specific knowledge in the **model** (e.g. `model/`) and in **project config or scripts** (e.g. `scripts/`), not inside the generator.
+
+If a feature requires project-specific logic, implement it in the project layer (model, build scripts, or a thin project-specific driver), not inside `ci/generators/`.

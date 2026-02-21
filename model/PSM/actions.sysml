@@ -5,6 +5,7 @@ package PSM_Actions {
     private import CIM::Datatype::*;
     private import PSM::Interfaces::*;
     private import PSM::PhysicalArchitecture::*;
+    private import PSM::ParserData::*;
 
     doc /* PSM action definitions carrying TypeScript implementations.
        CIM-mapped actions specialize their CIM counterpart via :>.
@@ -18,18 +19,24 @@ package PSM_Actions {
 
         rep functionBody language "TypeScript"
         /*
-  const startIdx = buffer.indexOf(MLLP_START);
+  const startIdx = buffer.indexOf(MLLP_START_BYTE);
   if (startIdx < 0) {
-    return { done: false, consumed: buffer.length };
+    return {
+      payload: undefined,
+      success: false,
+      error: 'no start block found',
+      consumed: buffer.length,
+    };
   }
   const payloadStart = startIdx + 1;
-  const endIdx = buffer.indexOf(MLLP_END_1, payloadStart);
+  const endIdx = buffer.indexOf(MLLP_END_BYTE_FIRST, payloadStart);
   if (endIdx < 0) {
-    return { done: false, consumed: startIdx };
+    return { success: false, consumed: startIdx };
   }
-  if (buffer[endIdx + 1] !== MLLP_END_2) {
+  if (buffer[endIdx + 1] !== MLLP_END_BYTE_SECOND) {
     return {
-      done: true,
+      payload: undefined,
+      success: false,
       error: 'invalid end block (expected 0x1C 0x0D)',
       consumed: endIdx + 2,
     };
@@ -37,7 +44,8 @@ package PSM_Actions {
   const payloadLength = endIdx - payloadStart;
   if (payloadLength > maxPayloadSize) {
     return {
-      done: true,
+      payload: undefined,
+      success: false,
       error: `payload exceeds max size ${maxPayloadSize}`,
       consumed: endIdx + 2,
     };
@@ -45,7 +53,8 @@ package PSM_Actions {
   const payload = buffer.subarray(payloadStart, endIdx);
   return {
     payload: Buffer.from(payload),
-    done: true,
+    success: true,
+    error: undefined,
     consumed: endIdx + 2,
   };
         */
@@ -60,10 +69,10 @@ package PSM_Actions {
         /*
   const buf = Buffer.alloc(1 + Buffer.byteLength(content, 'utf8') + 2);
   let off = 0;
-  buf[off++] = MLLP_START;
+  buf[off++] = MLLP_START_BYTE;
   off += buf.write(content, off, 'utf8');
-  buf[off++] = MLLP_END_1;
-  buf[off++] = MLLP_END_2;
+  buf[off++] = MLLP_END_BYTE_FIRST;
+  buf[off++] = MLLP_END_BYTE_SECOND;
   return buf;
         */
     }
@@ -92,11 +101,148 @@ package PSM_Actions {
         */
     }
 
+    /* =======================================================================
+     * Parser: HL7 message parsing (MSH/PID extraction, validation)
+     * ======================================================================= */
+
+    action def <ParseHL7Message> 'Parse HL7 Message' {
+        in rawMessage : String;
+        in strictValidation : Integer;
+        in segmentWhitelist : String;
+        out result : String;
+        doc /* Pure parse: extract MSH and PID, validate required segments/fields. Returns JSON string of ParseResult (success + data or error). */
+
+        rep functionBody language "TypeScript"
+        /*
+  const segments = rawMessage.split(/[\r\n]+/).filter((s) => s.length > 0);
+  if (segments.length === 0) {
+    return JSON.stringify({ success: false as const, error: { message: 'Empty message', segment: undefined } });
+  }
+  const mshSeg = segments[0];
+  if (!mshSeg.startsWith('MSH')) {
+    return JSON.stringify({ success: false as const, error: { message: 'Missing or invalid MSH segment', segment: mshSeg } });
+  }
+  const mshFields = mshSeg.split('|');
+  const fieldDelim = mshFields[1]?.[0] ?? '|';
+  const get = (arr: string[], i: number) => arr[i] ?? '';
+    const msh: MSHFields = {
+      fieldDelimiter: fieldDelim,
+      sendingApplication: get(mshFields, 2),
+      sendingFacility: get(mshFields, 3),
+      receivingApplication: get(mshFields, 4),
+      receivingFacility: get(mshFields, 5),
+      messageType: get(mshFields, 8),
+      messageControlId: get(mshFields, 9),
+      processingId: get(mshFields, 10),
+      versionId: get(mshFields, 11),
+    };
+  if (strictValidation && !msh.messageType) {
+    return JSON.stringify({ success: false as const, error: { message: 'MSH-9 message type required', segment: 'MSH' } });
+  }
+  const segMap: Record<string, string[]> = {};
+  for (const seg of segments) {
+    const id = seg.slice(0, 3);
+    if (!segMap[id]) segMap[id] = [];
+    segMap[id].push(seg);
+  }
+  let pid: PIDFields | undefined;
+    const pidSegs = segMap['PID'];
+    if (pidSegs && pidSegs[0]) {
+      const p = pidSegs[0].split('|');
+      const g = (i: number) => p[i] ?? '';
+      pid = {
+        patientIdList: g(3),
+        patientName: g(5),
+        dateOfBirth: g(7),
+        sex: g(8),
+        patientAddress: g(11),
+      };
+    }
+  const data: ParsedHL7 = { msh, pid, segments: segMap };
+  return JSON.stringify({ success: true as const, data });
+        */
+    }
+
+    action def <HandleIncomingHL7> 'Handle Incoming HL7' {
+        in :> self : Parser;
+        in rawMessage : String;
+        doc /* Parse raw message, dispatch HL7HandlerCompleteSignal or HL7HandlerFailedSignal and emit parseComplete/parseFailed. */
+
+        rep textualRepresentation language "TypeScript"
+        /*
+  const jsonResult = parseMessage(
+    rawMessage,
+    this._config.strictValidation,
+    this._config.segmentWhitelist,
+  );
+  const result = JSON.parse(jsonResult) as ParseResult;
+  if (result.success) {
+    this._dispatch('HL7HandlerCompleteSignal');
+    this.emit('parseComplete', result.data);
+  } else {
+    this._dispatch('HL7HandlerFailedSignal');
+    this.emit('parseFailed', result.error);
+  }
+        */
+    }
+
+    /* =======================================================================
+     * Transformer: parsed HL7 to JSON (field mapping, schema validation)
+     * ======================================================================= */
+
+    action def <TransformToJSON> 'Transform To JSON' {
+        in parsed : ParsedHL7;
+        in jsonPrettyPrint : Integer;
+        in schemaValidateOutput : Integer;
+        out result : String;
+        doc /* Pure transform: map parsed HL7 to output JSON string. Optional schema check. */
+
+        rep functionBody language "TypeScript"
+        /*
+  const out: TransformOutput = {};
+  if (parsed.msh) {
+    out.messageType = parsed.msh.messageType;
+    out.messageControlId = parsed.msh.messageControlId;
+  }
+  if (parsed.pid) {
+    out.patientId = parsed.pid.patientIdList;
+    out.patientName = parsed.pid.patientName;
+    out.dateOfBirth = parsed.pid.dateOfBirth;
+  }
+  if (schemaValidateOutput && !out.messageType && !out.messageControlId) {
+    throw new Error('Schema validation failed: messageType or messageControlId required');
+  }
+  return jsonPrettyPrint ? JSON.stringify(out, null, 2) : JSON.stringify(out);
+        */
+    }
+
+    action def <HandleTransformRequest> 'Handle Transform Request' {
+        in :> self : Transformer;
+        in parsed : ParsedHL7;
+        doc /* Transform parsed message, dispatch HL7TransformerCompleteSignal or HL7TransformerFailedSignal and emit transformComplete. */
+
+        rep textualRepresentation language "TypeScript"
+        /*
+  try {
+    const jsonStr = transformPayload(
+      parsed,
+      this._config.jsonPrettyPrint,
+      this._config.schemaValidateOutput,
+    );
+    this._dispatch('HL7TransformerCompleteSignal');
+    this.emit('transformComplete', jsonStr);
+  } catch (err) {
+    this._dispatch('HL7TransformerFailedSignal');
+    this.emit('transformFailed', err instanceof Error ? err.message : String(err));
+  }
+        */
+    }
+
     action def <StartReceiver> 'Start Receiver' {
         in :> self;
         doc /* Start the MLLP TCP listener and begin accepting connections. */
 
-        rep textualRepresentation language "TypeScript"
+        rep functionBody language "TypeScript"
         /*
 start(): void {
   if (this._server) {
@@ -184,7 +330,7 @@ start(): void {
         in :> self;
         doc /* Stop the MLLP TCP listener gracefully. */
 
-        rep textualRepresentation language "TypeScript"
+        rep functionBody language "TypeScript"
         /*
 stop(): void {
   if (!this._server) return;
@@ -203,7 +349,7 @@ stop(): void {
      * ======================================================================= */
 
     action def <InitializeMLLPReceiver> 'Initialize MLLP Receiver' {
-        in binding : MLLPIngressBinding;
+        in 'binding' : MLLPIngressBinding;
         in runtimeConfig : RuntimeConfigBinding;
         in :> self : MLLPReceiver;
         doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps binding.bindHost -> self.bindHost, binding.bindPort -> self.bindPort, binding.maxPayloadSizeBytes -> self.maxPayloadSize, runtimeConfig.connectionIdleTimeoutMs -> self.connectionIdleTimeoutMs (with fallbacks from runtimeConfig where binding omits). */
@@ -222,7 +368,7 @@ stop(): void {
     }
 
     action def <InitializeHTTPForwarder> 'Initialize HTTP Forwarder' {
-        in binding : HTTPEgressBinding;
+        in 'binding' : HTTPEgressBinding;
         in runtimeConfig : RuntimeConfigBinding;
         in :> self : HTTPForwarder;
         doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps baseUrl (from binding.baseUrlPattern or runtimeConfig.baseUrl), requestTimeoutMs, maxRetries, retryBackoffMs, tlsMinVersion, tlsRejectUnauthorized from binding/runtimeConfig. */

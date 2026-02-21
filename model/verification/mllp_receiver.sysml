@@ -3,6 +3,15 @@ package VER_MLLPReceiver {
     private import PSM_PhysicalArchitecture::*;
 
     doc /* Verification cases for MLLP Receiver component; cover SYS1.1–SYS1.5. */
+    rep textualRepresentation language "vitest"
+    /*
+const defaultConfig: MllpReceiverConfig = {
+  bindHost: '0.0.0.0',
+  bindPort: 2575,
+  maxPayloadSize: 1024 * 1024,
+  connectionIdleTimeoutMs: 30000,
+};
+    */
 
     verification def MLLPFramingValidationTest {
         doc /* Verifies SYS1.1: MLLP framing validation (start/end delimiters, payload length). */
@@ -95,7 +104,7 @@ package VER_MLLPReceiver {
 const payload = Buffer.from([0x4d, 0x53, 0x48]);
 const buf = Buffer.concat([Buffer.from([0x0b]), payload, Buffer.from([0x1c, 0x0d])]);
 const result = parseMllpFrame(buf, 1024);
-expect(result.done).toBe(true);
+expect(result.success).toBe(true);
 expect(result.payload).toBeDefined();
 expect(Buffer.compare(result.payload!, payload)).toBe(0);
 expect(result.consumed).toBe(buf.length);
@@ -108,7 +117,7 @@ expect(result.error).toBeUndefined();
 const payload = Buffer.from([0x4d, 0x53, 0x48]);
 const buf = Buffer.concat([Buffer.from([0x0b]), payload, Buffer.from([0x1c, 0x00])]);
 const result = parseMllpFrame(buf, 1024);
-expect(result.done).toBe(true);
+expect(result.success).toBe(false);
 expect(result.error).toBeDefined();
 expect(result.error).toContain('0x1C 0x0D');
             */
@@ -118,7 +127,7 @@ expect(result.error).toContain('0x1C 0x0D');
             /*
 const buf = Buffer.from([0x4d, 0x53, 0x48]);
 const result = parseMllpFrame(buf, 1024);
-expect(result.done).toBe(false);
+expect(result.success).toBe(false);
 expect(result.consumed).toBe(buf.length);
             */
         }

@@ -5,6 +5,7 @@ package PSM {
     alias PhysicalArchitecture for PSM_PhysicalArchitecture;
     alias Interfaces for PSM_Interfaces;
     alias Actions for PSM_Actions;
+    alias ParserData for Parser_Structure;
 
     /* Our main object */
     part hl7AdapterService : PhysicalArchitecture::HL7AdapterService;

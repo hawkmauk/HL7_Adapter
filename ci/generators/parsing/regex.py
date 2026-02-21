@@ -24,13 +24,19 @@ FRAME_RE = re.compile(r"(?m)^\s*frame\s+(?P<ref>[^;]+);")
 RENDER_RE = re.compile(r"(?m)^\s*render\s+as(?P<kind>[A-Za-z0-9_]+)\s*;")
 ATTRIBUTE_RE = re.compile(
     r"(?m)^\s*attribute\s+"
-    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)"
     r"\s*:\s*(?P<type>[^;{]+);"
 )
 ATTRIBUTE_NO_SEMICOLON_RE = re.compile(
     r"(?m)^\s*attribute\s+"
-    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)"
     r"\s*:\s*(?P<type>[^{]+)\s*\{\s*doc\s*/\*.*?\*/\s*\}",
+)
+# constant name : Type = value (value up to ; or {)
+CONSTANT_RE = re.compile(
+    r"(?m)^\s*constant\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+    r"\s*:\s*(?P<type>[^=]+)=\s*(?P<value>[^;{]+?)\s*[;{]",
 )
 ALIAS_RE = re.compile(r"(?m)^\s*alias\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\s+for\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;")
 FLOW_PROPERTY_RE = re.compile(

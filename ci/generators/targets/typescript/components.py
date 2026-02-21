@@ -1,6 +1,8 @@
 """Component module generation."""
 from __future__ import annotations
 
+import re
+
 from ...ir import GraphNode, ModelGraph
 from .naming import _sysml_type_to_ts, _to_screaming_snake
 from .queries import (
@@ -11,10 +13,168 @@ from .queries import (
     _collect_transitions,
     _find_psm_node,
     _get_config_attributes,
+    _resolve_param_type_to_part_def_qname,
+    get_preamble_type_part_defs,
 )
 
-
 _RESERVED_REP_NAMES = {"textualRepresentation", "classMembers"}
+
+
+def _constant_value_to_ts(value_str: str, sysml_type: str | None) -> str:
+    """Turn model constant value into a TypeScript literal for the preamble."""
+    v = value_str.strip()
+    if not v:
+        return "0"
+    lowered = (sysml_type or "").strip().lower()
+    if lowered in ("integer", "int", "natural", "real", "float", "double"):
+        if v.startswith("0x") or v.startswith("0X"):
+            return v
+        try:
+            int(v)
+            return v
+        except ValueError:
+            try:
+                float(v)
+                return v
+            except ValueError:
+                pass
+    if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+        return v
+    return repr(v)
+
+
+def _emit_preamble_constants(psm_node: GraphNode | None) -> str:
+    """Emit export const lines from the part def's constant declarations (preamble)."""
+    if not psm_node:
+        return ""
+    constants = psm_node.properties.get("constants") or []
+    if not constants:
+        return ""
+    lines: list[str] = []
+    for c in constants:
+        name = c.get("name", "")
+        type_str = c.get("type", "")
+        value_str = c.get("value", "")
+        if not name:
+            continue
+        ts_value = _constant_value_to_ts(value_str, type_str)
+        ts_name = _to_screaming_snake(name)
+        lines.append(f"export const {ts_name} = {ts_value};")
+    return "\n".join(lines) if lines else ""
+
+
+def _emit_preamble_interfaces(
+    graph: ModelGraph,
+    psm_node: GraphNode | None,
+) -> str:
+    """Emit TypeScript interfaces and type aliases from part defs referenced by this component's actions.
+
+    All type names and structure are derived from the model (no project-specific lists).
+    """
+    nodes = get_preamble_type_part_defs(graph, psm_node)
+    if not nodes:
+        return ""
+    # Do not emit the component itself as a type
+    component_qname = psm_node.qname if psm_node else None
+    nodes = [n for n in nodes if n.qname != component_qname]
+    # Skip types that are imported in this part def's rep (e.g. ParsedHL7 in transformer imports from parser)
+    imported_type_names: set[str] = set()
+    if psm_node:
+        for r in psm_node.properties.get("textual_representations") or []:
+            if (r.get("language") or "").lower() != "typescript":
+                continue
+            body = r.get("body") or ""
+            for m in re.finditer(r"import\s+(?:type\s+)?\{\s*([^}]+)\s\}\s*from", body):
+                for name in m.group(1).split(","):
+                    imported_type_names.add(name.strip().split(r"\s+as\s+")[0].strip())
+    if imported_type_names:
+        nodes = [n for n in nodes if (n.short_name or n.name) not in imported_type_names]
+    if not nodes:
+        return ""
+    preamble_qnames = {n.qname for n in nodes}
+    # Part defs with no attributes but a TypeScript rep: use rep body as inline type when referenced
+    inline_type_by_qname: dict[str, str] = {}
+    for node in nodes:
+        attrs = node.properties.get("attributes") or []
+        if attrs:
+            continue
+        reps = node.properties.get("textual_representations") or []
+        for r in reps:
+            if (r.get("language") or "").lower() != "typescript":
+                continue
+            body = (r.get("body") or "").strip()
+            if body:
+                inline_type_by_qname[node.qname] = body
+                break
+
+    lines: list[str] = []
+    for node in nodes:
+        short = node.short_name or node.name
+        attrs = node.properties.get("attributes") or []
+        reps = node.properties.get("textual_representations") or []
+        ts_rep_body = ""
+        for r in reps:
+            if (r.get("language") or "").lower() == "typescript":
+                ts_rep_body = (r.get("body") or "").strip()
+                break
+
+        supertype_edges = graph.outgoing(node.qname, "supertype")
+        supertypes_in_set = [e.target for e in supertype_edges if e.target and e.target in preamble_qnames]
+
+        if not attrs and len(supertypes_in_set) >= 2:
+            # Type alias: Union = Super1 | Super2
+            super_names = []
+            for q in supertypes_in_set:
+                sn = graph.get(q)
+                super_names.append(sn.short_name or sn.name if sn else q.split("::")[-1])
+            lines.append(f"export type {short} = {' | '.join(super_names)};")
+        elif not attrs and ts_rep_body:
+            # Interface body (e.g. TransformOutput with members and index signature) vs type alias (e.g. SegmentMap = Record<...>)
+            if "?:" in ts_rep_body or "[key:" in ts_rep_body or (";" in ts_rep_body and "\n" in ts_rep_body):
+                lines.append(f"export interface {short} {{")
+                lines.append(ts_rep_body)
+                lines.append("}")
+            else:
+                lines.append(f"export type {short} = {ts_rep_body};")
+        elif ts_rep_body and attrs:
+            # Model supplies exact interface body via rep (e.g. discriminated union member)
+            lines.append(f"export interface {short} {{")
+            lines.append(ts_rep_body)
+            lines.append("}")
+        elif attrs:
+            lines.append(f"export interface {short} {{")
+            for a in attrs:
+                raw_name = a.get("name") or ""
+                # Strip [*] from name for TS property (e.g. payload[*] -> payload)
+                name = raw_name.replace("[*]", "").strip()
+                raw = (a.get("type") or "").strip()
+                # Strip default value (e.g. "String = \"env\"") and multiplicity for type-only
+                type_only = raw.split("=")[0].strip()
+                # Optional in TS when multiplicity is [0..1] or [*] on type, or [*] on attribute name
+                optional = (
+                    " [0..1]" in type_only
+                    or " [*]" in type_only
+                    or "[*]" in type_only
+                    or "[*]" in raw_name
+                )
+                type_for_ref = type_only.split("[0..1]")[0].split("[*]")[0].strip()
+                ref = _resolve_param_type_to_part_def_qname(
+                    graph, type_for_ref, prefer_prefix=None
+                )
+                ref_node = graph.get(ref) if ref else None
+                if ref_node and ref_node.qname in inline_type_by_qname:
+                    ts_type = inline_type_by_qname[ref_node.qname]
+                elif ref_node and ref_node.qname in preamble_qnames:
+                    ts_type = ref_node.short_name or ref_node.name
+                else:
+                    base = type_for_ref.split("::")[-1].strip()
+                    ts_type = _sysml_type_to_ts(base) if base.lower() in ("string", "integer", "boolean", "str", "int", "bool", "real", "natural") else base
+                lines.append(f"  {name}{'?' if optional else ''}: {ts_type};")
+            lines.append("}")
+        else:
+            continue
+        lines.append("")
+    return "\n".join(lines)
 
 
 def _action_has_function_body_rep(action_node: GraphNode) -> bool:
@@ -26,19 +186,45 @@ def _action_has_function_body_rep(action_node: GraphNode) -> bool:
     )
 
 
+def _build_method_params(action_params: list[dict]) -> str:
+    """Build params string for a class method from action_params. Excludes 'self'. Optional [0..1] -> param?."""
+    in_params = [
+        p for p in action_params
+        if p.get("dir") == "in" and p.get("name") != "self"
+    ]
+    parts = []
+    for p in in_params:
+        raw_type = (p.get("type") or "").strip()
+        optional = " [0..1]" in raw_type
+        type_only = raw_type.split(" [0..1]")[0].strip().split("=")[0].strip()
+        ts_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
+        name = p.get("name") or ""
+        suffix = "?" if optional else ""
+        parts.append(f"{name}{suffix}: {ts_type}")
+    return ", ".join(parts)
+
+
 def _build_function_signature(usage_name: str, action_params: list[dict]) -> tuple[str, str]:
-    """Build (params_str, return_type) from action_params. Excludes 'self'."""
+    """Build (params_str, return_type) from action_params. Excludes 'self'. Optional [0..1] -> param?."""
     in_params = [
         p for p in action_params
         if p.get("dir") == "in" and p.get("name") != "self"
     ]
     out_params = [p for p in action_params if p.get("dir") == "out"]
-    params_str = ", ".join(
-        f"{p['name']}: {_sysml_type_to_ts(p.get('type'), pass_through_unknown=True)}"
-        for p in in_params
-    )
+    parts = []
+    for p in in_params:
+        raw_type = (p.get("type") or "").strip()
+        optional = " [0..1]" in raw_type
+        type_only = raw_type.split(" [0..1]")[0].strip().split("=")[0].strip()
+        ts_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
+        name = p.get("name") or ""
+        suffix = "?" if optional else ""
+        parts.append(f"{name}{suffix}: {ts_type}")
+    params_str = ", ".join(parts)
     if len(out_params) == 1:
-        return_type = _sysml_type_to_ts(out_params[0].get("type"), pass_through_unknown=True)
+        raw_out = (out_params[0].get("type") or "").strip()
+        type_only = raw_out.split(" [0..1]")[0].strip().split("=")[0].strip()
+        return_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
     else:
         return_type = "void"
     return params_str, return_type
@@ -75,7 +261,7 @@ def _build_component_module(
     reps = _collect_named_reps(psm_node)
     action_impls = _collect_action_implementations(graph, psm_node)
     free_fn_actions = [(n, b, node) for n, b, m, node in action_impls if not m]
-    method_actions = [(n, b) for n, b, m, _ in action_impls if m]
+    method_actions = [(n, b, node) for n, b, m, node in action_impls if m]
     has_method_reps = bool(reps.keys() - _RESERVED_REP_NAMES) or bool(method_actions)
 
     machine_qname = f"{PIM_BEHAVIOR_PKG}::{comp['state_machine']}"
@@ -90,7 +276,16 @@ def _build_component_module(
 
     lines: list[str] = []
 
-    # --- 1. Module preamble from textualRepresentation rep ---
+    # --- 1. Preamble: constants from part def (model constant decls) ---
+    preamble_constants = _emit_preamble_constants(psm_node)
+    if preamble_constants:
+        lines.append(preamble_constants)
+        lines.append("")
+    # --- 1b. Preamble: interfaces/type aliases from part defs referenced by this component's actions ---
+    preamble_from_model = _emit_preamble_interfaces(graph, psm_node)
+    if preamble_from_model:
+        lines.append(preamble_from_model)
+    # --- 1c. Module preamble from part def's textualRepresentation rep (imports, etc.) ---
     preamble = reps.get("textualRepresentation", "").strip()
     if preamble:
         lines.append(preamble)
@@ -168,9 +363,15 @@ def _build_component_module(
     _emit_dispatch(lines, enum_name, class_name, signal_names, states, transitions, has_method_reps)
 
     # --- 10. Method actions (`in self`) + named method reps ---
-    for _action_name, action_body in method_actions:
+    for action_name, action_body, action_node in method_actions:
+        params_str = ""
+        if action_node:
+            action_params = action_node.properties.get("action_params", [])
+            params_str = _build_method_params(action_params)
         lines.append("")
-        lines.append(_indent(action_body, 2))
+        lines.append(f"  {action_name}({params_str}): void {{")
+        lines.append(_indent(action_body.strip(), 4))
+        lines.append("  }")
     for rep_name, rep_body in reps.items():
         if rep_name in _RESERVED_REP_NAMES:
             continue

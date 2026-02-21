@@ -165,6 +165,14 @@ def get_test_descriptor(
             })
     action_steps.sort(key=lambda a: (a["name"] != "collectData", a["name"] != "processData", a["name"]))
 
+    config_var: str | None = None
+    for r in (vcase_node.properties.get("textual_representations") or []):
+        if (r.get("name") or "").strip() == "configVar":
+            body = (r.get("body") or "").strip()
+            if body:
+                config_var = body
+            break
+
     return {
         "qname": vcase_node.qname,
         "name": vcase_node.name,
@@ -175,6 +183,7 @@ def get_test_descriptor(
         "class_name": class_name,
         "requirement_ids": requirement_ids,
         "action_steps": action_steps,
+        "config_var": config_var,
     }
 
 
@@ -196,6 +205,33 @@ def _get_ts_rep(node: GraphNode) -> str | None:
         return vitest_body
     if ts_body:
         return ts_body
+    return None
+
+
+def get_preamble_for_module(
+    graph: ModelGraph,
+    descriptors: list[dict],
+) -> str | None:
+    """Return preamble (e.g. test constants, strictConfig) from the verification package rep.
+
+    If the first descriptor's package (e.g. VER_Parser) has a rep with language
+    'vitest' or 'typescript', return its body; otherwise None.
+    """
+    if not descriptors:
+        return None
+    qname = descriptors[0].get("qname", "")
+    if "::" not in qname:
+        return None
+    package_qname = qname.split("::")[0]
+    node = graph.get(package_qname)
+    if not node:
+        return None
+    reps = node.properties.get("textual_representations") or []
+    for r in reps:
+        lang = (r.get("language") or "").lower()
+        body = (r.get("body") or "").strip()
+        if body and lang in ("vitest", "typescript"):
+            return body
     return None
 
 

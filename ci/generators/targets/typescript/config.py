@@ -103,6 +103,7 @@ def _build_package_json() -> str:
         },
         "devDependencies": {
             "@types/node": "^22.0.0",
+            "@vitest/coverage-v8": "^2.0.0",
             "typescript": "^5.7.0",
             "vitest": "^2.0.0",
         },

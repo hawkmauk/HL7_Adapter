@@ -14,6 +14,7 @@ from .regex import (
     ATTRIBUTE_NO_SEMICOLON_RE,
     ATTRIBUTE_RE,
     BLOCK_DECL_RE,
+    CONSTANT_RE,
     CONSTRAINT_PARAM_RE,
     DOC_RE,
     ENTRY_ACTION_RE,
@@ -187,6 +188,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
 
         perform_actions: list[tuple[str, str]] = []
         exhibit_refs: list[str] = []
+        constants: list[tuple[str, str, str]] = []
         if kind == "part":
             for pa_match in PERFORM_ACTION_RE.finditer(body):
                 perform_actions.append(
@@ -194,6 +196,14 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 )
             for ex_match in EXHIBIT_RE.finditer(body):
                 exhibit_refs.append(ex_match.group("name"))
+            for const_match in CONSTANT_RE.finditer(body):
+                constants.append(
+                    (
+                        const_match.group("name"),
+                        const_match.group("type").strip(),
+                        const_match.group("value").strip(),
+                    )
+                )
 
         action_params: list[tuple[str, str, str | None]] = []
         if effective_kind == "action def":
@@ -236,6 +246,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 render_kind=render_kind,
                 supertypes=supertypes,
                 attributes=attributes,
+                constants=constants,
                 aliases=aliases,
                 flow_properties=flow_properties,
                 interface_ends=interface_ends,

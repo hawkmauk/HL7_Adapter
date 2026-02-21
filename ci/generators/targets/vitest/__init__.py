@@ -17,7 +17,7 @@ from ..typescript.queries import (
     get_free_function_export_names,
 )
 from ..typescript.service import get_service_constructor_params
-from .queries import get_verification_cases, group_cases_by_subject
+from .queries import get_preamble_for_module, get_verification_cases, group_cases_by_subject
 from .test_module import build_test_file, build_service_test_file
 
 
@@ -60,14 +60,16 @@ class VitestGenerator(GeneratorTarget):
                     graph, full_component_map, module_file, class_name
                 )
                 extra_imports = _extra_imports_for_module(
-                    graph, full_component_map, module_file
+                    graph, full_component_map, module_file, class_name
                 )
+                preamble = get_preamble_for_module(graph, descriptors)
                 content = build_test_file(
                     module_file,
                     class_name,
                     descriptors,
                     config_attrs=config_attrs,
                     extra_imports=extra_imports,
+                    preamble=preamble,
                 )
             out_path = tests_dir / f"{module_file}.test.ts"
             out_path.write_text(content, encoding="utf-8")
@@ -105,8 +107,9 @@ def _extra_imports_for_module(
     graph: ModelGraph,
     component_map: list[dict],
     module_file: str,
+    class_name: str,
 ) -> list[str]:
-    """Derive extra imports (free-function export names) from the component's perform actions."""
+    """Derive extra imports (free-function export names and state enum when applicable)."""
     expected_output = f"{module_file}.ts"
     for comp in component_map:
         if comp.get("output_file") == expected_output:
@@ -114,7 +117,10 @@ def _extra_imports_for_module(
                 graph, comp["psm_short"], comp.get("part_def_qname")
             )
             if psm:
-                return get_free_function_export_names(graph, psm)
+                imports = list(get_free_function_export_names(graph, psm))
+                if comp.get("state_machine"):
+                    imports.append(f"{class_name}State")
+                return imports
             break
     return []
 

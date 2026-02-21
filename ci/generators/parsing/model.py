@@ -30,6 +30,7 @@ class ModelElement:
     render_kind: str | None = None
     supertypes: list[str] = field(default_factory=list)
     attributes: list[ModelAttribute] = field(default_factory=list)
+    constants: list[tuple[str, str, str]] = field(default_factory=list)  # (name, type, value_str) for constant decls
     aliases: list[tuple[str, str]] = field(default_factory=list)  # (alias_name, target_name)
     flow_properties: list[tuple[str, str, str, str]] = field(default_factory=list)  # (direction, kind, name, type)
     interface_ends: list[tuple[str, str]] = field(default_factory=list)  # (role, port_type) for interface def

@@ -20,22 +20,38 @@ def _default_config_value_ts(ts_type: str) -> str:
     return "''"
 
 
+def _step_title(step_name: str) -> str:
+    """Humanise step name for it() title, e.g. validFrame -> 'valid frame'."""
+    words: list[str] = []
+    for i, ch in enumerate(step_name):
+        if ch.isupper() and i > 0:
+            words.append(" ")
+        words.append(ch.lower())
+    return "".join(words).strip()
+
+
 def build_test_file(
     module_file: str,
     class_name: str,
     descriptors: list[dict],
     config_attrs: list[dict[str, str]] | None = None,
+    extra_imports: list[str] | None = None,
 ) -> str:
     """Generate a single .test.ts file for one component (e.g. mllp_receiver.test.ts)."""
     lines: list[str] = []
     config_attrs = config_attrs or []
+    extra_imports = extra_imports or []
     # Tests live in src/__tests__/, components in src/
     import_path = f"../{module_file}"
     lines.append("import { describe, it, expect, beforeEach } from 'vitest';")
+    import_symbols = [class_name]
+    if config_attrs:
+        import_symbols.append(f"{class_name}Config")
+    import_symbols.extend(extra_imports)
+    lines.append(f"import {{ {', '.join(import_symbols)} }} from '{import_path}';")
+    lines.append("")
     if config_attrs:
         config_type = f"{class_name}Config"
-        lines.append(f"import {{ {class_name}, {config_type} }} from '{import_path}';")
-        lines.append("")
         default_config_lines = [
             f"  {attr['name']}: {_default_config_value_ts(attr['type'])},"
             for attr in config_attrs
@@ -44,9 +60,6 @@ def build_test_file(
         lines.extend(default_config_lines)
         lines.append("};")
         lines.append("")
-    else:
-        lines.append(f"import {{ {class_name} }} from '{import_path}';")
-    lines.append("")
 
     for desc in descriptors:
         lines.append(f"describe('{desc['name']}', () => {{")
@@ -63,11 +76,11 @@ def build_test_file(
         lines.append("  });")
         lines.append("")
 
-        it_title = _it_title(desc)
-        lines.append(f"  it('{it_title}', () => {{")
         for step in desc.get("action_steps", []):
+            step_title = _step_title(step.get("name", "step"))
             step_doc = (step.get("doc") or "").strip()
             ts_body = step.get("ts_body")
+            lines.append(f"  it('{step_title}', () => {{")
             if ts_body:
                 for body_line in ts_body.splitlines():
                     lines.append("    " + body_line)
@@ -77,7 +90,7 @@ def build_test_file(
             else:
                 lines.append(f"    // {step['name']}")
                 lines.append("    // TODO: implement step")
-        lines.append("  });")
+            lines.append("  });")
         lines.append("});")
         lines.append("")
 

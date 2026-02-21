@@ -296,6 +296,39 @@ def _collect_action_implementations(
     return result
 
 
+def get_free_function_export_names(graph: ModelGraph, psm_node: GraphNode | None) -> list[str]:
+    """Return usage names of performed actions that are free functions (no in self).
+
+    Used to derive test file imports from the existing perform action connection:
+    the component module exports these as top-level functions.
+    """
+    if not psm_node:
+        return []
+    perform_decls = psm_node.properties.get("perform_actions", [])
+    performs_edges = graph.outgoing(psm_node.qname, "performs")
+    target_map: dict[str, GraphNode] = {}
+    for edge in performs_edges:
+        node = graph.get(edge.target)
+        if node:
+            target_map[edge.properties.get("usage_name", "")] = node
+
+    result: list[str] = []
+    for decl in perform_decls:
+        usage_name = decl["name"]
+        action_node = target_map.get(usage_name)
+        if not action_node:
+            continue
+        action_params = action_node.properties.get("action_params", [])
+        is_method = any(p.get("name") == "self" for p in action_params)
+        if is_method:
+            continue
+        reps = _collect_named_reps(action_node)
+        body = (reps.get("functionBody") or reps.get("textualRepresentation") or "").strip()
+        if body:
+            result.append(usage_name)
+    return result
+
+
 def _get_config_attributes(node: GraphNode) -> list[dict[str, str]]:
     """Extract config attributes from a PSM part node."""
     raw = node.properties.get("attributes", [])

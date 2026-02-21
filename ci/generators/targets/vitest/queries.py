@@ -179,13 +179,23 @@ def get_test_descriptor(
 
 
 def _get_ts_rep(node: GraphNode) -> str | None:
-    """Return TypeScript rep body if present."""
+    """Return rep body if present (language 'vitest' or 'typescript'); prefer vitest."""
     reps = node.properties.get("textual_representations") or []
+    vitest_body: str | None = None
+    ts_body: str | None = None
     for r in reps:
-        if (r.get("language") or "").lower() == "typescript":
-            body = r.get("body") or ""
-            if body.strip():
-                return body.strip()
+        lang = (r.get("language") or "").lower()
+        body = (r.get("body") or "").strip()
+        if not body:
+            continue
+        if lang == "vitest":
+            vitest_body = body
+        elif lang == "typescript":
+            ts_body = body
+    if vitest_body:
+        return vitest_body
+    if ts_body:
+        return ts_body
     return None
 
 

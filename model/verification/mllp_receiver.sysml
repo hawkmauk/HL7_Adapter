@@ -83,4 +83,44 @@ package VER_MLLPReceiver {
             doc /* Assert no loss and correct ordering. */
         }
     }
+
+    verification def ParseMllpFrameTest {
+        doc /* Unit tests for parseMllpFrame: valid frame, malformed frame, partial buffer. */
+        subject receiver : MLLPReceiver;
+        objective { verify SYS1_1; }
+
+        action validFrame {
+            rep functionBody language "vitest"
+            /*
+const payload = Buffer.from([0x4d, 0x53, 0x48]);
+const buf = Buffer.concat([Buffer.from([0x0b]), payload, Buffer.from([0x1c, 0x0d])]);
+const result = parseMllpFrame(buf, 1024);
+expect(result.done).toBe(true);
+expect(result.payload).toBeDefined();
+expect(Buffer.compare(result.payload!, payload)).toBe(0);
+expect(result.consumed).toBe(buf.length);
+expect(result.error).toBeUndefined();
+            */
+        }
+        action malformedFrame {
+            rep functionBody language "vitest"
+            /*
+const payload = Buffer.from([0x4d, 0x53, 0x48]);
+const buf = Buffer.concat([Buffer.from([0x0b]), payload, Buffer.from([0x1c, 0x00])]);
+const result = parseMllpFrame(buf, 1024);
+expect(result.done).toBe(true);
+expect(result.error).toBeDefined();
+expect(result.error).toContain('0x1C 0x0D');
+            */
+        }
+        action partialFrame {
+            rep functionBody language "vitest"
+            /*
+const buf = Buffer.from([0x4d, 0x53, 0x48]);
+const result = parseMllpFrame(buf, 1024);
+expect(result.done).toBe(false);
+expect(result.consumed).toBe(buf.length);
+            */
+        }
+    }
 }

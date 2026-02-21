@@ -19,8 +19,8 @@ package PSM_PhysicalArchitecture {
         perform action buildMllpMessage : BuildMllpMessage;
         perform action buildAck : BuildAck;
         perform action buildNak : BuildNak;
-        perform action start : StartReceiver;
-        perform action stop : StopReceiver;
+        perform action startReceiver : StartReceiver;
+        perform action stopReceiver : StopReceiver;
         perform action initializeFromBinding : InitializeMLLPReceiver;
 
         rep textualRepresentation language "TypeScript"

@@ -32,10 +32,8 @@ package PSM_HL7AdapterService_Actions {
     alias MLLPIngressBinding for PSM_HL7AdapterService_Interfaces::PSM_MLLPIngressPort;
     alias HTTPEgressBinding for PSM_HL7AdapterService_Interfaces::PSM_JSONEgressPort;
 
-    action def <BootstrapAdapter> 'Bootstrap Adapter' {
-        in mllpBinding : MLLPIngressBinding;
-        in httpBinding : HTTPEgressBinding;
+    action def <InitializeAdapter> 'Initialize Adapter' :> CIM::Actions::Initialize {
+        in config : CIM::Domain::Configuration;
         in :> self : HL7AdapterService;
-        doc /* Supply bindings once and initialize the whole adapter. Composes: invoke InitializeMLLPReceiver on self.mllpReceiver with mllpBinding and runtimeConfig; InitializeParser on self.parser with runtimeConfig; InitializeTransformer on self.transformer with runtimeConfig; InitializeHTTPForwarder on self.httpForwarder with httpBinding and runtimeConfig; InitializeErrorHandler on self.errorHandler with runtimeConfig. */
     }
 }

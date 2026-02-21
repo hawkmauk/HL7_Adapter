@@ -20,6 +20,7 @@ from .regex import (
     ENTRY_ACTION_RE,
     ENTRY_THEN_RE,
     DO_ACTION_RE,
+    ENUM_LITERAL_RE,
     EXHIBIT_RE,
     EXPOSE_RE,
     FLOW_PROPERTY_RE,
@@ -185,6 +186,12 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             effective_kind = "action def"
         if kind == "verification" and "def" in raw_text:
             effective_kind = "verification def"
+        if kind == "enum" and "def" in raw_text:
+            effective_kind = "enum def"
+
+        enum_literals: list[str] = []
+        if effective_kind == "enum def":
+            enum_literals = [m.group("name") for m in ENUM_LITERAL_RE.finditer(body)]
 
         perform_actions: list[tuple[str, str]] = []
         exhibit_refs: list[str] = []
@@ -266,6 +273,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 verify_refs=verify_refs,
                 subject_ref=subject_ref,
                 exhibit_refs=exhibit_refs,
+                enum_literals=enum_literals,
             )
         )
     return elements

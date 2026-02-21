@@ -47,6 +47,11 @@ package PIM_Behavior {
 
     attribute def ResetComponentSignal;
 
+    attribute def StartServerSignal;
+
+    attribute def ServiceStartedSignal;
+    attribute def ServiceErrorSignal;
+
     doc
     /* Signal-to-CIM event mapping (conceptual)
        - MLLPFrameReceivedSignal / MLLPFrameCompleteSignal correspond to CIM::Events::MLLPFrameReceived.
@@ -291,6 +296,23 @@ package PIM_Behavior {
     }
 
     /* -----------------------------------------------------------------------
+     * RestApi state machine
+     * Serves REST endpoints (health, future metrics/admin). Idle until started.
+     * --------------------------------------------------------------------- */
+
+    state def RestApiStates;
+
+    state restApi : RestApiStates {
+        entry; then Idle;
+
+        state Idle;
+        accept StartServerSignal
+            then Serving;
+
+        state Serving;
+    }
+
+    /* -----------------------------------------------------------------------
      * Top-level HL7Adapter controller state machine
      * This state machine is responsible for coordinating the other state machines.
      * --------------------------------------------------------------------- */
@@ -298,7 +320,15 @@ package PIM_Behavior {
     state def HL7AdapterControllerStates;
 
     state hl7AdapterController : HL7AdapterControllerStates {
-        entry; then Idle;
+        entry;then Initializing;
+
+        state Initializing {
+            do action initialize : Initialize;
+        }
+        accept ServiceStartedSignal
+            then Idle;
+        accept ServiceErrorSignal
+            then HandlingError;
 
         state Idle;
         accept ListenerStartSignal

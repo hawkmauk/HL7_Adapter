@@ -50,6 +50,7 @@ class ModelElement:
     verify_refs: list[str] = field(default_factory=list)  # requirement refs from objective { verify X; } in verification def
     subject_ref: tuple[str, str] | None = None  # (name, type) from subject name : Type; in verification def
     exhibit_refs: list[str] = field(default_factory=list)  # state usage names from exhibit <name>;
+    enum_literals: list[str] = field(default_factory=list)  # literal names for enum def
 
 
 @dataclass(slots=True)

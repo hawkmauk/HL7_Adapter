@@ -111,6 +111,8 @@ def _add_node(graph: ModelGraph, elem: ModelElement) -> None:
             props["subject_ref"] = {"name": elem.subject_ref[0], "type": elem.subject_ref[1]}
     if getattr(elem, "exhibit_refs", None):
         props["exhibit_refs"] = list(elem.exhibit_refs)
+    if elem.kind == "enum def" and getattr(elem, "enum_literals", None):
+        props["enum_literals"] = list(elem.enum_literals)
 
     graph.add_node(
         GraphNode(

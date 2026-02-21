@@ -8,6 +8,8 @@ from .queries import (
     _find_root_adapter_from_exposed,
     get_adapter_state_machine,
     get_component_map,
+    get_service_lifecycle_initial_do_action,
+    get_service_run_action_body,
     PIM_BEHAVIOR_PKG,
     _collect_states,
     _collect_transitions,
@@ -180,6 +182,17 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append("      this.emit('transition', { from: prev, to: this._state, signal });")
     lines.append("    }")
     lines.append("  }")
+
+    do_action = get_service_lifecycle_initial_do_action(graph, document=document)
+    lifecycle_body = get_service_run_action_body(graph, document=document)
+    if do_action:
+        lines.append("")
+        lines.append(f"  {do_action}(): void {{")
+        if lifecycle_body:
+            for line in lifecycle_body.split("\n"):
+                lines.append("    " + line if line.strip() else "")
+        lines.append("  }")
+
     lines.append("}")
     lines.append("")
     return "\n".join(lines)

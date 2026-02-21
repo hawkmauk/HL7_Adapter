@@ -32,8 +32,13 @@ package PIM_LogicalArchitecture {
         exhibit errorHandler;
     }
 
+    part def <RestApi> 'Rest Api' {
+        doc /* Serves REST endpoints (health, metrics, admin). */
+        exhibit restApi;
+    }
+
     part def HL7AdapterService :> CIM::Context::HL7AdapterService {
-        doc /* Adapter at PIM level with boundary ports only. Internal composition of MLLPReceiver, Parser, Transformer, HTTPForwarder, ErrorHandler. Exhibits the top-level controller state machine. */
+        doc /* Adapter at PIM level with boundary ports only. Internal composition of MLLPReceiver, Parser, Transformer, HTTPForwarder, ErrorHandler, RestApi. Exhibits the top-level controller state machine (entry → Initializing do initialize, then Idle). */
         exhibit hl7AdapterController;
 
         port fromUpstream : MLLPIngressPort;
@@ -44,5 +49,6 @@ package PIM_LogicalArchitecture {
         part transformer : Transformer;
         part httpForwarder : HTTPForwarder;
         part errorHandler : ErrorHandler;
+        part restApi : RestApi;
     }
 }

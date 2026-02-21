@@ -13,5 +13,12 @@ package PSM_ErrorHandlerComponent {
         attribute deadLetterPath : String { doc /* File path or queue identifier for messages that cannot be delivered after retries. */ }
         attribute classificationTaxonomy : String { doc /* Name or path of the error classification taxonomy (e.g. ParseError, DeliveryError). */ }
         perform action initializeFromBinding : Actions::InitializeErrorHandler;
+        perform action handleIntegrationError : Actions::HandleIntegrationError;
+        perform action getStatus : Actions::GetStatus;
+        rep classMembers language "TypeScript"
+        /*
+  private _metrics: { errors_total: number; errors_by_class: Partial<Record<ErrorClass, number>> } = { errors_total: 0, errors_by_class: {} };
+  private _lastError: string | null = null;
+        */
     }
 }

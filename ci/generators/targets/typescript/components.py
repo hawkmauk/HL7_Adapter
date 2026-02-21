@@ -110,6 +110,16 @@ def _emit_preamble_interfaces(
     lines: list[str] = []
     for node in nodes:
         short = node.short_name or node.name
+        if node.kind == "enum def":
+            literals = node.properties.get("enum_literals") or []
+            if literals:
+                lines.append(f"export enum {short} {{")
+                for lit in literals:
+                    lines.append(f"  {lit} = '{lit}',")
+                lines.append("}")
+            lines.append("")
+            continue
+
         attrs = node.properties.get("attributes") or []
         reps = node.properties.get("textual_representations") or []
         ts_rep_body = ""
@@ -382,12 +392,17 @@ def _build_component_module(
     # --- 10. Method actions (`in self`) + named method reps ---
     for action_name, action_body, action_node in method_actions:
         params_str = ""
+        return_type = "void"
         if action_node:
             action_params = action_node.properties.get("action_params", [])
             params_str = _build_method_params(action_params)
+            _, return_type = _build_function_signature(action_name, action_params)
         body_only = _strip_outer_method_signature(action_body)
         async_suffix = "async " if "await " in action_body or "await(" in action_body else ""
-        return_type = "Promise<void>" if async_suffix else "void"
+        if async_suffix:
+            return_type = "Promise<void>" if return_type == "void" else f"Promise<{return_type}>"
+        elif return_type == "void" and action_name == "getStatus":
+            return_type = "{ status: 'degraded' | 'ready'; lastError?: string }"
         lines.append("")
         lines.append(f"  {async_suffix}{action_name}({params_str}): {return_type} {{")
         lines.append(_indent(body_only.strip(), 4))

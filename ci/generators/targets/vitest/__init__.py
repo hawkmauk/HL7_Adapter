@@ -10,11 +10,13 @@ from pathlib import Path
 from ...base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from ...ir import ModelGraph
 from ...registry import register_target
+from ..typescript.config import generated_ts_header
 from ..typescript.queries import (
     _find_psm_node,
     _get_config_attributes,
     get_component_map,
     get_free_function_export_names,
+    get_preamble_type_names,
 )
 from ..typescript.service import get_service_constructor_params
 from .queries import get_preamble_for_module, get_verification_cases, group_cases_by_subject
@@ -48,6 +50,7 @@ class VitestGenerator(GeneratorTarget):
         # (matches service.ts constructor logic from get_component_map + _find_psm_node + _get_config_attributes).
         full_component_map = get_component_map(graph)
         artifacts: list[GeneratedArtifact] = []
+        header = generated_ts_header(options.version)
 
         for module_file, descriptors in by_module.items():
             class_name = descriptors[0]["class_name"]
@@ -72,7 +75,7 @@ class VitestGenerator(GeneratorTarget):
                     preamble=preamble,
                 )
             out_path = tests_dir / f"{module_file}.test.ts"
-            out_path.write_text(content, encoding="utf-8")
+            out_path.write_text(header + content, encoding="utf-8")
             artifacts.append(
                 GeneratedArtifact(
                     path=out_path,
@@ -109,7 +112,7 @@ def _extra_imports_for_module(
     module_file: str,
     class_name: str,
 ) -> list[str]:
-    """Derive extra imports (free-function export names and state enum when applicable)."""
+    """Derive extra imports: free-function names, state enum, and preamble type names from the model."""
     expected_output = f"{module_file}.ts"
     for comp in component_map:
         if comp.get("output_file") == expected_output:
@@ -120,6 +123,7 @@ def _extra_imports_for_module(
                 imports = list(get_free_function_export_names(graph, psm))
                 if comp.get("state_machine"):
                     imports.append(f"{class_name}State")
+                imports.extend(get_preamble_type_names(graph, psm))
                 return imports
             break
     return []

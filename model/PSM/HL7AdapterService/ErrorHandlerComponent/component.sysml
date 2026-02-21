@@ -3,6 +3,7 @@ package PSM_ErrorHandlerComponent {
     alias Actions for PSM_ErrorHandler_Actions;
 
     private import ScalarValues::*;
+    private import PSM_ErrorHandler_Structure::*;
 
     doc /* PSM Error Handler component. Refines PIM::LogicalArchitecture::ErrorHandler. */
 
@@ -12,13 +13,16 @@ package PSM_ErrorHandlerComponent {
         attribute metricsPrefix : String { doc /* Prefix for exposed metrics (e.g. hl7_adapter). */ }
         attribute deadLetterPath : String { doc /* File path or queue identifier for messages that cannot be delivered after retries. */ }
         attribute classificationTaxonomy : String { doc /* Name or path of the error classification taxonomy (e.g. ParseError, DeliveryError). */ }
+        attribute _metrics : ErrorHandlerMetrics { doc /* In-memory error counters; exposed via getMetrics(). */ }
+        attribute _lastError : String [0..1] { doc /* Last error message text for getStatus() / health. */ }
+
         perform action initializeFromBinding : Actions::InitializeErrorHandler;
         perform action handleIntegrationError : Actions::HandleIntegrationError;
         perform action getStatus : Actions::GetStatus;
-        rep classMembers language "TypeScript"
-        /*
-  private _metrics: { errors_total: number; errors_by_class: Partial<Record<ErrorClass, number>> } = { errors_total: 0, errors_by_class: {} };
-  private _lastError: string | null = null;
-        */
+        perform action getMetrics : Actions::GetMetrics;
+        perform action recordMessageReceived : Actions::RecordMessageReceived;
+        perform action recordMessageParsed : Actions::RecordMessageParsed;
+        perform action recordMessageTransformed : Actions::RecordMessageTransformed;
+        perform action recordMessageDelivered : Actions::RecordMessageDelivered;
     }
 }

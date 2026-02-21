@@ -49,4 +49,19 @@ package PSM_ErrorHandler_Structure {
         attribute message_id : String;
         attribute error_context : String;
     }
+
+    part def <ErrorHandlerMetrics> 'Error Handler Metrics' {
+        doc /* Snapshot of error and message-flow metrics for health/monitoring. */
+        attribute errors_total : Integer;
+        attribute errors_parse_error : Integer;
+        attribute errors_validation_error : Integer;
+        attribute errors_connection_error : Integer;
+        attribute errors_timeout_error : Integer;
+        attribute errors_http_client_error : Integer;
+        attribute errors_http_server_error : Integer;
+        attribute messages_received : Integer;
+        attribute messages_parsed : Integer;
+        attribute messages_transformed : Integer;
+        attribute messages_delivered : Integer;
+    }
 }

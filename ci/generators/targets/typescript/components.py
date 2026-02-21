@@ -13,6 +13,7 @@ from .queries import (
     _collect_transitions,
     _find_psm_node,
     _get_config_attributes,
+    _get_instance_attributes,
     _resolve_param_type_to_part_def_qname,
     get_preamble_type_part_defs,
 )
@@ -360,14 +361,19 @@ def _build_component_module(
     if config_attrs:
         lines.append(f"  private readonly _config: {class_name}Config;")
 
-    # --- 6. classMembers rep (extra field declarations) ---
+    # --- 6. Private instance attributes (part def attributes whose name starts with '_') ---
+    instance_attrs = _get_instance_attributes(psm_node) if psm_node else []
+    for attr in instance_attrs:
+        lines.append(f"  private {attr['name']}: {attr['type']} = {attr['default']};")
+
+    # --- 7. classMembers rep (extra field declarations, legacy) ---
     class_members = reps.get("classMembers", "").strip()
     if class_members:
         lines.append(_indent(class_members, 2))
 
     lines.append("")
 
-    # --- 7. Constructor ---
+    # --- 8. Constructor ---
     lines.append(f"  constructor({config_param}) {{")
     lines.append("    super();")
     if config_attrs:
@@ -380,16 +386,16 @@ def _build_component_module(
     lines.append("  }")
     lines.append("")
 
-    # --- 8. State getter ---
+    # --- 9. State getter ---
     lines.append(f"  get state(): {enum_name} {{")
     lines.append("    return this._state;")
     lines.append("  }")
     lines.append("")
 
-    # --- 9. Dispatch (private _dispatch + public wrapper when method reps exist) ---
+    # --- 10. Dispatch (private _dispatch + public wrapper when method reps exist) ---
     _emit_dispatch(lines, enum_name, class_name, signal_names, states, transitions, has_method_reps)
 
-    # --- 10. Method actions (`in self`) + named method reps ---
+    # --- 11. Method actions (`in self`) + named method reps ---
     for action_name, action_body, action_node in method_actions:
         params_str = ""
         return_type = "void"
@@ -415,7 +421,7 @@ def _build_component_module(
             lines.append("")
             lines.append(_indent(method_code, 2))
 
-    # --- 11. Close class ---
+    # --- 12. Close class ---
     lines.append("}")
     lines.append("")
     return "\n".join(lines)

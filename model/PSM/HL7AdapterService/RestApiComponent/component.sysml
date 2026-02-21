@@ -8,11 +8,12 @@ package PSM_RestApiComponent {
 
     part def <RestApi> 'Rest Api' :> PIM::LogicalArchitecture::RestApi {
         doc /* HTTP server for REST endpoints: GET /health (component status), future GET /metrics etc. */ 
-        attribute port : Integer { doc /* Listen port (e.g. 3000). */ }
-        perform action start : Actions::StartRestApiServer;
+        attribute 'port' : Integer { doc /* Listen port (e.g. 3000). */ }
         rep textualRepresentation language "TypeScript"
         /*
-import { Hl7AdapterService as HL7AdapterService } from './service';
+import type { Hl7AdapterService } from './service';
+type HL7AdapterService = Hl7AdapterService;
         */
+        perform action initialize : Actions::StartRestApiServer;
     }
 }

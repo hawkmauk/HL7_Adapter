@@ -35,7 +35,12 @@ package PSM_ErrorHandler_Actions {
   };
   logger.info(logEntry, 'integration error');
   this._metrics.errors_total = (this._metrics.errors_total ?? 0) + 1;
-  this._metrics.errors_by_class[classified] = (this._metrics.errors_by_class[classified] ?? 0) + 1;
+  if (classified === ErrorClass.ParseError) this._metrics.errors_parse_error = (this._metrics.errors_parse_error ?? 0) + 1;
+  else if (classified === ErrorClass.ValidationError) this._metrics.errors_validation_error = (this._metrics.errors_validation_error ?? 0) + 1;
+  else if (classified === ErrorClass.ConnectionError) this._metrics.errors_connection_error = (this._metrics.errors_connection_error ?? 0) + 1;
+  else if (classified === ErrorClass.TimeoutError) this._metrics.errors_timeout_error = (this._metrics.errors_timeout_error ?? 0) + 1;
+  else if (classified === ErrorClass.HTTPClientError) this._metrics.errors_http_client_error = (this._metrics.errors_http_client_error ?? 0) + 1;
+  else if (classified === ErrorClass.HTTPServerError) this._metrics.errors_http_server_error = (this._metrics.errors_http_server_error ?? 0) + 1;
   if (this._config.deadLetterPath) {
     const fs = require('fs');
     const dlEntry: DeadLetterEntry = { message_id: logEntry.message_id, error_context: JSON.stringify(logEntry) };
@@ -53,6 +58,52 @@ package PSM_ErrorHandler_Actions {
         rep functionBody language "TypeScript"
         /*
   return { status: this._lastError ? 'degraded' as const : 'ready' as const, lastError: this._lastError ?? undefined };
+        */
+    }
+
+    action def <GetMetrics> 'Get Metrics' {
+        out result : ErrorHandlerMetrics;
+        in :> self : ErrorHandler;
+        doc /* Return a snapshot of error and message-flow metrics for monitoring and tests. */
+        rep functionBody language "TypeScript"
+        /*
+  return { ...this._metrics };
+        */
+    }
+
+    action def <RecordMessageReceived> 'Record Message Received' {
+        in :> self : ErrorHandler;
+        doc /* Increment messages_received (call when MLLP frame is received successfully). */
+        rep functionBody language "TypeScript"
+        /*
+  this._metrics.messages_received = (this._metrics.messages_received ?? 0) + 1;
+        */
+    }
+
+    action def <RecordMessageParsed> 'Record Message Parsed' {
+        in :> self : ErrorHandler;
+        doc /* Increment messages_parsed (call when HL7 message is parsed successfully). */
+        rep functionBody language "TypeScript"
+        /*
+  this._metrics.messages_parsed = (this._metrics.messages_parsed ?? 0) + 1;
+        */
+    }
+
+    action def <RecordMessageTransformed> 'Record Message Transformed' {
+        in :> self : ErrorHandler;
+        doc /* Increment messages_transformed (call when HL7 is transformed to JSON successfully). */
+        rep functionBody language "TypeScript"
+        /*
+  this._metrics.messages_transformed = (this._metrics.messages_transformed ?? 0) + 1;
+        */
+    }
+
+    action def <RecordMessageDelivered> 'Record Message Delivered' {
+        in :> self : ErrorHandler;
+        doc /* Increment messages_delivered (call when JSON payload is delivered with 2xx). */
+        rep functionBody language "TypeScript"
+        /*
+  this._metrics.messages_delivered = (this._metrics.messages_delivered ?? 0) + 1;
         */
     }
 }

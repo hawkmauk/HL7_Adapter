@@ -211,6 +211,14 @@ def get_preamble_type_part_defs(
     return [graph.get(q) for q in sorted_qnames if graph.get(q)]
 
 
+def get_preamble_type_names(
+    graph: ModelGraph, psm_node: GraphNode | None
+) -> list[str]:
+    """Return short names of types referenced by this component's actions (for test extra imports)."""
+    nodes = get_preamble_type_part_defs(graph, psm_node)
+    return sorted({n.short_name or n.name for n in nodes if n.short_name or n.name})
+
+
 def _get_exhibited_state(graph: ModelGraph, part_def_qname: str) -> str | None:
     """Follow exhibit edges from a part def (or its supertype chain) to find the state usage name.
 
@@ -584,12 +592,37 @@ def get_free_function_export_names(graph: ModelGraph, psm_node: GraphNode | None
 
 
 def _get_config_attributes(node: GraphNode) -> list[dict[str, str]]:
-    """Extract config attributes from a PSM part node."""
+    """Extract config attributes from a PSM part node. Excludes attributes whose name starts with '_' (private instance fields)."""
     raw = node.properties.get("attributes", [])
     result = []
     for attr in raw:
         name = attr.get("name", "")
+        if name.startswith("_"):
+            continue
         raw_type = attr.get("type", "")
         ts_type = _sysml_type_to_ts(raw_type)
         result.append({"name": name, "type": ts_type})
+    return result
+
+
+def _get_instance_attributes(node: GraphNode) -> list[dict[str, str]]:
+    """Extract private instance attributes from a PSM part node (name starts with '_'). Returns name, type (TS), and default literal."""
+    raw = node.properties.get("attributes", [])
+    result = []
+    for attr in raw:
+        name = attr.get("name", "")
+        if not name.startswith("_"):
+            continue
+        raw_type = (attr.get("type") or "").strip()
+        type_only = raw_type.split(" [0..1]")[0].strip().split("=")[0].strip()
+        ts_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
+        optional = " [0..1]" in raw_type
+        if optional and "string" in ts_type.lower():
+            ts_type = "string | null"
+            default = "null"
+        elif optional:
+            default = "null"
+        else:
+            default = "undefined"
+        result.append({"name": name, "type": ts_type, "default": default})
     return result

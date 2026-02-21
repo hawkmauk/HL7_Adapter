@@ -4,7 +4,16 @@ from __future__ import annotations
 import json
 
 from ...ir import ModelGraph
-from .service import _derive_service_class_name
+
+
+def generated_ts_header(version: str) -> str:
+    """Header comment for generated TypeScript/Vitest files (same versioning as LaTeX: git tag, short commit, or 'undefined')."""
+    return f"""// Generated from SysML model. Do not edit by hand.
+// Version: {version}
+
+"""
+
+from .service import _derive_service_class_name, get_service_constructor_params
 from .naming import _to_camel
 from .queries import get_adapter_state_machine, get_component_map, get_service_lifecycle_initial_do_action, _find_psm_node, _get_config_attributes
 
@@ -60,7 +69,7 @@ def _build_main_module(graph: ModelGraph, document: object | None = None) -> str
     if not get_adapter_state_machine(graph, document=document):
         return ""
     service_class = _derive_service_class_name(graph, document)
-    component_map = get_component_map(graph, document=document)
+    constructor_params = get_service_constructor_params(graph, document=document)
     do_action = get_service_lifecycle_initial_do_action(graph, document=document)
     lines: list[str] = [
         "import { readFileSync } from 'fs';",
@@ -72,7 +81,7 @@ def _build_main_module(graph: ModelGraph, document: object | None = None) -> str
         "  const config = JSON.parse(readFileSync(configPath, 'utf-8'));",
         f"  const service = new {service_class}(",
     ]
-    args = [f"    config.{_to_camel(comp['class_name'])}," for comp in component_map]
+    args = [f"    config.{p['param_name']}," for p in constructor_params]
     if args:
         args[-1] = args[-1].rstrip(",")
     lines.extend(args)

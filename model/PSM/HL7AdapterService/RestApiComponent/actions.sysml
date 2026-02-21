@@ -28,7 +28,7 @@ package PSM_RestApi_Actions {
     res.writeHead(404);
     res.end();
   });
-  const port = this._config.port ?? 3000;
+  const port = (this._config?.port ?? 3000) as number;
   server.listen(port, () => {
     console.log(`REST API listening on port ${port}`);
   });

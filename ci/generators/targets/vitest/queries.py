@@ -167,7 +167,17 @@ def get_test_descriptor(
                 "doc": (child.doc or "").strip(),
                 "ts_body": _get_ts_rep(child),
             })
-    action_steps.sort(key=lambda a: (a["name"] != "collectData", a["name"] != "processData", a["name"]))
+    def _step_order_key(step: dict) -> tuple[int, str]:
+        name = step.get("name", "")
+        if name == "collectData" or name.startswith("arrange"):
+            return (0, name)
+        if name == "processData" or name.startswith("act"):
+            return (1, name)
+        if name == "evaluateData" or name.startswith("assert"):
+            return (2, name)
+        return (3, name)
+
+    action_steps.sort(key=_step_order_key)
 
     config_var: str | None = None
     for r in (vcase_node.properties.get("textual_representations") or []):

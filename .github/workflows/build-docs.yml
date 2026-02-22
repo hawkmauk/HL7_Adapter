@@ -36,8 +36,6 @@ jobs:
             texlive-extra-utils
 
       - name: Build docs (generator + PDF + HTML)
-        env:
-          VERSION: ${{ env.VERSION }}
         run: bash scripts/build.sh latex
 
       - name: Assemble artifacts

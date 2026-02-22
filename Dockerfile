@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -
 
 WORKDIR /app
 
-# Adapter: package.json, lockfile if present, config, and built dist
-COPY out/typescript/package*.json out/typescript/config.json out/typescript/dist ./adapter/
+# Adapter: package.json, lockfile if present, config, and built dist (preserve dist/ subdir)
+COPY out/typescript/package*.json out/typescript/config.json ./adapter/
+COPY out/typescript/dist ./adapter/dist
 RUN cd adapter && npm ci --omit=dev 2>/dev/null || npm install --omit=dev
 
 # Dashboard (static + npx serve at runtime)

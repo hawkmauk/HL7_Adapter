@@ -43,6 +43,43 @@ Requirements, design, lifecycle gates, generated docs, and generated code are al
 - `docs/`: narrative documentation, build logs, design notes, and [CI/CD and generated documentation](docs/CI_CD.md).
 - `scripts/`: helper scripts for building and running generated artifacts.
 
+For editing SysML (`.sysml`) files we use the **SysIDE** editor plugin with **VS Code** for SysML syntax highlighting.
+
+### How to run locally
+
+The adapter is **generated from the model** (TypeScript/Node.js). To run it locally:
+
+1. **Prerequisites:** Python 3 (for the generator), Node.js and npm, and optionally TeX Live + tex4ht if you want to build PDF docs.
+2. **Generate and run the adapter:**
+   ```bash
+   ./scripts/build.sh typescript
+   ```
+   This generates the TypeScript app from the model into `out/typescript/`, runs `npm install`, `npm run build`, `npm run test`, and `npm run start`. The adapter listens for HL7 on MLLP (default port 2575) and posts transformed JSON to the URL in `config.json` (see [Running the TypeScript adapter](#running-the-typescript-adapter-with-configjson) below).
+3. **Optional — full demo:** Start the [demo HTTPS endpoint](tests/demo-https-endpoint/README.md) (e.g. `https://localhost:8080/api/v1/messages`), set `httpForwarder.baseUrl` and `tlsRejectUnauthorized: 0` in `out/typescript/config.json`, then run the [MLLP Emitter](tests/mllpemitter/README.md) to send HL7 messages to the adapter. JSON will be POSTed to the demo endpoint.
+
+We do not use Docker for the core adapter; the build script uses Node.js and npm. A **Docker image** of the generated demo is built by CI and pushed to GHCR (see [CI and GitHub Pages](#ci-and-github-pages) below).
+
+### How it works
+
+1. **HL7 publisher** — A sender (e.g. the [MLLP Emitter](tests/mllpemitter/README.md)) publishes HL7 messages over TCP using MLLP framing (start 0x0B, end 0x1C 0x0D).
+2. **Receiver** — The adapter’s MLLP receiver listens on a configurable port (e.g. 2575), accepts MLLP-framed messages, and returns ACK/NAK per HL7.
+3. **Parse and transform** — The adapter parses the HL7 message (MSH, PID, etc.), maps key fields (patient ID, name, DOB, message type), and produces a structured JSON payload.
+4. **POST to REST API** — The adapter sends that JSON via POST to a configurable HTTPS endpoint (e.g. `https://localhost:8080/api/v1/messages`).
+5. **Error handling** — Parse failures, validation errors, and delivery failures are classified, logged, and reflected in metrics and health; the operational store records message lifecycle and errors for audit.
+
+All of this (structure, behaviour, requirements) is defined in the **model**; the executable is **generated** from the model, so the architecture and the implementation stay in sync.
+
+### CI and GitHub Pages
+
+We use **CI** to keep artifacts in sync with the model:
+
+- **On push to `main`** (e.g. when a pull request is merged), the [Build docs](.github/workflows/build-docs.yml) workflow:
+  - Generates **project documents** (ConOps, requirements, interface design, gateway signoff, etc.) from the model and builds **PDF** and **HTML**.
+  - **Deploys them to GitHub Pages** so stakeholders always have the latest docs: **[https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/)**.
+  - **Builds the demo from the model**: generates the TypeScript adapter from the SysML model, runs tests, and builds a **Docker image** of the adapter (pushed to GitHub Container Registry). So both the project documents and the runnable demo are produced **automatically from the model** on every merge to `main`.
+
+No hand-written docs or code are deployed; the **model** is the source of truth, and CI turns it into published docs and a containerised demo.
+
 ### Building
 
 The script **`scripts/build.sh`** runs the code generators and then builds the resulting artifacts. It can be run from anywhere; it switches to the project root automatically.
@@ -152,6 +189,50 @@ The adapter includes an **operational data store** for message audit (lifecycle,
 
 - **MLLP Emitter** (`tests/mllpemitter/`) sends HL7 messages over MLLP to the adapter on a configurable interval, with randomised content and a small fraction of invalid messages to exercise error handling. See [tests/mllpemitter/README.md](tests/mllpemitter/README.md).
 - **Demo HTTPS endpoint** (`tests/demo-https-endpoint/`) is a simple HTTPS server that receives the JSON payloads the adapter’s HTTPForwarder posts. Use it with a self-signed cert to run the full path: HL7 (MLLP) → adapter → transform → HTTPS POST. See [tests/demo-https-endpoint/README.md](tests/demo-https-endpoint/README.md) for cert generation, how to start the server, and the full demo flow (endpoint, adapter config with `tlsRejectUnauthorized: 0` for demo, adapter, MLLP emitter).
+
+### Trade-offs
+
+We chose **maintainability and flexibility over speed**. A lot of effort went into demonstrating a **repeatable delivery model** (model as single source of truth, generated docs, generated code, traceability) rather than delivering a one-off integration. As a result, some important production-oriented features are **not yet implemented**:
+
+- **REST API authentication** — The health and metrics endpoints are unauthenticated. For production, they should be protected (e.g. API keys, mTLS, or integration with an IdP).
+- **Encryption of data at rest** — The operational store (SQLite/PostgreSQL) does not currently encrypt persisted data. Sensitive payloads and audit data should be encrypted at rest in a production deployment.
+- **GDPR-style capabilities** — Subject access requests (information requests) and right to erasure (“right to be forgotten”) are not implemented. The **requirements are still recorded in the model** (e.g. CIM/PIM requirements for data subject rights and retention); they would show as **not yet satisfied** in SysML analytics or traceability views, and can be implemented in a later phase without changing the architecture.
+
+These gaps are intentional for this proof of concept: the **model** carries the full set of requirements and design, so we can see what is missing and prioritise it when moving toward production.
+
+### Ideas for improving reliability in production
+
+- **Authentication and authorisation** on the RestApi (health, metrics, message/error queries) and optionally on the downstream HTTPS endpoint side.
+- **Encryption at rest** for the operational store and any stored message content or PII.
+- **Implement GDPR-related behaviour** (subject access, erasure, retention policies) as specified in the model.
+- **Stricter TLS and certificate validation** in production (no disabling verification); consider mTLS for adapter-to-downstream and for RestApi.
+- **Rate limiting and backpressure** on the MLLP listener and on outbound POST to avoid overwhelming the downstream API.
+- **Structured logging and correlation IDs** across the pipeline for debugging and audit.
+- **Automated tests** (including integration tests with real MLLP and HTTPS) run in CI on every pull request; the model already drives unit tests via verification cases.
+
+### Example HL7 message and sample API output
+
+**Sample HL7 message (ADT^A01):**
+
+```
+MSH|^~\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|20260218120000||ADT^A01|MSG_001|P|2.5
+EVN|A01|20260218120000
+PID|1||PAT_12345^^^HOSP^MR||Doe^Jane^^^Ms||19850315|F|||123 Main St^^Anytown^CA^90210^^M||(555)123-4567|(555)987-6543||S||123456789
+```
+
+**Sample JSON payload** (as sent by the adapter via POST to the downstream API, e.g. `https://localhost:8080/api/v1/messages`):
+
+```json
+{
+  "messageType": "ADT^A01",
+  "messageControlId": "MSG_001",
+  "patientId": "PAT_12345^^^HOSP^MR",
+  "patientName": "Doe^Jane^^^Ms",
+  "dateOfBirth": "19850315"
+}
+```
+
+The operational store and internal flows use a richer **metadata** and **demographics** view (sending/receiving app/facility, given/family name, gender); the current PSM transformer sends this flat JSON to the downstream API. The model defines both the logical shape and the mapping from HL7 segments.
 
 ### Documentation
 

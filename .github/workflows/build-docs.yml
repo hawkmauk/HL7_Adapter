@@ -1,5 +1,5 @@
 # Build generated docs (PDF + HTML) on every push to main; deploy to GitHub Pages.
-# Outputs are uploaded as artifact (generated-docs) with pdf/ and html/, then published to Pages.
+# Also build and push a Docker demo image to GHCR.
 name: Build docs
 
 on:
@@ -8,6 +8,8 @@ on:
 
 env:
   VERSION: "v0.1.0"
+  # GHCR image name (lowercase); e.g. ghcr.io/hawkmauk/hl7-adapter
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/hl7-adapter
 
 jobs:
   build-docs:
@@ -48,6 +50,67 @@ jobs:
         with:
           name: generated-docs
           path: artifacts/
+
+  build-demo-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate TypeScript adapter
+        run: |
+          python3 -m ci.generators --target typescript --model-dir model --out out/typescript
+
+      - name: Build TypeScript adapter
+        run: |
+          cd out/typescript
+          npm ci 2>/dev/null || npm install
+          npm run build
+
+      - name: Create generated source archive
+        run: |
+          tar czf generated-adapter-source.tar.gz -C out --exclude='typescript/node_modules' typescript
+
+      - name: Upload generated-adapter-source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-adapter-source
+          path: generated-adapter-source.tar.gz
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push demo image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy-pages:
     needs: [build-docs]

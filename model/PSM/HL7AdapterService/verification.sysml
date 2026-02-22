@@ -60,7 +60,7 @@ package PSM_HL7AdapterService_Verification {
     verification def MllpToHttpPipelineIntegrationTest {
         doc /* End-to-end: one MLLP frame flows through Parser, Transformer, HTTPForwarder; assert controller transitions, store status delivered, ErrorHandler metrics, downstream POST received. */
         subject adapter : HL7AdapterService;
-        objective { verify pipeline end-to-end; }
+        //objective { verify pipeline end-to-end; }
 
         action runPipelineWithMockHttpAndAssertDelivered {
             doc /* Create service with in-memory store and mock HTTP server; send one MLLP frame; assert transitions, store delivered, metrics increased, POST body received. */

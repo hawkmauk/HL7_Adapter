@@ -16,7 +16,17 @@ package PSM_Parser_Actions {
 
         rep functionBody language "TypeScript"
         /*
-  const segments = rawMessage.split(/[\r\n]+/).filter((s) => s.length > 0);
+  const lines = rawMessage.split(/\r\n?|\n/);
+  const segments: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.length) continue;
+    const parts = trimmed.split(/\s+(?=[A-Z][A-Z0-9]{1,2}\|)/);
+    for (const part of parts) {
+      const s = part.trim();
+      if (s.length > 0) segments.push(s);
+    }
+  }
   if (segments.length === 0) {
     return JSON.stringify({ success: false as const, error: { message: 'Empty message', segment: undefined } });
   }
@@ -26,18 +36,18 @@ package PSM_Parser_Actions {
   }
   const mshFields = mshSeg.split('|');
   const fieldDelim = mshFields[1]?.[0] ?? '|';
-  const get = (arr: string[], i: number) => arr[i] ?? '';
-    const msh: MSHFields = {
-      fieldDelimiter: fieldDelim,
-      sendingApplication: get(mshFields, 2),
-      sendingFacility: get(mshFields, 3),
-      receivingApplication: get(mshFields, 4),
-      receivingFacility: get(mshFields, 5),
-      messageType: get(mshFields, 8),
-      messageControlId: get(mshFields, 9),
-      processingId: get(mshFields, 10),
-      versionId: get(mshFields, 11),
-    };
+  const get = (arr: string[], i: number) => (arr[i] ?? '').trim();
+  const msh: MSHFields = {
+    fieldDelimiter: fieldDelim,
+    sendingApplication: get(mshFields, 2),
+    sendingFacility: get(mshFields, 3),
+    receivingApplication: get(mshFields, 4),
+    receivingFacility: get(mshFields, 5),
+    messageType: get(mshFields, 8),
+    messageControlId: get(mshFields, 9),
+    processingId: get(mshFields, 10),
+    versionId: get(mshFields, 11),
+  };
   if (strictValidation && !msh.messageType) {
     return JSON.stringify({ success: false as const, error: { message: 'MSH-9 message type required', segment: 'MSH' } });
   }
@@ -48,18 +58,18 @@ package PSM_Parser_Actions {
     segMap[id].push(seg);
   }
   let pid: PIDFields | undefined;
-    const pidSegs = segMap['PID'];
-    if (pidSegs && pidSegs[0]) {
-      const p = pidSegs[0].split('|');
-      const g = (i: number) => p[i] ?? '';
-      pid = {
-        patientIdList: g(3),
-        patientName: g(5),
-        dateOfBirth: g(7),
-        sex: g(8),
-        patientAddress: g(11),
-      };
-    }
+  const pidSegs = segMap['PID'];
+  if (pidSegs && pidSegs[0]) {
+    const p = pidSegs[0].split('|');
+    const g = (i: number) => (p[i] ?? '').trim();
+    pid = {
+      patientIdList: g(3) || undefined,
+      patientName: g(5) || undefined,
+      dateOfBirth: g(7) || undefined,
+      sex: g(8) || undefined,
+      patientAddress: g(11) || undefined,
+    };
+  }
   const data: ParsedHL7 = { msh, pid, segments: segMap };
   result = JSON.stringify({ success: true as const, data });
         */
@@ -88,6 +98,38 @@ package PSM_Parser_Actions {
     this._dispatch('HL7HandlerFailedSignal');
     this.emit('parseFailed', result.error);
   }
+        */
+    }
+
+    action def <ExtractMessageControlId> 'Extract Message Control ID' {
+        in rawMessage : String;
+        in strictValidation : Integer;
+        in segmentWhitelist : String;
+        out result : String [0..1];
+        doc /* Pure function: parse raw message and return MSH-10 (Message Control ID) when present. */
+        rep functionBody language "TypeScript"
+        /*
+  const jsonResult = parseMessage(rawMessage, strictValidation, segmentWhitelist);
+  try {
+    const parsed = JSON.parse(jsonResult) as ParseResult;
+    if (parsed.success && parsed.data.msh.messageControlId) {
+      const id = parsed.data.msh.messageControlId.trim();
+      result = id.length > 0 ? id : undefined;
+    }
+  } catch {
+    result = undefined;
+  }
+        */
+    }
+
+    action def <GetMessageControlId> 'Get Message Control ID' {
+        in rawMessage : String;
+        out result : String [0..1];
+        in :> self : Parser;
+        doc /* Return MSH-10 from raw message using this parser's config (for service to use as message_id). */
+        rep functionBody language "TypeScript"
+        /*
+  result = extractMessageControlId(rawMessage, this._config.strictValidation, this._config.segmentWhitelist);
         */
     }
 

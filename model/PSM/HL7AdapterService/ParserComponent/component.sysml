@@ -18,6 +18,8 @@ package PSM_ParserComponent {
         attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
 
         perform action parseMessage : ParseHL7Message;
+        perform action extractMessageControlId : ExtractMessageControlId;
+        perform action getMessageControlId : GetMessageControlId;
         perform action handleIncomingMessage : HandleIncomingHL7;
         perform action initializeFromBinding : InitializeParser;
         perform action getStatus : Actions::GetParserStatus;

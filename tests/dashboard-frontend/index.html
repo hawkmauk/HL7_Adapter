@@ -5,12 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HL7 Adapter Dashboard</title>
   <style>
-    :root { --bg: #1a1a2e; --card: #16213e; --text: #e8e8e8; --muted: #a0a0a0; --ready: #4ade80; --degraded: #fbbf24; --error: #f87171; }
+    :root {
+      --bg: #1a1a2e;
+      --card: #16213e;
+      --text: #e8e8e8;
+      --muted: #a0a0a0;
+      --ready: #4ade80;
+      --degraded: #fbbf24;
+      --error: #f87171;
+      /* Lyrebird brand (roughly https://www.lyrebirdhealth.com) */
+      --lyrebird-navy: #0B2545;
+      --lyrebird-teal: #00A7A0;
+      --lyrebird-white: #ffffff;
+    }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 1rem; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--lyrebird-navy);
+      color: var(--lyrebird-white);
+      border-bottom: 3px solid var(--lyrebird-teal);
+    }
+    .page-header h1 { font-size: 1.125rem; font-weight: 600; margin: 0; color: var(--lyrebird-white); }
+    .page-header .logo-wrap { display: flex; align-items: center; }
+    .page-header .logo-wrap img { height: 28px; width: auto; display: block; color: var(--lyrebird-white); }
+    .page-content { padding: 1rem; }
     h1 { font-size: 1.25rem; margin: 0 0 0.5rem 0; }
     .meta { font-size: 0.875rem; color: var(--muted); margin-bottom: 1rem; }
     #connection-error { display: none; background: var(--error); color: #1a1a2e; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
+    .health-metrics-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+    .health-metrics-row section { flex: 0 0 auto; margin-bottom: 0; }
+    .health-metrics-row #health-section { flex: 1; min-width: 0; }
+    .health-metrics-row #metrics-section { flex: 2; min-width: 0; }
     section { background: var(--card); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
     section h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
     table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
@@ -37,7 +67,13 @@
   </style>
 </head>
 <body>
-  <h1>HL7 Adapter Dashboard</h1>
+  <header class="page-header">
+    <h1>HL7 Adapter Dashboard</h1>
+    <div class="logo-wrap">
+      <img src="lyrebird-logo.svg" alt="Lyrebird" class="lyrebird-logo" width="140" height="21" />
+    </div>
+  </header>
+  <main class="page-content">
   <p class="meta">API: <span id="api-url">—</span> · Poll: <span id="poll-interval">—</span></p>
   <div id="connection-error" role="alert"></div>
 
@@ -53,15 +89,16 @@
     </div>
   </div>
 
-  <section aria-labelledby="health-heading">
-    <h2 id="health-heading">Health</h2>
-    <div id="health">Loading…</div>
-  </section>
-
-  <section aria-labelledby="metrics-heading">
-    <h2 id="metrics-heading">Metrics (ErrorHandler)</h2>
-    <div id="metrics">Loading…</div>
-  </section>
+  <div class="health-metrics-row">
+    <section id="health-section" aria-labelledby="health-heading">
+      <h2 id="health-heading">Health</h2>
+      <div id="health">Loading…</div>
+    </section>
+    <section id="metrics-section" aria-labelledby="metrics-heading">
+      <h2 id="metrics-heading">Metrics (ErrorHandler)</h2>
+      <div id="metrics">Loading…</div>
+    </section>
+  </div>
 
   <section aria-labelledby="messages-heading">
     <h2 id="messages-heading">Last 10 messages</h2>
@@ -72,6 +109,7 @@
     <h2 id="errors-heading">Last 10 errors</h2>
     <div id="errors">Loading…</div>
   </section>
+  </main>
 
   <script src="dashboard.js"></script>
 </body>

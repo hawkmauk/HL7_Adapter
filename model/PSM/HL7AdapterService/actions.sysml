@@ -90,16 +90,18 @@ package PSM_HL7AdapterService_Actions {
 
     action def <RecordMessageReceived> 'Record Message Received' {
         in :> self : HL7AdapterService;
-        doc /* Store message in OperationalStore, record metrics, pass frame to Parser. Uses _currentFrame and sets _currentMessageId. */
+        doc /* Extract message_id from HL7 MSH-10 (Message Control ID) when present; store in OperationalStore, record metrics, pass frame to Parser. */
         rep functionBody language "TypeScript"
         /*
-  this._currentMessageId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const receivedAt = new Date().toISOString();
   const raw = this._currentFrame;
+  const rawStr = raw ? raw.toString('utf8') : '';
+  const controlId = rawStr ? this.parser.getMessageControlId(rawStr) : undefined;
+  this._currentMessageId = (controlId && controlId.trim()) ? controlId.trim() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const receivedAt = new Date().toISOString();
   const rawLength = raw?.length ?? 0;
   this.operationalStore.insertMessage(this._currentMessageId, receivedAt, 'received', undefined, undefined, rawLength);
   this.errorHandler.recordMessageReceived();
-  if (raw) this.parser.handleIncomingMessage(raw.toString('utf8'));
+  if (raw) this.parser.handleIncomingMessage(rawStr);
         */
     }
 

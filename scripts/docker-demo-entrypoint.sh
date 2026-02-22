@@ -24,7 +24,7 @@ echo "=== Starting adapter ==="
 ADAPTER_PID=$!
 
 echo "=== Starting dashboard on port $DASHBOARD_PORT ==="
-(cd /app/dashboard && npx -y serve -l $DASHBOARD_PORT) &
+(cd /app/dashboard && npx -y serve -l 0.0.0.0:$DASHBOARD_PORT) &
 DASH_PID=$!
 echo "  -> Dashboard: http://localhost:$DASHBOARD_PORT"
 
@@ -41,4 +41,6 @@ ENDPOINT_PID=$!
 
 echo "=== Demo running. Adapter REST: 3000, MLLP: 2575, Dashboard: $DASHBOARD_PORT, Endpoint: 8080 ==="
 
+# Wait for any process to exit (e.g. adapter crash); then keep container alive so dashboard/others stay reachable
 wait $ADAPTER_PID $DASH_PID $EMITTER_PID $ENDPOINT_PID 2>/dev/null || true
+exec sleep infinity

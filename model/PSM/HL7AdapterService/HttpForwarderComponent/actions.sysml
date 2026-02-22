@@ -70,12 +70,12 @@ package PSM_HTTPForwarder_Actions {
       if (res.ok) {
         this._dispatch('HTTP2xxSignal');
         this.emit('deliverySuccess', { status: res.status });
-        return;
+        return true;
       }
       if (res.status >= 400 && res.status < 500) {
         this._dispatch('HTTP4xxSignal');
         this.emit('deliveryFailed', { status: res.status, message: await res.text() });
-        return;
+        return false;
       }
       lastError = new Error(`HTTP ${res.status}`);
       if (attempt === maxRetries) break;
@@ -90,6 +90,7 @@ package PSM_HTTPForwarder_Actions {
   }
   this._dispatch('ForwarderMaxRetriesExceededSignal');
   this.emit('deliveryFailed', { message: lastError?.message ?? 'Max retries exceeded' });
+  return false;
         */
     }
 }

@@ -6,6 +6,11 @@ package CIM_Actions {
     private import CIM_Events::*;
     private import CIM_Datatype::*;
 
+    action def <Initialize> 'Initialize' {
+        doc /* Initialize a service or component. */
+        in config : Configuration;
+    }
+
     action def <SendMLLPFrame> 'Send MLLP Frame' {
         doc /* Upstream actor publishes a framed HL7 event to the adapter listener. */
         in mllpFrame : MLLPFrame;

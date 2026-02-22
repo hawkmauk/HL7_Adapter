@@ -8,6 +8,7 @@ package PSM_HL7AdapterService {
     alias Transformer for PSM_TransformerComponent;
     alias HTTPForwarder for PSM_HTTPForwarderComponent;
     alias ErrorHandler for PSM_ErrorHandlerComponent;
+    alias RestApi for PSM_RestApiComponent;
     
     alias MLLPIngressPort for MLLPReceiver::Interface::PSM_MLLPIngressPort;
     alias JSONEgressPort for HTTPForwarder::Interface::PSM_JSONEgressPort;
@@ -24,7 +25,8 @@ package PSM_HL7AdapterService {
         part :>> transformer : Transformer::Transformer;
         part :>> httpForwarder : HTTPForwarder::HTTPForwarder;
         part :>> errorHandler : ErrorHandler::ErrorHandler;
+        part :>> restApi : RestApi::RestApi;
 
-        perform action bootstrap : Action::BootstrapAdapter;
+        perform action initialize : Action::InitializeAdapter;
     }
 }

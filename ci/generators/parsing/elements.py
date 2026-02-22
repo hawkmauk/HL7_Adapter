@@ -20,6 +20,7 @@ from .regex import (
     ENTRY_ACTION_RE,
     ENTRY_THEN_RE,
     DO_ACTION_RE,
+    ENUM_LITERAL_RE,
     EXHIBIT_RE,
     EXPOSE_RE,
     FLOW_PROPERTY_RE,
@@ -151,7 +152,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         value_assignments = [float(m.group(1)) for m in ATTR_VALUE_ASSIGN_RE.finditer(body)]
         weight_assignments = [float(m.group(1)) for m in ATTR_WEIGHT_ASSIGN_RE.finditer(body)]
 
-        transitions: list[tuple[str, str, str]] = []
+        transitions: list[tuple[str, str, str, str | None]] = []
         entry_target: str | None = None
         entry_action: str | None = None
         do_action: str | None = None
@@ -162,7 +163,10 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 if sa_match.group("state_name"):
                     current_state = sa_match.group("state_name")
                 elif sa_match.group("signal") and current_state:
-                    transitions.append((current_state, sa_match.group("signal"), sa_match.group("target")))
+                    action = sa_match.group("transition_action")
+                    transitions.append(
+                        (current_state, sa_match.group("signal"), sa_match.group("target"), action if action else None)
+                    )
             et_match = ENTRY_THEN_RE.search(body)
             if et_match:
                 entry_target = et_match.group("target")
@@ -185,6 +189,12 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
             effective_kind = "action def"
         if kind == "verification" and "def" in raw_text:
             effective_kind = "verification def"
+        if kind == "enum" and "def" in raw_text:
+            effective_kind = "enum def"
+
+        enum_literals: list[str] = []
+        if effective_kind == "enum def":
+            enum_literals = [m.group("name") for m in ENUM_LITERAL_RE.finditer(body)]
 
         perform_actions: list[tuple[str, str]] = []
         exhibit_refs: list[str] = []
@@ -266,6 +276,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 verify_refs=verify_refs,
                 subject_ref=subject_ref,
                 exhibit_refs=exhibit_refs,
+                enum_literals=enum_literals,
             )
         )
     return elements

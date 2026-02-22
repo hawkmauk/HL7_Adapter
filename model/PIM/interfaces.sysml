@@ -50,4 +50,28 @@ package PIM_Interfaces {
         end supplierPort : JSONEgressPort;
         end consumerPort : JSONIngressPort;
     }
+
+    /* -----------------------------------------------------------------------
+     * Boundary: HL7AdapterService → DownstreamAPIOwner (RestApi ingress)
+     * ----------------------------------------------------------------------- */
+
+     port def <RestApiIngressPort> 'Rest Api Ingress Port' {
+        doc /* Downstream system receives REST API request and request-sent event from adapter. */
+        in item jsonPayload : JSONPayload;
+        in attribute payloadReceived : HTTP2xxSignal;
+    }
+
+    port def <RestApiEgressPort> 'Rest Api Egress Port' {
+        doc /* Adapter sends REST API response and response-sent event to downstream. */
+        out item jsonPayload : JSONPayload;
+        out attribute deliverySuccess : HTTP2xxSignal;
+        out attribute deliveryFailure : HTTP5xxOrNetworkErrorSignal;
+    }
+
+    interface def <AdapterToUser> 'Adapter to User' {
+        doc /* Boundary interface: HL7AdapterService supplies REST API request to DownstreamAPIOwner. */
+        end supplierPort : RestApiIngressPort;
+        end consumerPort : RestApiEgressPort;
+    }
+
 }

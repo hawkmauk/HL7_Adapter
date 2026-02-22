@@ -9,6 +9,12 @@ package CIM_Domain {
         event occurrence created : Created;
     }
 
+    part def <Configuration> 'Configuration' {
+        doc /* Configuration of a service or component. */
+
+        attribute configuration : String;
+    }
+
     part def <HL7DeliveryConfirmation> 'HL7 Delivery Confirmation' {
         doc /* Conceptual representation of a confirmation of HL7 delivery to the adapter listener. */
 

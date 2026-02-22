@@ -13,6 +13,7 @@ from .queries import (
     _collect_transitions,
     _find_psm_node,
     _get_config_attributes,
+    _get_instance_attributes,
     _resolve_param_type_to_part_def_qname,
     get_preamble_type_part_defs,
 )
@@ -110,6 +111,16 @@ def _emit_preamble_interfaces(
     lines: list[str] = []
     for node in nodes:
         short = node.short_name or node.name
+        if node.kind == "enum def":
+            literals = node.properties.get("enum_literals") or []
+            if literals:
+                lines.append(f"export enum {short} {{")
+                for lit in literals:
+                    lines.append(f"  {lit} = '{lit}',")
+                lines.append("}")
+            lines.append("")
+            continue
+
         attrs = node.properties.get("attributes") or []
         reps = node.properties.get("textual_representations") or []
         ts_rep_body = ""
@@ -350,14 +361,27 @@ def _build_component_module(
     if config_attrs:
         lines.append(f"  private readonly _config: {class_name}Config;")
 
-    # --- 6. classMembers rep (extra field declarations) ---
+    # --- 6. Private instance attributes (part def attributes whose name starts with '_') ---
+    instance_attrs = _get_instance_attributes(psm_node) if psm_node else []
+    for attr in instance_attrs:
+        optional = attr.get("optional", False)
+        composite = attr.get("composite", False)
+        if optional:
+            lines.append(f"  private {attr['name']}?: {attr['type']};")
+        elif composite:
+            # Part/interface type: no field initializer; will be set in constructor
+            lines.append(f"  private {attr['name']}: {attr['type']};")
+        else:
+            lines.append(f"  private {attr['name']}: {attr['type']} = {attr['default']};")
+
+    # --- 7. classMembers rep (extra field declarations, legacy) ---
     class_members = reps.get("classMembers", "").strip()
     if class_members:
         lines.append(_indent(class_members, 2))
 
     lines.append("")
 
-    # --- 7. Constructor ---
+    # --- 8. Constructor ---
     lines.append(f"  constructor({config_param}) {{")
     lines.append("    super();")
     if config_attrs:
@@ -367,27 +391,40 @@ def _build_component_module(
     else:
         first_state = states[0] if states else "UNKNOWN"
         lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(first_state)};")
+    for attr in instance_attrs:
+        if attr.get("optional", False):
+            continue
+        if attr.get("composite", False):
+            # Composite types from the model are emitted as TS interfaces, not classes; use object literal + type assertion
+            lines.append(f"    this.{attr['name']} = {{}} as {attr['type']};")
+        else:
+            lines.append(f"    this.{attr['name']} = {attr['default']};")
     lines.append("  }")
     lines.append("")
 
-    # --- 8. State getter ---
+    # --- 9. State getter ---
     lines.append(f"  get state(): {enum_name} {{")
     lines.append("    return this._state;")
     lines.append("  }")
     lines.append("")
 
-    # --- 9. Dispatch (private _dispatch + public wrapper when method reps exist) ---
+    # --- 10. Dispatch (private _dispatch + public wrapper when method reps exist) ---
     _emit_dispatch(lines, enum_name, class_name, signal_names, states, transitions, has_method_reps)
 
-    # --- 10. Method actions (`in self`) + named method reps ---
+    # --- 11. Method actions (`in self`) + named method reps ---
     for action_name, action_body, action_node in method_actions:
         params_str = ""
+        return_type = "void"
         if action_node:
             action_params = action_node.properties.get("action_params", [])
             params_str = _build_method_params(action_params)
+            _, return_type = _build_function_signature(action_name, action_params)
         body_only = _strip_outer_method_signature(action_body)
         async_suffix = "async " if "await " in action_body or "await(" in action_body else ""
-        return_type = "Promise<void>" if async_suffix else "void"
+        if async_suffix:
+            return_type = "Promise<void>" if return_type == "void" else f"Promise<{return_type}>"
+        elif return_type == "void" and action_name == "getStatus":
+            return_type = "{ status: 'degraded' | 'ready'; lastError?: string }"
         lines.append("")
         lines.append(f"  {async_suffix}{action_name}({params_str}): {return_type} {{")
         lines.append(_indent(body_only.strip(), 4))
@@ -400,7 +437,7 @@ def _build_component_module(
             lines.append("")
             lines.append(_indent(method_code, 2))
 
-    # --- 11. Close class ---
+    # --- 12. Close class ---
     lines.append("}")
     lines.append("")
     return "\n".join(lines)
@@ -443,6 +480,9 @@ def _emit_dispatch(
             seen_signals.add(t["signal"])
             lines.append(f"          case '{t['signal']}':")
             lines.append(f"            this._state = {enum_name}.{_to_screaming_snake(t['to_state'])};")
+            action_name = t.get("transition_action")
+            if action_name:
+                lines.append(f"            this.{action_name}();")
             lines.append("            break;")
         lines.append("          default:")
         lines.append("            break;")

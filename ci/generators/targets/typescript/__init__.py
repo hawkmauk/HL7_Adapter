@@ -17,7 +17,14 @@ from ...ir import ModelGraph
 from ...registry import register_target
 from .service import _build_service_module
 from .components import _build_component_module
-from .config import _build_config_json, _build_index, _build_main_module, _build_package_json, _build_tsconfig
+from .config import (
+    _build_config_json,
+    _build_index,
+    _build_main_module,
+    _build_package_json,
+    _build_tsconfig,
+    generated_ts_header,
+)
 from .queries import get_component_map
 
 
@@ -48,10 +55,11 @@ class TypeScriptGenerator(GeneratorTarget):
         documents = options.extra.get("_documents", [])
         document = documents[0] if len(documents) == 1 else None
         component_map = get_component_map(graph, document=document)
+        header = generated_ts_header(options.version)
         for comp in component_map:
             source = _build_component_module(graph, comp)
             out_path = src_dir / comp["output_file"]
-            out_path.write_text(source, encoding="utf-8")
+            out_path.write_text(header + source, encoding="utf-8")
             artifacts.append(GeneratedArtifact(
                 path=out_path,
                 artifact_type="ts-module",
@@ -61,12 +69,12 @@ class TypeScriptGenerator(GeneratorTarget):
         service_source = _build_service_module(graph, document=document)
         if service_source:
             service_path = src_dir / "service.ts"
-            service_path.write_text(service_source, encoding="utf-8")
+            service_path.write_text(header + service_source, encoding="utf-8")
             artifacts.append(GeneratedArtifact(path=service_path, artifact_type="ts-module", document_id="Service"))
             main_source = _build_main_module(graph, document=document)
             if main_source:
                 main_path = src_dir / "main.ts"
-                main_path.write_text(main_source, encoding="utf-8")
+                main_path.write_text(header + main_source, encoding="utf-8")
                 artifacts.append(GeneratedArtifact(path=main_path, artifact_type="ts-module", document_id="main"))
                 config_json = _build_config_json(graph, document=document)
                 if config_json:
@@ -76,7 +84,7 @@ class TypeScriptGenerator(GeneratorTarget):
 
         index_source = _build_index(graph, document=document)
         index_path = src_dir / "index.ts"
-        index_path.write_text(index_source, encoding="utf-8")
+        index_path.write_text(header + index_source, encoding="utf-8")
         artifacts.append(GeneratedArtifact(path=index_path, artifact_type="ts-module"))
 
         return artifacts

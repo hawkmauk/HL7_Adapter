@@ -47,6 +47,11 @@ package PIM_Behavior {
 
     attribute def ResetComponentSignal;
 
+    attribute def StartServerSignal;
+
+    attribute def ServiceStartedSignal;
+    attribute def ServiceErrorSignal;
+
     doc
     /* Signal-to-CIM event mapping (conceptual)
        - MLLPFrameReceivedSignal / MLLPFrameCompleteSignal correspond to CIM::Events::MLLPFrameReceived.
@@ -291,6 +296,25 @@ package PIM_Behavior {
     }
 
     /* -----------------------------------------------------------------------
+     * RestApi state machine
+     * Serves REST endpoints (health, future metrics/admin). Idle until started.
+     * --------------------------------------------------------------------- */
+
+    state def RestApiStates;
+
+    state restApi : RestApiStates {
+        entry;then Initializing;
+
+        state Initializing {
+            do action initialize : Initialize;
+        }
+        accept StartServerSignal
+            then Serving;
+
+        state Serving;
+    }
+
+    /* -----------------------------------------------------------------------
      * Top-level HL7Adapter controller state machine
      * This state machine is responsible for coordinating the other state machines.
      * --------------------------------------------------------------------- */
@@ -298,7 +322,16 @@ package PIM_Behavior {
     state def HL7AdapterControllerStates;
 
     state hl7AdapterController : HL7AdapterControllerStates {
-        entry; then Idle;
+        entry;then Initializing;
+
+        state Initializing {
+            do action initialize : Initialize;
+        }
+        accept ServiceStartedSignal
+            then Idle;
+        accept ServiceErrorSignal
+            do action recordError
+            then HandlingError;
 
         state Idle;
         accept ListenerStartSignal
@@ -310,32 +343,41 @@ package PIM_Behavior {
 
         state ReceivingFrame;
         accept MLLPFrameCompleteSignal
+            do action recordMessageReceived
             then HandlingFrame;
         accept MLLPFrameErrorSignal
+            do action recordError
             then HandlingError;
 
         state HandlingFrame;
         accept MLLPHandlerCompleteSignal
+            do action recordMessageParsed
             then HandlingHL7Message;
         accept MLLPHandlerFailedSignal
+            do action recordError
             then HandlingError;
 
         state HandlingHL7Message;
         accept HL7HandlerCompleteSignal
+            do action recordMessageTransformed
             then TransformingHL7Message;
         accept HL7HandlerFailedSignal
+            do action recordError
             then HandlingError;
 
         state TransformingHL7Message;
         accept HL7TransformerCompleteSignal
+            do action recordMessageDelivered
             then Forwarding;
         accept HL7TransformerFailedSignal
+            do action recordError
             then HandlingError;
 
         state Forwarding;
         accept HTTP2xxSignal
             then Idle;
         accept HTTP5xxOrNetworkErrorSignal
+            do action recordError
             then HandlingError;
 
         state HandlingError;

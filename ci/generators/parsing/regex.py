@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 
 BLOCK_DECL_RE = re.compile(
-    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action|state|attribute|item|verification)\s+"
+    r"(?m)^(?P<indent>\s*)(?P<kind>package|view|viewpoint|concern|requirement|part|port|interface|constraint|use\s+case|occurrence|action|state|attribute|item|verification|enum)\s+"
     r"(?:(?:def)\s+)?"
     r"(?:(?:<(?P<short>[^>]+)>)\s+)?"
     r"(?P<name>'[^']+'|[A-Za-z_][A-Za-z0-9_]*)"
@@ -70,9 +70,16 @@ ACCEPT_THEN_RE = re.compile(
     r"(?m)^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;"
 )
 
+# Accept with optional "do action ActionName" on transition
+ACCEPT_THEN_DO_ACTION_RE = re.compile(
+    r"(?m)^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*"
+    r"(?:do\s+action\s+(?P<transition_action>[A-Za-z_][A-Za-z0-9_]*)\s*)?;"
+)
+
 STATE_OR_ACCEPT_RE = re.compile(
     r"(?m)(?:^\s*state\s+(?P<state_name>[A-Za-z_][A-Za-z0-9_]*)\s*[;{])"
-    r"|(?:^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;)"
+    r"|(?:^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*"
+    r"(?:do\s+action\s+(?P<transition_action>[A-Za-z_][A-Za-z0-9_]*)\s*)?;)"
 )
 
 ENTRY_THEN_RE = re.compile(
@@ -83,8 +90,9 @@ ENTRY_ACTION_RE = re.compile(
     r"(?m)^\s*entry\s+(?P<action>[A-Za-z_][A-Za-z0-9_]*)"
 )
 
+# Match "do actionName" or "do action actionName : Type" (SysML do action usage)
 DO_ACTION_RE = re.compile(
-    r"(?m)^\s*do\s+(?P<action>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?m)^\s*do\s+(?:action\s+)?(?P<action>[A-Za-z_][A-Za-z0-9_]*)"
 )
 
 STATE_PORT_RE = re.compile(
@@ -119,6 +127,11 @@ SUBJECT_RE = re.compile(r"(?m)^\s*subject\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^;]
 # exhibit state <usage_name>; or exhibit <usage_name> { ... }
 EXHIBIT_RE = re.compile(
     r"(?m)^\s*exhibit\s+(?:state\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*[;{]"
+)
+
+# SysML v2 enum def body: enum literalName;
+ENUM_LITERAL_RE = re.compile(
+    r"(?m)^\s*enum\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;"
 )
 
 # SysML v2 named rep blocks: rep <name> language "lang" /* body */

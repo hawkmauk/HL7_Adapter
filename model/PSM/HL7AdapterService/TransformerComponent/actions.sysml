@@ -61,6 +61,10 @@ package PSM_Transformer_Actions {
     action def <InitializeTransformer> 'Initialize Transformer' {
         in :> self : Transformer;
         doc /* Sets this part's attributes from runtimeConfig for use at construction/bootstrap. Maps mappingConfigPath, jsonPrettyPrint, schemaValidateOutput from runtimeConfig. */
+        rep functionBody language "TypeScript"
+        /*
+  this._logger.info('Transformer initialised');
+        */
     }
 
     action def <GetStatus> 'Get Status' {

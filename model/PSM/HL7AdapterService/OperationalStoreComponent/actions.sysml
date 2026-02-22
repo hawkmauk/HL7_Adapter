@@ -37,6 +37,7 @@ package PSM_OperationalStore_Actions {
   d.exec(`CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at)`);
   d.exec(`CREATE INDEX IF NOT EXISTS idx_errors_message_id ON errors(message_id)`);
   d.exec(`CREATE INDEX IF NOT EXISTS idx_errors_timestamp ON errors(timestamp)`);
+  this._logger.info('Operational store initialised');
         */
     }
 

@@ -94,6 +94,10 @@ package PSM_Parser_Actions {
     action def <InitializeParser> 'Initialize Parser' {
         in :> self : Parser;
         doc /* Sets this part's attributes from runtimeConfig (or defaults) for use at construction/bootstrap. Maps encodingFallback, strictValidation, segmentWhitelist from runtimeConfig where present. */
+        rep functionBody language "TypeScript"
+        /*
+  this._logger.info('Parser initialised');
+        */
     }
 
     action def <GetParserStatus> 'Get Parser Status' {

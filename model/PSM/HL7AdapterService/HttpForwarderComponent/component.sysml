@@ -13,12 +13,12 @@ package PSM_HTTPForwarderComponent {
 
     part def <HTTPForwarder> 'HTTP Forwarder' :> PIM::LogicalArchitecture::HTTPForwarder {
         doc /* Refines PIM::LogicalArchitecture::HTTPForwarder. Technology binding: axios or undici (TLS, retry, timeout). HTTP client configuration: base URL, TLS settings, retry policy, timeout; request/response handling. */
-        attribute baseUrl : String { doc /* Downstream REST API base URL for posting payloads. */ }
+        attribute baseUrl : String =  "https://localhost:8443"{ doc /* Downstream REST API base URL for posting payloads. */ }
         attribute requestTimeoutMs : Integer { doc /* HTTP request timeout in milliseconds. */ }
         attribute maxRetries : Integer { doc /* Maximum retry attempts for transient failures (e.g. 503). */ }
         attribute retryBackoffMs : Integer { doc /* Initial backoff delay in milliseconds before first retry. */ }
         attribute tlsMinVersion : String { doc /* Minimum TLS version (e.g. TLSv1.2). */ }
-        attribute tlsRejectUnauthorized : Integer { doc /* When non-zero, reject connections with invalid server certificates. */ }
+        attribute tlsRejectUnauthorized : Integer = 1 { doc /* When non-zero, reject connections with invalid server certificates. Default 1 = verify; set 0 only for demo/local with self-signed certs. */ }
         attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
 
         perform action sendJSONPayload : PSM_HTTPForwarder_Actions::SendJSONPayload;

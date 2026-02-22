@@ -13,6 +13,10 @@ package PSM_HTTPForwarder_Actions {
         in 'binding' : HTTPEgressBinding;
         in :> self : HttpForwarder;
         doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps baseUrl (from binding.baseUrlPattern or runtimeConfig.baseUrl), requestTimeoutMs, maxRetries, retryBackoffMs, tlsMinVersion, tlsRejectUnauthorized from binding/runtimeConfig. */
+        rep functionBody language "TypeScript"
+        /*
+  this._logger.info({ baseUrl: this._config.baseUrl || '(empty)', tlsRejectUnauthorized: this._config.tlsRejectUnauthorized }, 'HttpForwarder initialised');
+        */
     }
 
     action def <GetHTTPForwarderStatus> 'Get HTTP Forwarder Status' {

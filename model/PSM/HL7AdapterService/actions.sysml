@@ -41,6 +41,9 @@ package PSM_HL7AdapterService_Actions {
   this.operationalStore.initializeFromBinding(config.operationalStore);
   this.restApi.initializeFromBinding(this);
   this.mllpReceiver.startReceiver();
+  this.parser.initializeFromBinding();
+  this.transformer.initializeFromBinding();
+  this.httpForwarder.initializeFromBinding();
 
   this.mllpReceiver.on('transition', (ev: { signal: string }) => {
     if (ev.signal === 'MLLPFrameReceivedSignal') this.dispatch('MLLPFrameReceivedSignal');

@@ -368,6 +368,118 @@ def get_component_map(
     return result
 
 
+def get_type_qname_by_short_name(
+    graph: ModelGraph, short_name: str, prefer_qname_contains: str | None = None
+) -> str | None:
+    """Return the qname of a part def or enum def with the given short name.
+    If prefer_qname_contains is set, prefer the node whose qname contains that substring."""
+    candidates = [
+        n.qname
+        for n in graph.nodes.values()
+        if n.kind in ("part", "part def", "enum def")
+        and (n.short_name == short_name or n.name == short_name)
+    ]
+    if not candidates:
+        return None
+    if prefer_qname_contains:
+        for q in candidates:
+            if prefer_qname_contains in q:
+                return q
+    return candidates[0]
+
+
+def get_config_provider_for_type(
+    graph: ModelGraph,
+    component_map: list[dict],
+    type_qname: str,
+    document: object | None = None,
+) -> tuple[dict | None, str]:
+    """Return (provider_comp, method_usage_name) for the component that provides the given type via a performed action.
+    The provider is the component whose part def has a performed action with exactly one out param whose type resolves to type_qname.
+    Returns (None, '') if no provider is found."""
+    adapter_prefix = ""
+    if document is not None and getattr(document, "exposed_elements", None):
+        adapter_qname, _ = _find_root_adapter_from_exposed(
+            graph, document.exposed_elements
+        )
+        if not adapter_qname:
+            adapter_qname, _ = _find_root_adapter_part_def(graph)
+    else:
+        adapter_qname, _ = _find_root_adapter_part_def(graph)
+    if adapter_qname:
+        adapter_prefix = (adapter_qname.split("::")[0] + "_") if "::" in adapter_qname else ""
+
+    for comp in component_map:
+        part_def_qname = comp.get("part_def_qname")
+        if not part_def_qname:
+            continue
+        part_def_node = graph.get(part_def_qname)
+        if not part_def_node:
+            continue
+        prefer_prefix = (part_def_qname.split("::")[0] + "_") if "::" in part_def_qname else adapter_prefix
+        for edge in graph.outgoing(part_def_qname, "performs"):
+            usage_name = edge.properties.get("usage_name", "")
+            action_q = edge.target
+            if action_q and action_q not in graph.nodes:
+                action_q = _resolve_action_qname(graph, edge.target or "", prefer_prefix)
+            if not action_q:
+                continue
+            action_node = graph.get(action_q)
+            if not action_node:
+                continue
+            action_params = action_node.properties.get("action_params") or []
+            out_params = [p for p in action_params if p.get("dir") == "out"]
+            if len(out_params) != 1:
+                continue
+            raw_out_type = (out_params[0].get("type") or "").strip()
+            type_only = (
+                raw_out_type.split(" [0..1]")[0]
+                .strip()
+                .split("[*]")[0]
+                .strip()
+                .split("=")[0]
+                .strip()
+            )
+            resolved = _resolve_param_type_to_part_def_qname(
+                graph, type_only, prefer_prefix=prefer_prefix
+            )
+            if resolved == type_qname:
+                return (comp, usage_name)
+    return (None, "")
+
+
+def get_injected_config_attr_names(
+    graph: ModelGraph,
+    psm_node: GraphNode | None,
+    type_qname: str,
+) -> list[str]:
+    """Return config attribute names on the part def whose type resolves to type_qname (e.g. supplied by adapter)."""
+    if not psm_node:
+        return []
+    first_seg = (psm_node.qname or "").split("::")[0]
+    prefer_prefix = (first_seg + "_") if first_seg else None
+    result: list[str] = []
+    for attr in psm_node.properties.get("attributes") or []:
+        name = (attr.get("name") or "").strip()
+        if name.startswith("_"):
+            continue
+        raw_type = (attr.get("type") or "").strip()
+        type_only = (
+            raw_type.split(" [0..1]")[0]
+            .strip()
+            .split("[*]")[0]
+            .strip()
+            .split("=")[0]
+            .strip()
+        )
+        resolved = _resolve_param_type_to_part_def_qname(
+            graph, type_only, prefer_prefix=prefer_prefix
+        )
+        if resolved == type_qname:
+            result.append(name)
+    return result
+
+
 def get_service_lifecycle_initial_do_action(
     graph: ModelGraph,
     document: object | None = None,
@@ -744,11 +856,12 @@ def get_free_function_export_names(graph: ModelGraph, psm_node: GraphNode | None
     return result
 
 
-def _get_config_attributes(node: GraphNode) -> list[dict[str, str]]:
+def _get_config_attributes(node: GraphNode) -> list[dict[str, str | bool]]:
     """Extract config attributes from a PSM part node. Excludes attributes whose name starts with '_' (private instance fields).
-    When the model specifies a default (e.g. 'Integer = 3000'), parses it so config.json can use it."""
+    When the model specifies a default (e.g. 'Integer = 3000'), parses it so config.json can use it.
+    Optional [0..1] is preserved; unknown types (e.g. Logger) are passed through for TS interface emission."""
     raw = node.properties.get("attributes", [])
-    result = []
+    result: list[dict[str, str | bool]] = []
     for attr in raw:
         name = attr.get("name", "")
         if name.startswith("_"):
@@ -759,10 +872,16 @@ def _get_config_attributes(node: GraphNode) -> list[dict[str, str]]:
             type_part, default_part = raw_type.split("=", 1)
             raw_type = type_part.strip()
             default = default_part.strip()
-        ts_type = _sysml_type_to_ts(raw_type)
-        item: dict[str, str] = {"name": name, "type": ts_type}
+        optional = " [0..1]" in raw_type or "[0..1]" in raw_type
+        type_only = (
+            raw_type.split(" [0..1]")[0].strip().split("[0..1]")[0].strip()
+        )
+        ts_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
+        item: dict[str, str | bool] = {"name": name, "type": ts_type}
         if default is not None:
             item["default"] = default
+        if optional:
+            item["optional"] = True
         result.append(item)
     return result
 

@@ -2,6 +2,7 @@ package PSM_RestApiComponent {
 
     alias Actions for PSM_RestApi_Actions;
     alias Interface for PSM_RestApiComponent_Interface;
+    alias Logger for PSM_Logging_Structure::Logger;
     
     private import ScalarValues::*;
 
@@ -12,6 +13,7 @@ package PSM_RestApiComponent {
         
         attribute listenHost : String [0..1] = "0.0.0.0" { doc /* Bind address (e.g. 127.0.0.1 or 0.0.0.0). */ }
         attribute listenPort : Integer = 3000 { doc /* Listen port (e.g. 3000). */ }
+        attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
         
         rep textualRepresentation language "TypeScript"
         /*

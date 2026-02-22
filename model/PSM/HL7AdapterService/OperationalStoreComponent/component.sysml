@@ -2,6 +2,7 @@ package PSM_OperationalStoreComponent {
 
     alias Actions for PSM_OperationalStore_Actions;
     alias Structure for PSM_OperationalStore_Structure;
+    alias Logger for PSM_Logging_Structure::Logger;
 
     private import ScalarValues::*;
 
@@ -12,6 +13,7 @@ package PSM_OperationalStoreComponent {
         attribute dialect : String = "sqlite" { doc /* Database dialect: sqlite | postgres. */ }
         attribute path : String [0..1] = "./data/adapter.db" { doc /* SQLite file path (e.g. ./data/store.db). */ }
         attribute connectionString : String [0..1] { doc /* PostgreSQL connection string (when dialect is postgres). */ }
+        attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
         attribute _db : String [0..1] { doc /* Database connection handle (set by initializeFromBinding). */ }
 
         perform action initializeFromBinding : Actions::InitializeOperationalStore;

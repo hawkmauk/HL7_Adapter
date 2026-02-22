@@ -8,11 +8,14 @@ from .queries import (
     _find_root_adapter_from_exposed,
     get_adapter_state_machine,
     get_component_map,
+    get_config_provider_for_type,
     get_initialize_from_binding_calls,
+    get_injected_config_attr_names,
     get_part_property_for_action,
     get_service_lifecycle_action_params,
     get_service_lifecycle_initial_do_action,
     get_service_run_action_body,
+    get_type_qname_by_short_name,
     PIM_BEHAVIOR_PKG,
     _collect_states,
     _collect_transitions,
@@ -146,12 +149,35 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append(f"  constructor({param_str}) {{")
     lines.append("    super();")
     lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(initial_state or 'Idle')};")
+    logger_type_qname = get_type_qname_by_short_name(
+        graph, "Logger", prefer_qname_contains="Logging"
+    )
+    provider_comp, provider_method = (
+        get_config_provider_for_type(graph, component_map, logger_type_qname, document)
+        if logger_type_qname
+        else (None, "")
+    )
+    provider_field = _to_camel(provider_comp["class_name"]) if provider_comp else None
+
     for comp in component_map:
         field = _to_camel(comp["class_name"])
+        config_param = _to_camel(comp["class_name"]) + "Config"
         psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
-            lines.append(f"    this.{field} = new {comp['class_name']}({_to_camel(comp['class_name'])}Config);")
+            injected_attrs = (
+                get_injected_config_attr_names(graph, psm, logger_type_qname)
+                if (logger_type_qname and psm)
+                else []
+            )
+            if comp is provider_comp or not injected_attrs or not provider_field or not provider_method:
+                lines.append(f"    this.{field} = new {comp['class_name']}({config_param});")
+            else:
+                injections = ", ".join(
+                    f"{attr}: this.{provider_field}.{provider_method}('{comp['class_name']}')"
+                    for attr in injected_attrs
+                )
+                lines.append(f"    this.{field} = new {comp['class_name']}({{ ...{config_param}, {injections} }});")
         else:
             lines.append(f"    this.{field} = new {comp['class_name']}();")
     # Attach transition logging for all parts and the service (state-transition logging only)

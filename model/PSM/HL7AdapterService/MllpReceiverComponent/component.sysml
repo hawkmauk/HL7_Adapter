@@ -3,6 +3,7 @@ package PSM_MllpReceiverComponent {
     alias Structure for PSM_MLLPReceiver_Structure;
     alias Action for PSM_MLLPReceiver_Actions;
     alias Interface for PSM_MLLPReceiverComponent_Interface;
+    alias Logger for PSM_Logging_Structure::Logger;
 
     private import Action::*;
     private import ScalarValues::*;
@@ -15,6 +16,7 @@ package PSM_MllpReceiverComponent {
         attribute bindPort : Integer = 2575 { doc /* TCP port for MLLP listener (e.g. 2575). */ }
         attribute maxPayloadSize : Integer { doc /* Maximum MLLP payload size in bytes; frames exceeding this are rejected. */ }
         attribute connectionIdleTimeoutMs : Integer { doc /* Idle timeout in milliseconds before closing a connection. */ }
+        attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
 
         constant mllpStartByte : Integer = 11 { doc /* MLLP start block character (0x0B). */ }
         constant mllpEndByteFirst : Integer = 28 { doc /* MLLP end block first byte (0x1C). */ }

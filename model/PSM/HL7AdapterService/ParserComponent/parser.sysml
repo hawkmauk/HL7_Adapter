@@ -4,6 +4,7 @@ package PSM_ParserComponent {
 
     alias Structure for PSM_Parser_Structure;
     alias Actions for PSM_Parser_Actions;
+    alias Logger for PSM_Logging_Structure::Logger;
 
     private import Actions::*;
 
@@ -14,6 +15,7 @@ package PSM_ParserComponent {
         attribute encodingFallback : String { doc /* Fallback character encoding when not specified in MSH (e.g. UTF-8). */ }
         attribute strictValidation : Integer { doc /* When non-zero, reject messages that violate structural or required-field rules. */ }
         attribute segmentWhitelist : String { doc /* Comma-separated segment IDs in scope for parsing; others may be ignored. */ }
+        attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
 
         perform action parseMessage : ParseHL7Message;
         perform action handleIncomingMessage : HandleIncomingHL7;

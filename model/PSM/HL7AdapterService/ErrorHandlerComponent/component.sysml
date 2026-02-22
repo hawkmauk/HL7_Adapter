@@ -1,6 +1,7 @@
 package PSM_ErrorHandlerComponent {
 
     alias Actions for PSM_ErrorHandler_Actions;
+    alias Logger for PSM_Logging_Structure::Logger;
 
     private import ScalarValues::*;
     private import PSM_ErrorHandler_Structure::*;
@@ -13,6 +14,7 @@ package PSM_ErrorHandlerComponent {
         attribute metricsPrefix : String { doc /* Prefix for exposed metrics (e.g. hl7_adapter). */ }
         attribute deadLetterPath : String { doc /* File path or queue identifier for messages that cannot be delivered after retries. */ }
         attribute classificationTaxonomy : String { doc /* Name or path of the error classification taxonomy (e.g. ParseError, DeliveryError). */ }
+        attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
         attribute _metrics : ErrorHandlerMetrics { doc /* In-memory error counters; exposed via getMetrics(). */ }
         attribute _lastError[*] : String { doc /* Last error message text for getStatus() / health. */ }
 

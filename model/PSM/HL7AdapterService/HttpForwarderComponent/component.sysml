@@ -4,6 +4,7 @@ package PSM_HTTPForwarderComponent {
     alias Interface for PSM_HTTPForwarderComponent_Interface;
     alias InitializeHTTPForwarder for PSM_HTTPForwarder_Actions::InitializeHTTPForwarder;
     alias SendJSONPayload for PSM_HTTPForwarder_Actions::SendJSONPayload;
+    alias Logger for PSM_Logging_Structure::Logger;
 
     private import Action::*;
     private import ScalarValues::*;
@@ -18,6 +19,7 @@ package PSM_HTTPForwarderComponent {
         attribute retryBackoffMs : Integer { doc /* Initial backoff delay in milliseconds before first retry. */ }
         attribute tlsMinVersion : String { doc /* Minimum TLS version (e.g. TLSv1.2). */ }
         attribute tlsRejectUnauthorized : Integer { doc /* When non-zero, reject connections with invalid server certificates. */ }
+        attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
 
         perform action sendJSONPayload : PSM_HTTPForwarder_Actions::SendJSONPayload;
         perform action initializeFromBinding : InitializeHTTPForwarder;

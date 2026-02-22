@@ -15,7 +15,9 @@ from .queries import (
     _get_config_attributes,
     _get_instance_attributes,
     _resolve_param_type_to_part_def_qname,
+    get_injected_config_attr_names,
     get_preamble_type_part_defs,
+    get_type_qname_by_short_name,
 )
 
 _RESERVED_REP_NAMES = {"textualRepresentation", "classMembers"}
@@ -319,7 +321,8 @@ def _build_stateless_component_module(
     if config_attrs:
         lines.append(f"export interface {class_name}Config {{")
         for attr in config_attrs:
-            lines.append(f"  {attr['name']}: {attr['type']};")
+            optional_suffix = "?" if attr.get("optional") else ""
+            lines.append(f"  {attr['name']}{optional_suffix}: {attr['type']};")
         lines.append("}")
         lines.append("")
 
@@ -427,11 +430,18 @@ def _build_component_module(
         lines.append(_emit_free_function(action_name, action_body, action_node))
         lines.append("")
 
-    # --- 3. Skeleton standard imports + logger ---
+    # --- 3. Skeleton standard imports (no module-level logger; components get logger from config when model has that attr) ---
+    logger_type_qname = get_type_qname_by_short_name(
+        graph, "Logger", prefer_qname_contains="Logging"
+    )
+    inject_logger = bool(
+        logger_type_qname
+        and get_injected_config_attr_names(graph, psm_node, logger_type_qname)
+    )
     lines.append("import { EventEmitter } from 'events';")
     lines.append("import pino from 'pino';")
-    lines.append("")
-    lines.append(f"const logger = pino({{ name: '{class_name}' }});")
+    if inject_logger:
+        lines.append("import type { Logger } from './logging';")
     lines.append("")
 
     # --- 4. Skeleton enum, signal type, config interface ---
@@ -453,7 +463,8 @@ def _build_component_module(
     if config_attrs:
         lines.append(f"export interface {class_name}Config {{")
         for attr in config_attrs:
-            lines.append(f"  {attr['name']}: {attr['type']};")
+            optional_suffix = "?" if attr.get("optional") else ""
+            lines.append(f"  {attr['name']}{optional_suffix}: {attr['type']};")
         lines.append("}")
         lines.append("")
 
@@ -463,6 +474,8 @@ def _build_component_module(
     lines.append(f"  private _state: {enum_name};")
     if config_attrs:
         lines.append(f"  private readonly _config: {class_name}Config;")
+    if inject_logger:
+        lines.append("  private readonly _logger: Logger;")
 
     # --- 6. Private instance attributes (part def attributes whose name starts with '_') ---
     instance_attrs = _get_instance_attributes(psm_node) if psm_node else []
@@ -489,6 +502,8 @@ def _build_component_module(
     lines.append("    super();")
     if config_attrs:
         lines.append("    this._config = config;")
+    if inject_logger:
+        lines.append(f"    this._logger = config.logger ?? pino({{ name: '{class_name}', level: 'silent' }});")
     if initial_state:
         lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(initial_state)};")
     else:
@@ -525,6 +540,8 @@ def _build_component_module(
             _, return_type = _build_function_signature(action_name, action_params)
             first_out_name = _first_out_param_name(action_params)
         body_only = _strip_outer_method_signature(action_body)
+        if inject_logger:
+            body_only = re.sub(r"\blogger\.", "this._logger.", body_only)
         async_suffix = "async " if "await " in action_body or "await(" in action_body else ""
         if async_suffix:
             return_type = "Promise<void>" if return_type == "void" else f"Promise<{return_type}>"

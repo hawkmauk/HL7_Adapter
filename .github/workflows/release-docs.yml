@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 env:
   # Set from the tag that was pushed (e.g. refs/tags/v0.1.0 -> v0.1.0)

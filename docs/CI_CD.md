@@ -45,6 +45,8 @@ On each push to `main`, the [Build docs](../.github/workflows/build-docs.yml) wo
 3. Runs `pdflatex` and `make4ht` to produce **PDF** and **HTML** artifacts for each generated `.tex` file.
 4. Uploads the outputs as a versioned `generated-docs` artifact (with `pdf/` and `html/` subfolders) from the Actions run.
 5. Deploys the generated HTML and PDFs to **GitHub Pages**: [https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/).
+6. **Builds the demo from the model**: generates the TypeScript adapter, runs tests, and builds a **Docker image** (pushed to GitHub Container Registry as `ghcr.io/<owner>/hl7-adapter:latest`). You can run the demo with `docker pull ghcr.io/hawkmauk/hl7-adapter:latest` and `docker run` (see the main [README](../README.md)).
+7. Uploads **generated source code** as a **GitHub Actions artifact** named `generated-adapter-source` (a tarball of the TypeScript adapter without `node_modules`). Download it from the [Actions](https://github.com/hawkmauk/HL7_Adapter/actions) tab for the latest run of "Build docs".
 
 This gives you:
 

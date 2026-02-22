@@ -18,7 +18,7 @@ package PSM_ErrorHandlerComponent {
 
         perform action initializeFromBinding : Actions::InitializeErrorHandler;
         perform action handleIntegrationError : Actions::HandleIntegrationError;
-        perform action getStatus : Actions::GetStatus;
+        perform action getStatus : Actions::GetErrorHandlerStatus;
         perform action getMetrics : Actions::GetMetrics;
         perform action recordMessageReceived : Actions::RecordMessageReceived;
         perform action recordMessageParsed : Actions::RecordMessageParsed;

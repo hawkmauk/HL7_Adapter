@@ -18,6 +18,7 @@ package PSM_ParserComponent {
         perform action parseMessage : ParseHL7Message;
         perform action handleIncomingMessage : HandleIncomingHL7;
         perform action initializeFromBinding : InitializeParser;
+        perform action getStatus : Actions::GetParserStatus;
 
     }
 }

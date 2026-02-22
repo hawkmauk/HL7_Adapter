@@ -21,6 +21,7 @@ package PSM_HTTPForwarderComponent {
 
         perform action sendJSONPayload : PSM_HTTPForwarder_Actions::SendJSONPayload;
         perform action initializeFromBinding : InitializeHTTPForwarder;
+        perform action getStatus : PSM_HTTPForwarder_Actions::GetHTTPForwarderStatus;
 
         rep textualRepresentation language "TypeScript"
         /*

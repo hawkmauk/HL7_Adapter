@@ -4,7 +4,7 @@ package PSM_Parser_Actions {
     alias Structure for PSM_Parser_Structure;
 
     private import ScalarValues::*;
-
+    private import PSM_HL7AdapterService_Structure::*;
     doc /* Parser action definitions (parse message, handle incoming, initialize). */
 
     action def <ParseHL7Message> 'Parse HL7 Message' {
@@ -61,7 +61,7 @@ package PSM_Parser_Actions {
       };
     }
   const data: ParsedHL7 = { msh, pid, segments: segMap };
-  return JSON.stringify({ success: true as const, data });
+  result = JSON.stringify({ success: true as const, data });
         */
     }
 
@@ -91,5 +91,15 @@ package PSM_Parser_Actions {
     action def <InitializeParser> 'Initialize Parser' {
         in :> self : Parser;
         doc /* Sets this part's attributes from runtimeConfig (or defaults) for use at construction/bootstrap. Maps encodingFallback, strictValidation, segmentWhitelist from runtimeConfig where present. */
+    }
+
+    action def <GetParserStatus> 'Get Parser Status' {
+        in :> self : Parser;
+        out result : HL7AdapterServiceStatus;
+        doc /* Return current component state for health/status endpoints. */
+        rep functionBody language "TypeScript"
+        /*
+  result = { status: this.state };
+        */
     }
 }

@@ -16,5 +16,6 @@ package PSM_TransformerComponent {
         perform action transformPayload : TransformToJSON;
         perform action handleTransformRequest : HandleTransformRequest;
         perform action initializeFromBinding : InitializeTransformer;
+        perform action getStatus : Actions::GetStatus;
     }
 }

@@ -56,6 +56,65 @@ The script **`scripts/build.sh`** runs the code generators and then builds the r
 ./scripts/build.sh typescript  # generate TypeScript app, install, build, test, and start
 ```
 
+### Running the TypeScript adapter with config.json
+
+The generated adapter reads configuration from a **`config.json`** file in the **current working directory** when you run it. The build script places a default `config.json` in `out/typescript/` and runs `npm run start` from there after tests.
+
+**To run the adapter yourself:**
+
+1. Build the TypeScript target (see above), then:
+   ```bash
+   cd out/typescript
+   npm run start
+   ```
+   This runs `node dist/main.js`, which loads `config.json` from the current directory.
+
+2. **Config file location:** The entry point resolves the path as `join(process.cwd(), 'config.json')`. So either run from `out/typescript/` (where the generator puts `config.json`), or place/copy a `config.json` in whatever directory you use as the working directory.
+
+3. **Config shape:** `config.json` must be a JSON object with one key per component, each holding that component’s config object. Example (with RestApi listening on port 3000):
+
+   ```json
+   {
+     "errorHandler": {
+       "logLevel": "",
+       "metricsPrefix": "",
+       "deadLetterPath": "",
+       "classificationTaxonomy": ""
+     },
+     "httpForwarder": {
+       "baseUrl": "",
+       "requestTimeoutMs": 0,
+       "maxRetries": 0,
+       "retryBackoffMs": 0,
+       "tlsMinVersion": "",
+       "tlsRejectUnauthorized": 0
+     },
+     "mllpReceiver": {
+       "bindHost": "",
+       "bindPort": 0,
+       "maxPayloadSize": 0,
+       "connectionIdleTimeoutMs": 0
+     },
+     "parser": {
+       "encodingFallback": "",
+       "strictValidation": 0,
+       "segmentWhitelist": ""
+     },
+     "restApi": {
+       "listenPort": 3000
+     },
+     "transformer": {
+       "mappingConfigPath": "",
+       "jsonPrettyPrint": 0,
+       "schemaValidateOutput": 0
+     }
+   }
+   ```
+
+   Set **`restApi.listenPort`** (e.g. `3000`) for the health and metrics HTTP server. If omitted or `0`, the server may bind to an ephemeral port. Fill in other fields (e.g. `mllpReceiver.bindPort`, `httpForwarder.baseUrl`) for your environment.
+
+4. **Health and metrics:** Once the adapter is running, GET **`/health`** and **`/metrics`** on the configured host/port (e.g. `http://localhost:3000/health`). See **`docs/RestApi_Dashboard_Contract.md`** for the response shapes.
+
 ### Documentation
 
 - **Generated docs (HTML and PDF)** are published on **GitHub Pages**: [https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/).

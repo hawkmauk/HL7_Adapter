@@ -15,7 +15,15 @@ def generated_ts_header(version: str) -> str:
 
 from .service import _derive_service_class_name, get_service_constructor_params
 from .naming import _to_camel
-from .queries import get_adapter_state_machine, get_component_map, get_service_lifecycle_initial_do_action, _find_psm_node, _get_config_attributes
+from .queries import (
+    get_adapter_state_machine,
+    get_component_map,
+    get_initialize_from_binding_calls,
+    get_service_lifecycle_initial_do_action,
+    get_service_lifecycle_action_params,
+    _find_psm_node,
+    _get_config_attributes,
+)
 
 
 def _default_config_value_json(ts_type: str, model_default: str | None = None) -> str | int | bool:
@@ -87,7 +95,15 @@ def _build_main_module(graph: ModelGraph, document: object | None = None) -> str
     lines.extend(args)
     lines.append("  );")
     if do_action:
-        lines.append(f"  service.{do_action}();")
+        accepts_config = (
+            bool(get_service_lifecycle_action_params(graph, document=document))
+            and bool(get_initialize_from_binding_calls(graph, document=document))
+            and bool(constructor_params)
+        )
+        if accepts_config:
+            lines.append("  service.initialize(config);")
+        else:
+            lines.append(f"  service.{do_action}();")
     lines.append("}")
     lines.append("")
     lines.append("main();")

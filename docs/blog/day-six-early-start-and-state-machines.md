@@ -6,7 +6,9 @@
 
 It’s the **beginning of day six**, and **my wife is getting a bit agitated** about how long I’m spending on this. Fair enough—so it’s an **early start** to get things finished and ease the pressure at home.
 
-**Taking stock on yesterday:** we’ve made some **good design choices**. One that I **really like** is **lifecycle management with state machines**. It’s given me a **nice way to introduce initialization**—instead of ad‑hoc setup scattered around, the components have a clear lifecycle (e.g. entry state, then initialized, then running), and initialization sits in that flow. So the model doesn’t just describe *what* the component does; it describes *when* it’s ready to do it. That’s a design choice that should pay off as we add more components and want consistent startup behaviour.
+**Taking stock on yesterday:** we’ve made some **good design choices**. I also **had to add another component**—**RestApi**—to allow **health statistics** to be output. That was the right call for the product, but it’s **left a gap in the issues**: the work’s done but there wasn’t an issue for it, so the backlog doesn’t reflect what we built. I need to **get the Product Owner to fill that gap**—create or update issues so the board matches reality. It’s a small process catch-up, but worth doing so we don’t lose track of what’s in scope.
+
+One design choice I **really like** is **lifecycle management with state machines**. It’s given me a **nice way to introduce initialization**—instead of ad‑hoc setup scattered around, the components have a clear lifecycle (e.g. entry state, then initialized, then running), and initialization sits in that flow. So the model doesn’t just describe *what* the component does; it describes *when* it’s ready to do it. That’s a design choice that should pay off as we add more components and want consistent startup behaviour.
 
 So today: **early start**, **finish what’s left**, and try to **get it over the line** before the end of the day. The state-machine lifecycle is one of the things from this push that I’m glad we have in place.
 

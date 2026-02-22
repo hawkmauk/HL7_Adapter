@@ -232,6 +232,14 @@ def _build_method_params(action_params: list[dict]) -> str:
     return ", ".join(parts)
 
 
+def _first_out_param_name(action_params: list[dict]) -> str | None:
+    """Return the name of the first 'out' param, or None. Used to emit return statement when actions don't return explicitly."""
+    out_params = [p for p in action_params if p.get("dir") == "out"]
+    if not out_params:
+        return None
+    return (out_params[0].get("name") or "").strip() or None
+
+
 def _build_function_signature(usage_name: str, action_params: list[dict]) -> tuple[str, str]:
     """Build (params_str, return_type) from action_params. Excludes 'self'. Optional [0..1] -> param?."""
     in_params = [
@@ -259,12 +267,19 @@ def _build_function_signature(usage_name: str, action_params: list[dict]) -> tup
 
 
 def _emit_free_function(usage_name: str, body: str, action_node: GraphNode | None) -> str:
-    """Emit a free function: either signature + body (when functionBody rep) or body verbatim."""
+    """Emit a free function: either signature + body (when functionBody rep) or body verbatim.
+    When the action has one 'out' param, prepends 'let <name>: <type>;' and appends 'return <name>;'."""
     if action_node and _action_has_function_body_rep(action_node):
         action_params = action_node.properties.get("action_params", [])
         params_str, return_type = _build_function_signature(usage_name, action_params)
         sig = f"export function {usage_name}({params_str}): {return_type}"
-        indented = _indent(body.strip(), 2)
+        out_name = _first_out_param_name(action_params)
+        if return_type != "void" and out_name:
+            decl = _indent(f"let {out_name}: {return_type};", 2)
+            indented = decl + "\n" + _indent(body.strip(), 2)
+            indented = indented.rstrip() + f"\n  return {out_name};"
+        else:
+            indented = _indent(body.strip(), 2)
         return f"{sig} {{\n{indented}\n}}"
     return body
 
@@ -415,19 +430,29 @@ def _build_component_module(
     for action_name, action_body, action_node in method_actions:
         params_str = ""
         return_type = "void"
+        first_out_name: str | None = None
         if action_node:
             action_params = action_node.properties.get("action_params", [])
             params_str = _build_method_params(action_params)
             _, return_type = _build_function_signature(action_name, action_params)
+            first_out_name = _first_out_param_name(action_params)
         body_only = _strip_outer_method_signature(action_body)
         async_suffix = "async " if "await " in action_body or "await(" in action_body else ""
         if async_suffix:
             return_type = "Promise<void>" if return_type == "void" else f"Promise<{return_type}>"
         elif return_type == "void" and action_name == "getStatus":
             return_type = "{ status: 'degraded' | 'ready'; lastError?: string }"
+        # Variable declaration type: unwrap Promise<> for the inner let (e.g. let result: ParseResult)
+        decl_type = return_type
+        if return_type.startswith("Promise<") and return_type.endswith(">"):
+            decl_type = return_type[8:-1]
         lines.append("")
         lines.append(f"  {async_suffix}{action_name}({params_str}): {return_type} {{")
+        if return_type != "void" and first_out_name:
+            lines.append(_indent(f"let {first_out_name}: {decl_type};", 4))
         lines.append(_indent(body_only.strip(), 4))
+        if return_type != "void" and first_out_name:
+            lines.append(_indent(f"return {first_out_name};", 4))
         lines.append("  }")
     for rep_name, rep_body in reps.items():
         if rep_name in _RESERVED_REP_NAMES:

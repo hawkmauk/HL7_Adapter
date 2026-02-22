@@ -3,6 +3,7 @@ package PSM_MLLPReceiver_Actions {
     alias MLLPReceiver for PSM_MllpReceiverComponent::MLLPReceiver;
     alias MLLPIngressBinding for PSM_MLLPReceiverComponent_Interface::MLLPIngressBinding;
     alias ParseMllpResult for PSM_MLLPReceiver_Structure::ParseMllpResult;
+    alias HL7AdapterServiceStatus for PSM_HL7AdapterService_Structure::HL7AdapterServiceStatus;
 
     private import ScalarValues::*;
     private import CIM::Datatype::*;
@@ -49,7 +50,7 @@ package PSM_MLLPReceiver_Actions {
     };
   }
   const payload = buffer.subarray(payloadStart, endIdx);
-  return {
+  result = {
     payload: Buffer.from(payload),
     success: true,
     error: undefined,
@@ -71,7 +72,7 @@ package PSM_MLLPReceiver_Actions {
   off += buf.write(content, off, 'utf8');
   buf[off++] = MLLP_END_BYTE_FIRST;
   buf[off++] = MLLP_END_BYTE_SECOND;
-  return buf;
+  buffer = buf;
         */
     }
 
@@ -83,7 +84,7 @@ package PSM_MLLPReceiver_Actions {
         /*
   const ack =
     'MSH|^~\\&|HL7Adapter|||2025||ACK^O01^ACK|ack1|P|2.5\rMSA|AA|ack1\r';
-  return buildMllpMessage(ack);
+  buffer = buildMllpMessage(ack);
         */
     }
 
@@ -95,7 +96,7 @@ package PSM_MLLPReceiver_Actions {
         /*
   const nak =
     'MSH|^~\\&|HL7Adapter|||2025||ACK^O01^ACK|nak1|P|2.5\rMSA|AE|nak1|Frame error\r';
-  return buildMllpMessage(nak);
+  buffer = buildMllpMessage(nak);
         */
     }
 
@@ -209,5 +210,15 @@ stop(): void {
         in 'binding' : MLLPIngressBinding;
         in :> self : MLLPReceiver;
         doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps binding.bindHost -> self.bindHost, binding.bindPort -> self.bindPort, binding.maxPayloadSizeBytes -> self.maxPayloadSize, runtimeConfig.connectionIdleTimeoutMs -> self.connectionIdleTimeoutMs (with fallbacks from runtimeConfig where binding omits). */
+    }
+
+    action def <GetMLLPReceiverStatus> 'Get MLLP Receiver Status' {
+        in :> self : MLLPReceiver;
+        out result : HL7AdapterServiceStatus;
+        doc /* Return current component state for health/status endpoints. */
+        rep functionBody language "TypeScript"
+        /*
+  result = { status: this.state };
+        */
     }
 }

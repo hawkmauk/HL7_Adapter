@@ -2,7 +2,8 @@ package PSM_ErrorHandler_Actions {
 
     alias ErrorHandler for PSM_ErrorHandlerComponent::ErrorHandler;
 
-    private import PSM_ErrorHandler_Structure::*;
+    private import PSM_ErrorHandler_Structure::*;   
+    private import PSM_HL7AdapterService_Structure::*;
 
     doc /* Error handler initialization and handle-integration-error actions. */
 
@@ -52,12 +53,13 @@ package PSM_ErrorHandler_Actions {
         */
     }
 
-    action def <GetStatus> 'Get Status' {
+    action def <GetErrorHandlerStatus> 'Get Error Handler Status' {
         in :> self : ErrorHandler;
+        out result : HL7AdapterServiceStatus;
         doc /* Return current component status (ready | degraded) and optional last error message for health/status endpoints. */
         rep functionBody language "TypeScript"
         /*
-  return { status: this._lastError ? 'degraded' as const : 'ready' as const, lastError: this._lastError ?? undefined };
+  result = { status: this._lastError ? 'degraded' as const : 'ready' as const, lastError: this._lastError ?? undefined };
         */
     }
 
@@ -68,7 +70,7 @@ package PSM_ErrorHandler_Actions {
         rep functionBody language "TypeScript"
         /*
   const m = this._metrics;
-  return {
+  result = {
     errors_total: m?.errors_total ?? 0,
     errors_parse_error: m?.errors_parse_error ?? 0,
     errors_validation_error: m?.errors_validation_error ?? 0,

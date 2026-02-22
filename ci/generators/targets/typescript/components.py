@@ -259,8 +259,14 @@ def _build_function_signature(usage_name: str, action_params: list[dict]) -> tup
     params_str = ", ".join(parts)
     if len(out_params) == 1:
         raw_out = (out_params[0].get("type") or "").strip()
-        type_only = raw_out.split(" [0..1]")[0].strip().split("=")[0].strip()
+        type_only = (
+            raw_out.split(" [0..1]")[0].strip().split(" [*]")[0].strip().split("[*]")[0].strip().split("=")[0].strip()
+        )
         return_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
+        if " [*]" in raw_out or "[*]" in raw_out:
+            return_type = f"{return_type}[]"
+        elif " [0..1]" in raw_out:
+            return_type = f"{return_type} | undefined"
     else:
         return_type = "void"
     return params_str, return_type

@@ -37,6 +37,11 @@ package PIM_LogicalArchitecture {
         exhibit restApi;
     }
 
+    part def <OperationalStore> 'Operational Store' {
+        doc /* Persists message lifecycle, delivery attempts, and error history; provides queryable audit trail for inbound MLLP frames and HL7 messages. Internal; no port. */
+        exhibit operationalStore;
+    }
+
     part def <DownstreamAPIOwnerBoundary> 'Downstream API Owner' :> CIM::Stakeholders::DownstreamAPIOwner {
         doc /* Boundary part: owns the HTTP API that consumes transformed JSON payloads. Port receives payloads from the adapter. */
         port fromAdapter : JSONIngressPort;
@@ -60,5 +65,6 @@ package PIM_LogicalArchitecture {
         part httpForwarder : HTTPForwarder;
         part errorHandler : ErrorHandler;
         part restApi : RestApi;
+        part operationalStore : OperationalStore;
     }
 }

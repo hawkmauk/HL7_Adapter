@@ -342,4 +342,69 @@ package PSM_TechnologySelection {
             part serverlessScored : ScoredDeploymentAlternative;
         }
     }
+
+    /* =======================================================================
+     * 5. Operational Store / Database Technology Trade Study
+     * ======================================================================= */
+
+    package OperationalStoreTradeStudy {
+        doc /* Trade study: database technology for operational data store (message audit, delivery attempts, error history). Criteria from PIM SYS5: local-dev ergonomics; production robustness; operational tooling. */
+
+        part def <OperationalStoreAssessmentCriteria> 'Operational Store Assessment Criteria' :> AssessmentCriteria {
+            doc /* Criteria for database alternatives. Three MOEs: local-dev ergonomics; production robustness; operational tooling. Score = sum(criterion.value * criterion.weight). */
+            part ::> criterion[0] : Criterion {
+                attribute ::> name = "Local-Dev Ergonomics";
+                attribute ::> weight = 0.33;
+            }
+            part ::> criterion[1] : Criterion {
+                attribute ::> name = "Production Robustness";
+                attribute ::> weight = 0.34;
+            }
+            part ::> criterion[2] : Criterion {
+                attribute ::> name = "Operational Tooling";
+                attribute ::> weight = 0.33;
+            }
+        }
+
+        part def <OperationalStoreAlternative> 'Operational Store Alternative' :> Alternative {
+            doc /* One database candidate for the operational store. Holds assessment criteria. */
+            part ::> criteria : OperationalStoreAssessmentCriteria;
+        }
+
+        part <SQLiteDatabase> 'SQLite' : OperationalStoreAlternative {
+            doc /* SQLite: single-file, no server; ideal for local dev and tests. */
+            attribute ::> name = "SQLite";
+            part ::> criteria {
+                part ::> criterion[0] { attribute ::> value = 0.95; }
+                part ::> criterion[1] { attribute ::> value = 0.6; }
+                part ::> criterion[2] { attribute ::> value = 0.75; }
+            }
+        }
+
+        part <PostgreSQLDatabase> 'PostgreSQL' : OperationalStoreAlternative {
+            doc /* PostgreSQL: server RDBMS; concurrent writes, scaling, production-grade. */
+            attribute ::> name = "PostgreSQL";
+            part ::> criteria {
+                part ::> criterion[0] { attribute ::> value = 0.5; }
+                part ::> criterion[1] { attribute ::> value = 0.95; }
+                part ::> criterion[2] { attribute ::> value = 0.95; }
+            }
+        }
+
+        part def <ScoredOperationalStoreAlternative> 'Scored Operational Store Alternative' {
+            doc /* One database alternative plus its weighted score. Score is constrained to equal alt.criteria.score. */
+            part alt : OperationalStoreAlternative;
+            attribute score : Real;
+            constraint weightedScore : ScoreEqualsCriteriaSum {
+                in score = score;
+                in criteria = alt.criteria;
+            }
+        }
+
+        part def <OperationalStoreTradeStudyContext> 'Operational Store Trade Study Context' {
+            doc /* Alternatives: SQLite; PostgreSQL. Selection: SQLite for local development and tests (single-file, zero config); PostgreSQL for production (concurrent writes, scaling, operational tooling). Same schema and migration path; dialect chosen via config (e.g. config.store.dialect). */
+            part sqliteScored : ScoredOperationalStoreAlternative;
+            part postgresScored : ScoredOperationalStoreAlternative;
+        }
+    }
 }

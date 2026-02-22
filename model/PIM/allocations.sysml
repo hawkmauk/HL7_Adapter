@@ -39,6 +39,11 @@ package PIM_Allocations {
         satisfy requirement 'SYS4.3.Metrics Counters' by adapter.errorHandler;
         satisfy requirement 'SYS4.4.Health-Check Endpoint' by adapter.errorHandler;
         satisfy requirement 'SYS4.5.Alerting Hooks' by adapter.errorHandler;
+
+        satisfy requirement 'SYS5.Operational Data Store' by adapter.operationalStore;
+        satisfy requirement 'SYS5.1.Message Lifecycle Persistence' by adapter.operationalStore;
+        satisfy requirement 'SYS5.2.Queryable Message Status' by adapter.restApi;
+        satisfy requirement 'SYS5.3.Queryable Error History' by adapter.restApi;
     }
 
     /* PIM sub-requirement refines CIM sub-requirement (refinement = design-level detailing of mission requirement). */
@@ -67,4 +72,9 @@ package PIM_Allocations {
     #refinement dependency 'SYS4.3.Metrics Counters' to 'M4.3.Metrics and Health Signals';
     #refinement dependency 'SYS4.4.Health-Check Endpoint' to 'M4.3.Metrics and Health Signals';
     #refinement dependency 'SYS4.5.Alerting Hooks' to 'M4.4.Alerting Hooks';
+
+    #refinement dependency 'SYS5.Operational Data Store' to 'M3.4.Audit Logging';
+    #refinement dependency 'SYS5.1.Message Lifecycle Persistence' to 'M3.4.Audit Logging';
+    #refinement dependency 'SYS5.2.Queryable Message Status' to 'M3.4.Audit Logging';
+    #refinement dependency 'SYS5.3.Queryable Error History' to 'M4.Operational Transparency';
 }

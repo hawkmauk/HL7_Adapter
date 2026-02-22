@@ -20,6 +20,24 @@ curl -s http://localhost:3000/health | jq
 curl -s http://localhost:3000/metrics | jq
 ```
 
+**Message status (query list, optional filters):**
+
+```bash
+curl -s "http://localhost:3000/messages?status=received&since=2025-01-01T00:00:00Z" | jq
+```
+
+**Single message by ID:**
+
+```bash
+curl -s http://localhost:3000/messages/msg-123 | jq
+```
+
+**Error history (optional filters):**
+
+```bash
+curl -s "http://localhost:3000/errors?since=2025-01-01T00:00:00Z&message_id=msg-123" | jq
+```
+
 **Unknown route (expect 404):**
 
 ```bash
@@ -73,9 +91,37 @@ Without `jq`, omit `| jq` to see raw JSON.
 
 ---
 
+## GET /messages
+
+**Response:** `200 OK`, `Content-Type: application/json`
+
+**Query parameters (optional):** `status` (filter by lifecycle status), `since` (ISO timestamp, filter by `received_at`).
+
+**Body:** Array of message status objects: `{ message_id, status, received_at, message_type?, control_id? }`. Supports message lifecycle tracking (received, parsed, transformed, delivered, failed).
+
+---
+
+## GET /messages/:id
+
+**Response:** `200 OK` with one message status object, or **404** if not found.
+
+**Body:** `{ message_id, status, received_at, message_type?, control_id? }`.
+
+---
+
+## GET /errors
+
+**Response:** `200 OK`, `Content-Type: application/json`
+
+**Query parameters (optional):** `since` (ISO timestamp), `message_id` (filter by message).
+
+**Body:** Array of error records: `{ id, message_id, error_class, detail, timestamp }`.
+
+---
+
 ## Other routes
 
-- **GET** or **POST** to any path other than `/health` and `/metrics`: **404** (no body).
+- **GET** or **POST** to any path other than `/health`, `/metrics`, `/messages`, `/messages/:id`, and `/errors`: **404** (no body).
 
 ---
 

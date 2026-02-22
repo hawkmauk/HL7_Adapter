@@ -43,15 +43,55 @@ def _line_no(text: str, index: int) -> int:
 
 
 def _find_matching_brace(text: str, open_brace_index: int) -> int:
+    """Find the matching closing brace, ignoring { } inside block comments and string literals."""
     depth = 0
-    for i in range(open_brace_index, len(text)):
+    i = open_brace_index
+    while i < len(text):
         ch = text[i]
-        if ch == "{":
+        if ch == "{" and depth >= 0:
             depth += 1
-        elif ch == "}":
+            i += 1
+            continue
+        if ch == "}" and depth >= 0:
             depth -= 1
             if depth == 0:
                 return i
+            i += 1
+            continue
+        if ch == "/" and i + 1 < len(text) and text[i + 1] == "*":
+            # Skip block comment /* ... */
+            i += 2
+            while i < len(text) - 1:
+                if text[i] == "*" and text[i + 1] == "/":
+                    i += 2
+                    break
+                i += 1
+            continue
+        if ch == '"':
+            # Skip double-quoted string
+            i += 1
+            while i < len(text):
+                if text[i] == "\\":
+                    i += 2
+                    continue
+                if text[i] == '"':
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "'":
+            # Skip single-quoted string
+            i += 1
+            while i < len(text):
+                if text[i] == "\\":
+                    i += 2
+                    continue
+                if text[i] == "'":
+                    i += 1
+                    break
+                i += 1
+            continue
+        i += 1
     raise ParsingError("Unbalanced braces while parsing SysML blocks.")
 
 

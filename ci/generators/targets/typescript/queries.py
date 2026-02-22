@@ -51,7 +51,15 @@ def _resolve_param_type_to_part_def_qname(
     """
     if not type_str:
         return None
-    raw = type_str.strip().split("[0..1]")[0].strip().split("=")[0].strip()
+    raw = (
+        type_str.strip()
+        .split("[0..1]")[0]
+        .strip()
+        .split("[*]")[0]
+        .strip()
+        .split("=")[0]
+        .strip()
+    )
     last = raw.split("::")[-1].strip()
     if not last:
         return None

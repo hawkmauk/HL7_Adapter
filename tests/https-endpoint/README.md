@@ -6,10 +6,11 @@ A **simple HTTPS server** that receives the JSON payloads the adapter’s **HTTP
 
 ## What it does
 
-- Listens on **HTTPS** (TLS) on a configurable host/port (default `0.0.0.0:8443`).
-- Accepts **POST** with `Content-Type: application/json` and JSON body (the same shape the HTTPForwarder sends: e.g. `messageType`, `messageControlId`, demographics).
+- Listens on **HTTPS** (TLS) on a configurable host/port (default `0.0.0.0:8080`).
+- Accepts **POST** at **`/api/v1/messages`** with `Content-Type: application/json` and JSON body (the same shape the HTTPForwarder sends: e.g. `messageType`, `messageControlId`, demographics).
 - Returns **200** with a small JSON body so the adapter sees delivery success.
 - Logs each received payload to the console and can append to a file (e.g. `received.jsonl`) for demo visibility.
+- **GET `/api/v1/received/<message_id>`** — Returns the last received payload whose `messageControlId` (or `message_id`) matches. Used by the dashboard so you can click a message and view the JSON that was sent. Payloads are kept in memory (last 500). CORS is enabled so the dashboard can call this from another origin.
 
 ## Requirements
 
@@ -53,7 +54,7 @@ python3 server.py
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `0.0.0.0` | Bind address. |
-| `--port` | `8443` | Bind port. |
+| `--port` | `8080` | Bind port. |
 | `--cert` | `demo-crt.pem` | TLS certificate file. |
 | `--key` | `demo-key.pem` | TLS key file. |
 | `--log-file` | — | Append each JSON payload to this file (e.g. `received.jsonl`). |
@@ -68,7 +69,7 @@ python3 tests/demo-https-endpoint/server.py --log-file received.jsonl
 
 Use this as the adapter’s **HTTPForwarder base URL** in `config.json`:
 
-- **`https://localhost:8443`** (default port 8443)
+- **`https://localhost:8080/api/v1/messages`** (default port 8080, path `/api/v1/messages`)
 
 Because the endpoint uses a **self-signed certificate**, you must set **`httpForwarder.tlsRejectUnauthorized`** to **`0`** in `config.json` for the adapter to accept the cert. **Do this only for demo/local; never in production.**
 
@@ -82,7 +83,7 @@ Because the endpoint uses a **self-signed certificate**, you must set **`httpFor
    (Leave it running; it will print the URL to use.)
 
 3. **Configure the adapter** in `out/typescript/config.json`:
-   - `httpForwarder.baseUrl` = `https://localhost:8443`
+   - `httpForwarder.baseUrl` = `https://localhost:8080/api/v1/messages`
    - `httpForwarder.tlsRejectUnauthorized` = `0` (demo only)
 
 4. **Start the adapter**:  

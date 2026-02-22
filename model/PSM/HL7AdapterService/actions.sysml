@@ -49,16 +49,19 @@ package PSM_HL7AdapterService_Actions {
     if (ev.signal === 'MLLPFrameReceivedSignal') this.dispatch('MLLPFrameReceivedSignal');
     if (ev.signal === 'ListenerStartSignal') this.dispatch('ListenerStartSignal');
   });
-  this.mllpReceiver.on('frameComplete', (payload: Buffer) => {
-    this._currentFrame = payload;
+  this.mllpReceiver.on('frameComplete', (arg: { payload: Buffer; respond: (accept: boolean) => void }) => {
+    this._currentFrame = arg.payload;
+    this._pendingRespond = arg.respond;
     this.dispatch('MLLPFrameCompleteSignal');
   });
 
   this.parser.on('parseComplete', (data) => {
+    if (this._pendingRespond) { this._pendingRespond(true); this._pendingRespond = undefined; }
     this._currentParsed = data;
     this.dispatch('MLLPHandlerCompleteSignal');
   });
   this.parser.on('parseFailed', () => {
+    if (this._pendingRespond) { this._pendingRespond(false); this._pendingRespond = undefined; }
     this.dispatch('MLLPHandlerFailedSignal');
   });
 
@@ -73,7 +76,11 @@ package PSM_HL7AdapterService_Actions {
   this.httpForwarder.on('deliverySuccess', () => {
     this.dispatch('HTTP2xxSignal');
   });
-  this.httpForwarder.on('deliveryFailed', () => {
+  this.httpForwarder.on('deliveryFailed', (err?: { message?: string; status?: number }) => {
+    const status = err?.status;
+    const code = status != null && status >= 400 && status < 500 ? 'HTTP_CLIENT_ERROR' : status != null && status >= 500 ? 'HTTP_SERVER_ERROR' : 'CONNECTION_ERROR';
+    const integrationError = { code, messageText: err?.message ?? 'Delivery failed', isRecoverable: false, occurredAt: new Date().toISOString(), statusCode: status, messageId: this._currentMessageId };
+    this.errorHandler.handleIntegrationError(integrationError);
     this.dispatch('HTTP5xxOrNetworkErrorSignal');
   });
 
@@ -98,10 +105,18 @@ package PSM_HL7AdapterService_Actions {
 
     action def <RecordMessageParsed> 'Record Message Parsed' {
         in :> self : HL7AdapterService;
-        doc /* Update store to parsed, record metrics, pass parsed data to Transformer. Uses _currentParsed and _currentMessageId. */
+        doc /* Update store to parsed, record metrics, store metadata and demographics from parsed MSH/PID, pass parsed data to Transformer. */
         rep functionBody language "TypeScript"
         /*
+  const parsed = this._currentParsed as { msh: { sendingApplication?: string; sendingFacility?: string; receivingApplication?: string; receivingFacility?: string; messageType?: string; messageControlId?: string }; pid?: { patientIdList?: string; patientName?: string; dateOfBirth?: string; sex?: string } } | undefined;
   this.operationalStore.updateMessageStatus(this._currentMessageId, 'parsed');
+  if (parsed && parsed.msh) {
+    const m = parsed.msh;
+    const metadata = { sendingApplication: m.sendingApplication ?? '', sendingFacility: m.sendingFacility ?? '', receivingApplication: m.receivingApplication ?? '', receivingFacility: m.receivingFacility ?? '', messageType: m.messageType ?? '', messageControlId: m.messageControlId ?? '' };
+    const pid = parsed.pid;
+    const demographics = pid ? (() => { const n = (pid.patientName ?? '').split('^'); return { patientId: pid.patientIdList ?? undefined, givenName: n[1] || undefined, familyName: n[0] || undefined, dateOfBirth: pid.dateOfBirth ?? undefined, gender: pid.sex ?? undefined }; })() : undefined;
+    this.operationalStore.updateMessageDetail(this._currentMessageId, metadata, demographics);
+  }
   this.errorHandler.recordMessageParsed();
   this.parser.dispatch('ResetComponentSignal');
   this.transformer.handleTransformRequest(this._currentParsed as any);

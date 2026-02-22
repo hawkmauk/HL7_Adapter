@@ -19,6 +19,7 @@ package PSM_OperationalStoreComponent {
         perform action initializeFromBinding : Actions::InitializeOperationalStore;
         perform action insertMessage : Actions::InsertMessage;
         perform action updateMessageStatus : Actions::UpdateMessageStatus;
+        perform action updateMessageDetail : Actions::UpdateMessageDetail;
         perform action recordDeliveryAttempt : Actions::RecordDeliveryAttempt;
         perform action recordStoreError : Actions::RecordStoreError;
         perform action getMessageStatus : Actions::GetMessageStatus;

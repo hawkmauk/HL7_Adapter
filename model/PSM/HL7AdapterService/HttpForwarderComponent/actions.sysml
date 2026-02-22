@@ -43,6 +43,7 @@ package PSM_HTTPForwarder_Actions {
   const maxRetries = this._config.maxRetries;
   const backoffMs = this._config.retryBackoffMs;
   const useTlsAgent = url.startsWith('https:') && typeof process !== 'undefined' && process.versions?.node && (this._config.tlsRejectUnauthorized !== undefined || this._config.tlsMinVersion);
+  const payloadBytes = typeof Buffer !== 'undefined' ? Buffer.byteLength(jsonPayload, 'utf8') : new TextEncoder().encode(jsonPayload).length;
   const doOneRequest = async (): Promise<{ ok: boolean; status: number; text: () => Promise<string> }> => {
     if (useTlsAgent) {
       const u = new URL(url);
@@ -56,7 +57,7 @@ package PSM_HTTPForwarder_Actions {
           port: u.port || 443,
           path: u.pathname + u.search,
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Content-Length': payloadBytes },
           agent,
         }, (res) => {
           let body = '';
@@ -81,6 +82,7 @@ package PSM_HTTPForwarder_Actions {
   };
   let attempt = 0;
   let lastError: Error | undefined;
+  let lastStatus: number | undefined;
   while (attempt <= maxRetries) {
     try {
       const res = await doOneRequest();
@@ -97,12 +99,14 @@ package PSM_HTTPForwarder_Actions {
         this.emit('deliveryFailed', { status: res.status, message });
         return false;
       }
+      lastStatus = res.status;
       lastError = new Error(`HTTP ${res.status}`);
       if (attempt === maxRetries) break;
       await new Promise((r) => setTimeout(r, backoffMs * Math.pow(2, attempt)));
       attempt++;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
+      lastStatus = undefined;
       if (attempt === maxRetries) break;
       await new Promise((r) => setTimeout(r, backoffMs * Math.pow(2, attempt)));
       attempt++;
@@ -110,7 +114,7 @@ package PSM_HTTPForwarder_Actions {
   }
   this._logger.warn({ message: lastError?.message ?? 'Max retries exceeded' }, 'HttpForwarder: delivery failed (5xx or max retries)');
   this._dispatch('ForwarderMaxRetriesExceededSignal');
-  this.emit('deliveryFailed', { message: lastError?.message ?? 'Max retries exceeded' });
+  this.emit('deliveryFailed', { message: lastError?.message ?? 'Max retries exceeded', status: lastStatus });
   success = false;
         */
     }

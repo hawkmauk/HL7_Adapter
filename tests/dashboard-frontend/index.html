@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HL7 Adapter Dashboard</title>
+  <style>
+    :root { --bg: #1a1a2e; --card: #16213e; --text: #e8e8e8; --muted: #a0a0a0; --ready: #4ade80; --degraded: #fbbf24; --error: #f87171; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 1rem; background: var(--bg); color: var(--text); min-height: 100vh; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem 0; }
+    .meta { font-size: 0.875rem; color: var(--muted); margin-bottom: 1rem; }
+    #connection-error { display: none; background: var(--error); color: #1a1a2e; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
+    section { background: var(--card); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    section h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    th { color: var(--muted); font-weight: 600; }
+    .status-ready { color: var(--ready); }
+    .status-degraded { color: var(--degraded); }
+    .msg-row { cursor: pointer; }
+    .msg-row:hover { background: rgba(255,255,255,0.06); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: var(--card); border-radius: 8px; max-width: 90vw; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+    .modal-header { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 1rem; overflow: auto; flex: 1; font-size: 0.875rem; }
+    .modal-body pre { margin: 0; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; }
+    .detail-section { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 1rem 0 0.5rem 0; }
+    .detail-section:first-child { margin-top: 0; }
+    .detail-table { width: 100%; margin-bottom: 0.5rem; font-size: 0.8125rem; }
+    .detail-table th { width: 10rem; color: var(--muted); font-weight: 500; }
+    .detail-muted { color: var(--muted); font-style: italic; margin: 0.25rem 0; }
+    .detail-json { margin: 0; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; }
+    .modal-close { background: var(--muted); border: none; color: var(--bg); padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; }
+    .modal-close:hover { background: var(--text); }
+  </style>
+</head>
+<body>
+  <h1>HL7 Adapter Dashboard</h1>
+  <p class="meta">API: <span id="api-url">—</span> · Poll: <span id="poll-interval">—</span></p>
+  <div id="connection-error" role="alert"></div>
+
+  <div id="payload-modal" class="modal-overlay" role="dialog" aria-labelledby="payload-modal-title" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="payload-modal-title" style="margin:0;font-size:1rem;">Message detail (adapter API)</h2>
+        <button type="button" class="modal-close" id="payload-modal-close">Close</button>
+      </div>
+      <div class="modal-body">
+        <div id="payload-modal-content">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <section aria-labelledby="health-heading">
+    <h2 id="health-heading">Health</h2>
+    <div id="health">Loading…</div>
+  </section>
+
+  <section aria-labelledby="metrics-heading">
+    <h2 id="metrics-heading">Metrics (ErrorHandler)</h2>
+    <div id="metrics">Loading…</div>
+  </section>
+
+  <section aria-labelledby="messages-heading">
+    <h2 id="messages-heading">Last 10 messages</h2>
+    <div id="messages">Loading…</div>
+  </section>
+
+  <section aria-labelledby="errors-heading">
+    <h2 id="errors-heading">Last 10 errors</h2>
+    <div id="errors">Loading…</div>
+  </section>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -13,7 +13,7 @@ package PSM_HTTPForwarderComponent {
 
     part def <HTTPForwarder> 'HTTP Forwarder' :> PIM::LogicalArchitecture::HTTPForwarder {
         doc /* Refines PIM::LogicalArchitecture::HTTPForwarder. Technology binding: axios or undici (TLS, retry, timeout). HTTP client configuration: base URL, TLS settings, retry policy, timeout; request/response handling. */
-        attribute baseUrl : String =  "https://localhost:8443"{ doc /* Downstream REST API base URL for posting payloads. */ }
+        attribute baseUrl : String =  "https://localhost:8080/api/v1/messages" { doc /* Downstream REST API base URL for posting payloads. */ }
         attribute requestTimeoutMs : Integer { doc /* HTTP request timeout in milliseconds. */ }
         attribute maxRetries : Integer { doc /* Maximum retry attempts for transient failures (e.g. 503). */ }
         attribute retryBackoffMs : Integer { doc /* Initial backoff delay in milliseconds before first retry. */ }

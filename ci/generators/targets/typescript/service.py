@@ -234,9 +234,9 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
         ("HandlingHL7Message", "HL7TransformerCompleteSignal", "TransformingHL7Message", "recordMessageTransformed"),
         ("HandlingHL7Message", "HL7TransformerFailedSignal", "HandlingError", "recordError"),
         ("TransformingHL7Message", "HTTP2xxSignal", "Forwarding", "recordMessageDelivered"),
-        ("TransformingHL7Message", "HTTP5xxOrNetworkErrorSignal", "HandlingError", "recordError"),
+        ("TransformingHL7Message", "HTTP5xxOrNetworkErrorSignal", "HandlingError", None),
         ("Forwarding", "HTTP2xxSignal", "Idle", None),
-        ("Forwarding", "HTTP5xxOrNetworkErrorSignal", "HandlingError", "recordError"),
+        ("Forwarding", "HTTP5xxOrNetworkErrorSignal", "HandlingError", None),
     ]
     for from_s, sig, to_s, act in pipeline_fallbacks:
         if from_s not in transitions_by_source and from_s in states:

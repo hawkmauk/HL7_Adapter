@@ -37,6 +37,7 @@ private _currentFrame: Buffer | undefined;
 private _currentParsed: unknown;
 private _currentJson: string | undefined;
 private _currentMessageId: string = '';
+private _pendingRespond: ((accept: boolean) => void) | undefined;
         */
 
         perform action initialize : Action::InitializeAdapter;

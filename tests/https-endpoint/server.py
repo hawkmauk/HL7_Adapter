@@ -18,6 +18,23 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CRT = SCRIPT_DIR / "demo-crt.pem"
 DEFAULT_KEY = SCRIPT_DIR / "demo-key.pem"
 
+# Path that accepts POST (adapter baseUrl should be base + this path)
+MESSAGES_PATH = "/api/v1/messages"
+# Path to retrieve a received payload by message id (messageControlId)
+RECEIVED_PATH_PREFIX = "/api/v1/received/"
+
+# In-memory store of last received payloads keyed by messageControlId (for dashboard "view payload")
+RECEIVED_PAYLOADS: dict[str, dict] = {}
+MAX_STORED_PAYLOADS = 500
+
+
+def _cors_headers() -> dict[str, str]:
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Accept",
+    }
+
 
 class DemoPOSTHandler(BaseHTTPRequestHandler):
     """Handle POST only; log payload and optionally append to file."""
@@ -34,6 +51,9 @@ class DemoPOSTHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         self._log_connection("POST")
+        if self.path != MESSAGES_PATH:
+            self.send_error(404, "Not Found")
+            return
         content_type = self.headers.get("Content-Type", "")
         if "application/json" not in content_type:
             self.send_response(400, "Bad Request")
@@ -53,7 +73,15 @@ class DemoPOSTHandler(BaseHTTPRequestHandler):
             return
 
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{ts}] POST {self.path} <- {json.dumps(payload)[:200]}...", file=sys.stderr)
+        print(f"[{ts}] POST {self.path} payload: {json.dumps(payload)}", file=sys.stderr)
+
+        # Store by messageControlId (or message_id) so dashboard can fetch by message id
+        key = payload.get("messageControlId") or payload.get("message_id")
+        if isinstance(key, str) and key:
+            RECEIVED_PAYLOADS[key] = payload
+            while len(RECEIVED_PAYLOADS) > MAX_STORED_PAYLOADS:
+                # Drop oldest (arbitrary) key
+                RECEIVED_PAYLOADS.pop(next(iter(RECEIVED_PAYLOADS)))
 
         if self.log_to_file:
             with open(self.log_to_file, "a", encoding="utf-8") as f:
@@ -64,8 +92,45 @@ class DemoPOSTHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps({"received": True}).encode("utf-8"))
 
+    def _send_cors_preflight(self) -> bool:
+        if self.command == "OPTIONS":
+            self.send_response(204)
+            for k, v in _cors_headers().items():
+                self.send_header(k, v)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return True
+        return False
+
     def do_GET(self) -> None:
-        self._log_connection("GET", "(405 Method Not Allowed)")
+        if self._send_cors_preflight():
+            return
+        # GET /api/v1/received/<id> -> return stored payload for that message id
+        if self.path.startswith(RECEIVED_PATH_PREFIX):
+            msg_id = self.path[len(RECEIVED_PATH_PREFIX) :].split("/")[0].split("?")[0]
+            if msg_id:
+                payload = RECEIVED_PAYLOADS.get(msg_id)
+                if payload is not None:
+                    self.send_response(200)
+                    for k, v in _cors_headers().items():
+                        self.send_header(k, v)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(payload).encode("utf-8"))
+                    return
+            self.send_response(404)
+            for k, v in _cors_headers().items():
+                self.send_header(k, v)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "not found"}).encode("utf-8"))
+            return
+        self._log_connection("GET", "(404 Not Found)")
+        self.send_error(404, "Not Found")
+
+    def do_OPTIONS(self) -> None:
+        if self._send_cors_preflight():
+            return
         self.send_error(405, "Method Not Allowed")
 
     def log_message(self, format: str, *args: object) -> None:
@@ -78,7 +143,7 @@ def main() -> None:
         description="Demo HTTPS endpoint for adapter HTTPForwarder POSTs (demo use only).",
     )
     parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8443, help="Bind port (default: 8443)")
+    parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
     parser.add_argument("--cert", type=Path, default=DEFAULT_CRT, help="TLS certificate file (default: demo-crt.pem)")
     parser.add_argument("--key", type=Path, default=DEFAULT_KEY, help="TLS key file (default: demo-key.pem)")
     parser.add_argument("--log-file", type=Path, default=None, help="Append each JSON payload to this file (e.g. received.jsonl)")
@@ -99,7 +164,8 @@ def main() -> None:
     ctx.load_cert_chain(str(args.cert), str(args.key))
     server.socket = ctx.wrap_socket(server.socket, server_side=True)
 
-    url = f"https://localhost:{args.port}" if args.host == "0.0.0.0" else f"https://{args.host}:{args.port}"
+    base = f"https://localhost:{args.port}" if args.host == "0.0.0.0" else f"https://{args.host}:{args.port}"
+    url = base + MESSAGES_PATH
     print(f"Demo HTTPS endpoint listening on {args.host}:{args.port}", file=sys.stderr)
     print(f"Use in adapter config: httpForwarder.baseUrl = {url}", file=sys.stderr)
     print("For demo only; do not use in production.", file=sys.stderr)

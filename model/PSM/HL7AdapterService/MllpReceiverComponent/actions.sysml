@@ -158,14 +158,25 @@ package PSM_MLLPReceiver_Actions {
         }
         if (!result.success && !result.error) break;
         if (result.payload) {
+          const payload = result.payload;
+          const payloadBytes = payload.length;
           this._dispatch('MLLPFrameCompleteSignal');
-          this.emit('frameComplete', result.payload);
-          this._logger.info({ from: remote, payloadBytes: result.payload.length }, 'MLLP frame complete, sending ACK');
-          try {
-            socket.write(buildAck());
-          } catch {
-            // ignore
-          }
+          this.emit('frameComplete', {
+            payload,
+            respond: (accept: boolean) => {
+              try {
+                if (accept) {
+                  this._logger.info({ from: remote, payloadBytes }, 'MLLP frame accepted (parse OK), sending ACK');
+                  socket.write(buildAck());
+                } else {
+                  this._logger.warn({ from: remote, payloadBytes }, 'MLLP frame rejected (parse/validation failed), sending NAK');
+                  socket.write(buildNak());
+                }
+              } catch {
+                // ignore write errors
+              }
+            },
+          });
         }
         buffer = buffer.subarray(result.consumed);
       }

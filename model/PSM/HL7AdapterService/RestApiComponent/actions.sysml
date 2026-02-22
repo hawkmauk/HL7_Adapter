@@ -15,12 +15,22 @@ package PSM_RestApi_Actions {
         rep functionBody language "TypeScript"
         /*
   const http = require('http') as typeof import('http');
+  const corsHeaders: Record<string, string> = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept',
+  };
   const sendJson = (res: import('http').ServerResponse, status: number, data: object) => {
-    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.writeHead(status, { ...corsHeaders, 'Content-Type': 'application/json' });
     res.end(JSON.stringify(data));
   };
   const server = http.createServer((req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
     try {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, { ...corsHeaders, 'Content-Length': '0' });
+        res.end();
+        return;
+      }
       const url = req.url ?? '';
       const path = url.split('?')[0];
       if (req.method === 'GET' && path === '/health') {
@@ -67,7 +77,7 @@ package PSM_RestApi_Actions {
         if (id) {
           const one = service.operationalStore.getMessageStatus(id);
           if (one) { sendJson(res, 200, one); return; }
-          res.writeHead(404); res.end(); return;
+          res.writeHead(404, corsHeaders); res.end(); return;
         }
       }
       if (req.method === 'GET' && path === '/messages') {
@@ -86,7 +96,7 @@ package PSM_RestApi_Actions {
         sendJson(res, 200, list);
         return;
       }
-      res.writeHead(404);
+      res.writeHead(404, corsHeaders);
       res.end();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

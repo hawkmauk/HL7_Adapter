@@ -99,7 +99,7 @@ The generated adapter reads configuration from a **`config.json`** file in the *
        "classificationTaxonomy": ""
      },
      "httpForwarder": {
-       "baseUrl": "https://localhost:8443",
+       "baseUrl": "https://localhost:8080/api/v1/messages",
        "requestTimeoutMs": 5000,
        "maxRetries": 3,
        "retryBackoffMs": 1000,
@@ -133,7 +133,7 @@ The generated adapter reads configuration from a **`config.json`** file in the *
    }
    ```
 
-   Set **`restApi.listenPort`** (e.g. `3000`) for the health and metrics HTTP server. If omitted or `0`, the server may bind to an ephemeral port. **`httpForwarder.baseUrl`** must be set to the downstream URL the adapter will POST JSON to (e.g. `https://localhost:8443` for the [demo HTTPS endpoint](tests/demo-https-endpoint/README.md)); if empty, the adapter will not post and will log "Failed to parse URL". Fill in other fields (e.g. `mllpReceiver.bindPort`) for your environment. **`httpForwarder.tlsRejectUnauthorized`** defaults to `1` (verify server certificates). Set to `0` only for demo/local use with self-signed certs; must not be used in production.
+   Set **`restApi.listenPort`** (e.g. `3000`) for the health and metrics HTTP server. If omitted or `0`, the server may bind to an ephemeral port. **`httpForwarder.baseUrl`** must be set to the downstream URL the adapter will POST JSON to (e.g. `https://localhost:8080/api/v1/messages` for the [demo HTTPS endpoint](tests/demo-https-endpoint/README.md)); if empty, the adapter will not post and will log "Failed to parse URL". Fill in other fields (e.g. `mllpReceiver.bindPort`) for your environment. **`httpForwarder.tlsRejectUnauthorized`** defaults to `1` (verify server certificates). Set to `0` only for demo/local use with self-signed certs; must not be used in production.
 
 4. **Health and metrics:** Once the adapter is running, GET **`/health`** and **`/metrics`** on the configured host/port (e.g. `http://localhost:3000/health`). See **`docs/RestApi_Dashboard_Contract.md`** for the response shapes.
 

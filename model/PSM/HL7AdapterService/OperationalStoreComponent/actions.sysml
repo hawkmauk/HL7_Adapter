@@ -37,7 +37,23 @@ package PSM_OperationalStore_Actions {
   d.exec(`CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at)`);
   d.exec(`CREATE INDEX IF NOT EXISTS idx_errors_message_id ON errors(message_id)`);
   d.exec(`CREATE INDEX IF NOT EXISTS idx_errors_timestamp ON errors(timestamp)`);
+  d.exec(`CREATE TABLE IF NOT EXISTS message_detail (message_id TEXT PRIMARY KEY, sending_application TEXT, sending_facility TEXT, receiving_application TEXT, receiving_facility TEXT, message_control_id TEXT, patient_id TEXT, patient_given_name TEXT, patient_family_name TEXT, patient_dob TEXT, patient_gender TEXT)`);
   this._logger.info('Operational store initialised');
+        */
+    }
+
+    action def <UpdateMessageDetail> 'Update Message Detail' {
+        in :> self : OperationalStore;
+        in messageId : String;
+        in metadata : MessageMetadataView;
+        in demographics : PatientDemographicsView [0..1];
+        doc /* Store metadata and demographics for a message (called after parse). */
+        rep functionBody language "TypeScript"
+        /*
+  const db = this._db as unknown as { prepare: (sql: string) => { run: (...args: unknown[]) => void } };
+  const d = demographics;
+  db.prepare(`INSERT OR REPLACE INTO message_detail (message_id, sending_application, sending_facility, receiving_application, receiving_facility, message_control_id, patient_id, patient_given_name, patient_family_name, patient_dob, patient_gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(messageId, metadata.sendingApplication ?? '', metadata.sendingFacility ?? '', metadata.receivingApplication ?? '', metadata.receivingFacility ?? '', metadata.messageControlId ?? '', d?.patientId ?? null, d?.givenName ?? null, d?.familyName ?? null, d?.dateOfBirth ?? null, d?.gender ?? null);
+  db.prepare('UPDATE messages SET message_type = ?, control_id = ? WHERE message_id = ?').run(metadata.messageType ?? null, metadata.messageControlId ?? null, messageId);
         */
     }
 
@@ -102,12 +118,16 @@ package PSM_OperationalStore_Actions {
         in :> self : OperationalStore;
         in messageId : String;
         out result : MessageStatusQueryResult [0..1];
-        doc /* Return one message row by message_id, or undefined. */
+        doc /* Return one message row by message_id with optional metadata and demographics from message_detail, or undefined. */
         rep functionBody language "TypeScript"
         /*
-  const db = this._db as unknown as { prepare: (sql: string) => { get: (...args: unknown[]) => { message_id: string; status: string; received_at: string; message_type?: string; control_id?: string } | undefined } };
-  const row = db.prepare('SELECT message_id, status, received_at, message_type, control_id FROM messages WHERE message_id = ?').get(messageId);
-  result = row ? { message_id: row.message_id, status: row.status, received_at: row.received_at, message_type: row.message_type, control_id: row.control_id } : undefined;
+  const db = this._db as unknown as { prepare: (sql: string) => { get: (...args: unknown[]) => Record<string, unknown> | undefined } };
+  const row = db.prepare(`SELECT m.message_id, m.status, m.received_at, m.message_type, m.control_id, d.sending_application, d.sending_facility, d.receiving_application, d.receiving_facility, d.message_control_id, d.patient_id, d.patient_given_name, d.patient_family_name, d.patient_dob, d.patient_gender FROM messages m LEFT JOIN message_detail d ON m.message_id = d.message_id WHERE m.message_id = ?`).get(messageId);
+  if (!row) { result = undefined; return; }
+  const r = row as Record<string, unknown>;
+  const meta = r.sending_application != null || r.sending_facility != null ? { sendingApplication: String(r.sending_application ?? ''), sendingFacility: String(r.sending_facility ?? ''), receivingApplication: String(r.receiving_application ?? ''), receivingFacility: String(r.receiving_facility ?? ''), messageType: String(r.message_type ?? ''), messageControlId: String(r.message_control_id ?? '') } : undefined;
+  const demo = r.patient_id != null || r.patient_given_name != null || r.patient_family_name != null || r.patient_dob != null || r.patient_gender != null ? { patientId: r.patient_id != null ? String(r.patient_id) : undefined, givenName: r.patient_given_name != null ? String(r.patient_given_name) : undefined, familyName: r.patient_family_name != null ? String(r.patient_family_name) : undefined, dateOfBirth: r.patient_dob != null ? String(r.patient_dob) : undefined, gender: r.patient_gender != null ? String(r.patient_gender) : undefined } : undefined;
+  result = { message_id: String(r.message_id), status: String(r.status), received_at: String(r.received_at), message_type: r.message_type != null ? String(r.message_type) : undefined, control_id: r.control_id != null ? String(r.control_id) : undefined, metadata: meta, demographics: demo };
         */
     }
 
@@ -116,17 +136,21 @@ package PSM_OperationalStore_Actions {
         in status : String [0..1];
         in since : String [0..1];
         out result : MessageStatusQueryResult[*];
-        doc /* Query messages with optional status and since filters; return list. */
+        doc /* Query messages with optional status and since filters; join message_detail for metadata and demographics. */
         rep functionBody language "TypeScript"
         /*
-  const db = this._db as unknown as { prepare: (sql: string) => { all: (...args: unknown[]) => { message_id: string; status: string; received_at: string; message_type?: string; control_id?: string }[] } };
-  let sql = 'SELECT message_id, status, received_at, message_type, control_id FROM messages WHERE 1=1';
+  const db = this._db as unknown as { prepare: (sql: string) => { all: (...args: unknown[]) => Record<string, unknown>[] } };
+  let sql = 'SELECT m.message_id, m.status, m.received_at, m.message_type, m.control_id, d.sending_application, d.sending_facility, d.receiving_application, d.receiving_facility, d.message_control_id, d.patient_id, d.patient_given_name, d.patient_family_name, d.patient_dob, d.patient_gender FROM messages m LEFT JOIN message_detail d ON m.message_id = d.message_id WHERE 1=1';
   const args: unknown[] = [];
-  if (status) { sql += ' AND status = ?'; args.push(status); }
-  if (since) { sql += ' AND received_at >= ?'; args.push(since); }
-  sql += ' ORDER BY received_at DESC';
+  if (status) { sql += ' AND m.status = ?'; args.push(status); }
+  if (since) { sql += ' AND m.received_at >= ?'; args.push(since); }
+  sql += ' ORDER BY m.received_at DESC';
   const rows = db.prepare(sql).all(...args);
-  result = rows.map((r: { message_id: string; status: string; received_at: string; message_type?: string; control_id?: string }) => ({ message_id: r.message_id, status: r.status, received_at: r.received_at, message_type: r.message_type, control_id: r.control_id }));
+  result = rows.map((r: Record<string, unknown>) => {
+    const meta = r.sending_application != null || r.sending_facility != null ? { sendingApplication: String(r.sending_application ?? ''), sendingFacility: String(r.sending_facility ?? ''), receivingApplication: String(r.receiving_application ?? ''), receivingFacility: String(r.receiving_facility ?? ''), messageType: String(r.message_type ?? ''), messageControlId: String(r.message_control_id ?? '') } : undefined;
+    const demo = r.patient_id != null || r.patient_given_name != null || r.patient_family_name != null || r.patient_dob != null || r.patient_gender != null ? { patientId: r.patient_id != null ? String(r.patient_id) : undefined, givenName: r.patient_given_name != null ? String(r.patient_given_name) : undefined, familyName: r.patient_family_name != null ? String(r.patient_family_name) : undefined, dateOfBirth: r.patient_dob != null ? String(r.patient_dob) : undefined, gender: r.patient_gender != null ? String(r.patient_gender) : undefined } : undefined;
+    return { message_id: String(r.message_id), status: String(r.status), received_at: String(r.received_at), message_type: r.message_type != null ? String(r.message_type) : undefined, control_id: r.control_id != null ? String(r.control_id) : undefined, metadata: meta, demographics: demo };
+  });
         */
     }
 

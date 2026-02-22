@@ -125,6 +125,12 @@ Without `jq`, omit `| jq` to see raw JSON.
 
 ---
 
+## Dashboard frontend
+
+A read-only dashboard that consumes this contract lives in **`tests/dashboard-frontend/`**. It polls the RestAPI at a configurable interval and displays health, metrics, last 10 delivered messages, and last 10 errors. Configure **baseUrl** and **pollIntervalSeconds** in `tests/dashboard-frontend/config.json`, then serve that directory with any static file server and open the page. See `tests/dashboard-frontend/README.md` for details.
+
+---
+
 ## Optional: combined endpoint
 
 A single **GET /api/status** (or **GET /api/dashboard**) that returns both health and metrics may be added in a follow-on; until then, clients should call `/health` and `/metrics` separately.

@@ -34,7 +34,6 @@ package PSM_ErrorHandler_Actions {
     detail: err.messageText ?? '',
     severity: err.isRecoverable ? 'warn' : 'error',
   };
-  logger.info(logEntry, 'integration error');
   this._metrics.errors_total = (this._metrics.errors_total ?? 0) + 1;
   if (classified === ErrorClass.ParseError) this._metrics.errors_parse_error = (this._metrics.errors_parse_error ?? 0) + 1;
   else if (classified === ErrorClass.ValidationError) this._metrics.errors_validation_error = (this._metrics.errors_validation_error ?? 0) + 1;

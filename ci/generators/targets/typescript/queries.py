@@ -351,14 +351,13 @@ def get_component_map(
             if not part_def_node:
                 continue
             state_machine = _get_exhibited_state(graph, part_def_qname)
-            if not state_machine:
-                continue
+            # Include parts with no exhibit (e.g. Logging) with state_machine ""
             display = (part_def_node.name or part_def_node.short_name or "").strip()
             output_file = display.replace(" ", "_").lower() + ".ts"
             class_name = _display_name_to_class_name(display)
             result.append({
                 "psm_short": part_def_node.short_name or part_def_node.name,
-                "state_machine": state_machine,
+                "state_machine": state_machine or "",
                 "output_file": output_file,
                 "class_name": class_name,
                 "part_def_qname": part_def_qname,

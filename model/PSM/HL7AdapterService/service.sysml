@@ -3,6 +3,7 @@ package PSM_HL7AdapterService {
     alias Action for PSM_HL7AdapterService_Actions;
     alias Interface for PSM_HL7AdapterService_Interfaces;
 
+    alias Logging for PSM_LoggingComponent;
     alias MLLPReceiver for PSM_MllpReceiverComponent;
     alias Parser for PSM_ParserComponent;
     alias Transformer for PSM_TransformerComponent;
@@ -21,6 +22,7 @@ package PSM_HL7AdapterService {
         port :>> fromUpstream : MLLPIngressPort;
         port :>> toDownstream : JSONEgressPort;
 
+        part :>> logging : Logging::Logging;
         part :>> mllpReceiver : MLLPReceiver::MLLPReceiver;
         part :>> parser : Parser::Parser;
         part :>> transformer : Transformer::Transformer;

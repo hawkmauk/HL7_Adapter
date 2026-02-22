@@ -94,8 +94,9 @@ package PSM_RestApi_Actions {
     }
   });
   const port = this._config.listenPort ?? 3000;
-  server.listen(port, () => {
-    console.log(`REST API listening on port ${port}`);
+  const host = (this._config.listenHost && this._config.listenHost.trim()) || '0.0.0.0';
+  server.listen(port, host, () => {
+    console.log(`REST API listening on ${host}:${port}`);
   });
   this._dispatch('StartServerSignal');
         */

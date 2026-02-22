@@ -8,8 +8,9 @@ package PSM_RestApiComponent {
     doc /* PSM Rest API component. Serves REST endpoints: GET /health (aggregate and per-component status), GET /metrics (message-flow and error counters for dashboard). Data contract: see docs/RestApi_Dashboard_Contract.md. Refines PIM::LogicalArchitecture::RestApi. */
 
     part def <RestApi> 'Rest Api' :> PIM::LogicalArchitecture::RestApi {
-        doc /* HTTP server for REST endpoints: GET /health (component status), GET /metrics (dashboard metrics). Listens on listenPort from config. */ 
+        doc /* HTTP server for REST endpoints: GET /health (component status), GET /metrics (dashboard metrics). Listens on listenHost and listenPort from config. */ 
         
+        attribute listenHost : String [0..1] = "0.0.0.0" { doc /* Bind address (e.g. 127.0.0.1 or 0.0.0.0). */ }
         attribute listenPort : Integer = 3000 { doc /* Listen port (e.g. 3000). */ }
         
         rep textualRepresentation language "TypeScript"

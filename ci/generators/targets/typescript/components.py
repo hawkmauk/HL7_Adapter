@@ -290,6 +290,84 @@ def _emit_free_function(usage_name: str, body: str, action_node: GraphNode | Non
     return body
 
 
+def _build_stateless_component_module(
+    graph: ModelGraph,
+    comp: dict[str, str],
+    psm_node: GraphNode | None,
+) -> str:
+    """Generate a stateless component from model: preamble (reps), config, class fields (reps), constructor, and all performed actions as methods."""
+    class_name = comp["class_name"]
+    config_attrs = _get_config_attributes(psm_node) if psm_node else []
+    reps = _collect_named_reps(psm_node)
+    action_impls = _collect_action_implementations(graph, psm_node)
+    method_actions = [(n, b, node) for n, b, m, node in action_impls if m]
+
+    lines: list[str] = []
+
+    # --- Preamble: constants, types (Logger, EventEmitterRef, etc.), then imports from part def rep ---
+    preamble_constants = _emit_preamble_constants(psm_node)
+    if preamble_constants:
+        lines.append(preamble_constants)
+    preamble_from_model = _emit_preamble_interfaces(graph, psm_node)
+    if preamble_from_model:
+        lines.append(preamble_from_model)
+    preamble = reps.get("textualRepresentation", "").strip()
+    if preamble:
+        lines.append(preamble)
+    lines.append("")
+
+    if config_attrs:
+        lines.append(f"export interface {class_name}Config {{")
+        for attr in config_attrs:
+            lines.append(f"  {attr['name']}: {attr['type']};")
+        lines.append("}")
+        lines.append("")
+
+    lines.append(f"export class {class_name} {{")
+    if config_attrs:
+        lines.append(f"  private readonly _config: {class_name}Config;")
+    class_members = reps.get("classMembers", "").strip()
+    if class_members:
+        lines.append(_indent(class_members, 2))
+    lines.append("")
+
+    config_param = f"config: {class_name}Config" if config_attrs else ""
+    lines.append(f"  constructor({config_param}) {{")
+    if config_attrs:
+        lines.append("    this._config = config;")
+    has_initialize = any(n == "initialize" for n, _, _ in method_actions)
+    if has_initialize:
+        lines.append("    this.initialize();")
+    lines.append("  }")
+    lines.append("")
+
+    # --- All performed actions as methods (from model) ---
+    for action_name, action_body, action_node in method_actions:
+        action_params = action_node.properties.get("action_params", []) if action_node else []
+        params_str = _build_method_params(action_params)
+        _, return_type = _build_function_signature(action_name, action_params)
+        first_out_name = _first_out_param_name(action_params)
+        body_only = _strip_outer_method_signature(action_body)
+        async_suffix = "async " if "await " in action_body or "await(" in action_body else ""
+        if async_suffix:
+            return_type = "Promise<void>" if return_type == "void" else f"Promise<{return_type}>"
+        decl_type = return_type
+        if return_type.startswith("Promise<") and return_type.endswith(">"):
+            decl_type = return_type[8:-1]
+        lines.append(f"  {async_suffix}{action_name}({params_str}): {return_type} {{")
+        if return_type != "void" and first_out_name:
+            lines.append(_indent(f"let {first_out_name}: {decl_type};", 4))
+        lines.append(_indent(body_only.strip(), 4))
+        if return_type != "void" and first_out_name:
+            lines.append(_indent(f"return {first_out_name};", 4))
+        lines.append("  }")
+        lines.append("")
+
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _build_component_module(
     graph: ModelGraph,
     comp: dict[str, str],
@@ -307,6 +385,10 @@ def _build_component_module(
       6. other named reps       -> additional class methods (after dispatch)
     """
     psm_node = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
+    # Stateless component (e.g. Logging with no exhibit)
+    if not comp.get("state_machine"):
+        return _build_stateless_component_module(graph, comp, psm_node)
+
     reps = _collect_named_reps(psm_node)
     action_impls = _collect_action_implementations(graph, psm_node)
     free_fn_actions = [(n, b, node) for n, b, m, node in action_impls if not m]
@@ -524,7 +606,6 @@ def _emit_dispatch(
     lines.append("        break;")
     lines.append("    }")
     lines.append("    if (this._state !== prev) {")
-    lines.append("      logger.info({ from: prev, to: this._state, signal }, 'state transition');")
     lines.append("      this.emit('transition', { from: prev, to: this._state, signal });")
     lines.append("    }")
     lines.append("  }")

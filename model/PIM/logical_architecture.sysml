@@ -42,6 +42,10 @@ package PIM_LogicalArchitecture {
         exhibit operationalStore;
     }
 
+    part def <Logging> 'Logging' {
+        doc /* Shared logging facility for state-transition and other adapter logging. Internal utility; no port. */
+    }
+
     part def <DownstreamAPIOwnerBoundary> 'Downstream API Owner' :> CIM::Stakeholders::DownstreamAPIOwner {
         doc /* Boundary part: owns the HTTP API that consumes transformed JSON payloads. Port receives payloads from the adapter. */
         port fromAdapter : JSONIngressPort;
@@ -59,6 +63,7 @@ package PIM_LogicalArchitecture {
         port fromUpstream : MLLPIngressPort;
         port toDownstream : JSONEgressPort;
 
+        part logging : Logging;
         part mllpReceiver : MLLPReceiver;
         part parser : Parser;
         part transformer : Transformer;

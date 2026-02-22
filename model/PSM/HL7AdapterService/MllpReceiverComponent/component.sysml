@@ -14,8 +14,8 @@ package PSM_MllpReceiverComponent {
         doc /* Refines PIM::LogicalArchitecture::MLLPReceiver. Technology binding: Node.js net/socket or custom MLLP framing. Implementation comprises TCP socket listener (Node.js net.Server), MLLP framing parser (start/end byte and length), and connection manager (accept/close/timeout). Configurable host/port. */
         attribute bindHost : String = "127.0.0.1"{ doc /* Listen address for the MLLP server (e.g. 0.0.0.0 for all interfaces). */ }
         attribute bindPort : Integer = 2575 { doc /* TCP port for MLLP listener (e.g. 2575). */ }
-        attribute maxPayloadSize : Integer { doc /* Maximum MLLP payload size in bytes; frames exceeding this are rejected. */ }
-        attribute connectionIdleTimeoutMs : Integer { doc /* Idle timeout in milliseconds before closing a connection. */ }
+        attribute maxPayloadSize : Integer = 1048576 { doc /* Maximum MLLP payload size in bytes; frames exceeding this are rejected. */ }
+        attribute connectionIdleTimeoutMs : Integer = 30000 { doc /* Idle timeout in milliseconds before closing a connection. */ }
         attribute logger : Logger [0..1] { doc /* Supplied by adapter from shared logging facility. */ }
 
         constant mllpStartByte : Integer = 11 { doc /* MLLP start block character (0x0B). */ }

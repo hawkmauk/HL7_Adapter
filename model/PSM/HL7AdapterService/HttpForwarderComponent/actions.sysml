@@ -34,6 +34,7 @@ package PSM_HTTPForwarder_Actions {
         rep functionBody language "TypeScript"
         /*
   const url = this._config.baseUrl;
+  this._logger.info({ url, payloadLength: jsonPayload.length }, 'HttpForwarder: sending JSON payload');
   const timeoutMs = this._config.requestTimeoutMs;
   const maxRetries = this._config.maxRetries;
   const backoffMs = this._config.retryBackoffMs;
@@ -80,13 +81,16 @@ package PSM_HTTPForwarder_Actions {
     try {
       const res = await doOneRequest();
       if (res.ok) {
+        this._logger.info({ status: res.status }, 'HttpForwarder: delivery success');
         this._dispatch('HTTP2xxSignal');
         this.emit('deliverySuccess', { status: res.status });
         return true;
       }
       if (res.status >= 400 && res.status < 500) {
+        const message = await res.text();
+        this._logger.warn({ status: res.status, message }, 'HttpForwarder: delivery failed (4xx)');
         this._dispatch('HTTP4xxSignal');
-        this.emit('deliveryFailed', { status: res.status, message: await res.text() });
+        this.emit('deliveryFailed', { status: res.status, message });
         return false;
       }
       lastError = new Error(`HTTP ${res.status}`);
@@ -100,6 +104,7 @@ package PSM_HTTPForwarder_Actions {
       attempt++;
     }
   }
+  this._logger.warn({ message: lastError?.message ?? 'Max retries exceeded' }, 'HttpForwarder: delivery failed (5xx or max retries)');
   this._dispatch('ForwarderMaxRetriesExceededSignal');
   this.emit('deliveryFailed', { message: lastError?.message ?? 'Max retries exceeded' });
   success = false;

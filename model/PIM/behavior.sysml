@@ -348,6 +348,8 @@ package PIM_Behavior {
         state Idle;
         accept ListenerStartSignal
             then Starting;
+        accept MLLPFrameReceivedSignal
+            then ReceivingFrame;
 
         state Starting;
         accept MLLPFrameReceivedSignal
@@ -385,14 +387,15 @@ package PIM_Behavior {
             do action recordError
             then HandlingError;
 
-        state Forwarding;
-        accept HTTP2xxSignal
+        state Forwarding {
+            entry;
             then Idle;
-        accept HTTP5xxOrNetworkErrorSignal
-            do action recordError
-            then HandlingError;
+        }
 
-        state HandlingError;
+        state HandlingError {
+            entry;
+            then Idle;
+        }
         accept IntegrationErrorRaisedSignal
             then HandlingError;
         accept ResetComponentSignal

@@ -3,13 +3,30 @@
 [![Release docs](https://github.com/hawkmauk/HL7_Adapter/actions/workflows/release-docs.yml/badge.svg)](https://github.com/hawkmauk/HL7_Adapter/actions/workflows/release-docs.yml)
 [![Build docs](https://github.com/hawkmauk/HL7_Adapter/actions/workflows/build-docs.yml/badge.svg)](https://github.com/hawkmauk/HL7_Adapter/actions/workflows/build-docs.yml)
 
-This repository hosts an **HL7-to-HTTP adapter** developed using a **Model‑Driven Architecture (MDA)** approach. Instead of starting from code, we start from **SysML v2 models** and use those models to generate **documentation artifacts** (and later, code) across abstraction levels:
+### A proof of concept for the Digital Thread
 
-- **CIM (Computation‑Independent Model)**: business/domain view – stakeholders, mission, operational context, scenarios, assumptions.
-- **PIM (Platform‑Independent Model)**: logical solution view – logical architecture, interfaces, behavior, requirements, allocations.
+This project is a **proof of concept** for a **Digital Thread**: all project information is captured in a **model**, and the model is our **single source of truth**. We do not maintain separate docs, code, and specs that drift apart. We define **views** into the model, and we generate everything from it.
+
+The **PDF documents** we produce (ConOps, requirements, interface design, gateway signoff, and so on) are **snapshots from the model at a point in time**. So is the **executable program** we run: the TypeScript adapter is a view of the model at a point in time. Documentation and software are both **generated from the model**. That is the core idea: one model, many views, full traceability.
+
+### How we develop
+
+We add **domain data** to the model first, in the **CIM** (Computation‑Independent Model): stakeholders, mission, operational context, scenarios, and assumptions. We then capture the **behaviours** the system should exhibit and the **requirements** it must satisfy. These are **explicitly linked** to the domain data—requirements to use cases, use cases to domain concepts—creating the thread from problem space to solution space.
+
+We run **case studies** to choose technology and design decisions (e.g. SQLite vs PostgreSQL, Node.js/TypeScript for the adapter), and we **record those decisions in the model**. Only after that do we build the **structure of our system** in the **PSM** (Platform‑Specific Model): components, interfaces, state machines. At that stage we add **snippets of code** into the model for our target language. The **generator** builds the software from the model; the snippets are **inserted to fill out function bodies**. We do not hand‑write the architecture in code—we express it in the model and generate the rest.
+
+We can add snippets for **different languages** and extend the generator to produce **Python, C, Rust**, or any other target. The **system is unchanged** in the model; we simply **express the model in different ways**. That is the real power of **model‑based systems engineering (MBSE)**: separating **architecture** (what the system is and how it behaves) from **implementation** (how it is expressed in a given language or platform)—in the same way that **HTML** (structure) is separated from **CSS** (presentation).
+
+### MDA levels in this repo
+
+The model is organised using **Model‑Driven Architecture (MDA)** abstraction levels:
+
+- **CIM (Computation‑Independent Model)**: business and domain—stakeholders, mission, operational context, scenarios, assumptions.
+- **PIM (Platform‑Independent Model)**: logical solution—logical architecture, interfaces, behaviour, requirements, allocations.
+- **PSM (Platform‑Specific Model)**: technology‑bound design and code snippets—components, bindings, and the executable view.
 - **MDA Library**: reusable, project‑agnostic patterns for structure, viewpoints, lifecycles, and document templates shared across projects.
 
-The aim is to make the **digital thread** explicit: requirements, design, lifecycle gates, and generated docs are all traceable to model elements.
+Requirements, design, lifecycle gates, generated docs, and generated code are all **traceable to model elements**.
 
 ### Repository structure (high level)
 
@@ -90,10 +107,10 @@ The generated adapter reads configuration from a **`config.json`** file in the *
        "tlsRejectUnauthorized": 0
      },
      "mllpReceiver": {
-       "bindHost": "",
-       "bindPort": 0,
-       "maxPayloadSize": 0,
-       "connectionIdleTimeoutMs": 0
+       "bindHost": "127.0.0.1",
+       "bindPort": 2575,
+       "maxPayloadSize": 1048576,
+       "connectionIdleTimeoutMs": 30000
      },
      "operationalStore": {
        "dialect": "sqlite",
@@ -140,5 +157,5 @@ An **MLLP Emitter** under `tests/mllpemitter/` sends HL7 messages over MLLP to t
 - **Generated docs (HTML and PDF)** are published on **GitHub Pages**: [https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/).
 - For details on generated artifacts, the build pipeline, and releases, see [CI/CD and generated documentation](docs/CI_CD.md).
 
-At a high level, this repo is a **working example of MDA applied to an HL7 adapter**: CIM and PIM models, a reusable MDA library, and a doc/CI pipeline that turns those models into human‑readable artifacts for stakeholders and lifecycle governance.
+In short: one model, many views—documentation and executable—all generated, all traceable.
 

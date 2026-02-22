@@ -31,6 +31,18 @@ package PSM_HL7AdapterService {
         part :>> restApi : RestApi::RestApi;
         part :>> operationalStore : OperationalStore::OperationalStore;
 
+        rep classMembers language "TypeScript"
+        /*
+private _currentFrame: Buffer | undefined;
+private _currentParsed: unknown;
+private _currentJson: string | undefined;
+private _currentMessageId: string = '';
+        */
+
         perform action initialize : Action::InitializeAdapter;
+        perform action recordMessageReceived : Action::RecordMessageReceived;
+        perform action recordMessageParsed : Action::RecordMessageParsed;
+        perform action recordMessageTransformed : Action::RecordMessageTransformed;
+        perform action recordMessageDelivered : Action::RecordMessageDelivered;
     }
 }

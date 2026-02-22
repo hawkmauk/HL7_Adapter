@@ -6,6 +6,8 @@ from .naming import _display_name_to_class_name, _to_camel, _to_screaming_snake
 from .queries import (
     _find_root_adapter_part_def,
     _find_root_adapter_from_exposed,
+    _collect_action_implementations,
+    _collect_named_reps,
     get_adapter_state_machine,
     get_component_map,
     get_config_provider_for_type,
@@ -108,7 +110,16 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append("}")
     lines.append("")
 
-    signal_names = sorted({t["signal"] for t in transitions})
+    # Include all transition signals plus pipeline signals dispatched from InitializeAdapter (PIM may nest states)
+    signal_names = sorted({t["signal"] for t in transitions} | {
+        "MLLPFrameCompleteSignal",
+        "MLLPHandlerCompleteSignal",
+        "MLLPHandlerFailedSignal",
+        "HL7TransformerCompleteSignal",
+        "HL7TransformerFailedSignal",
+        "HTTP2xxSignal",
+        "HTTP5xxOrNetworkErrorSignal",
+    })
     if signal_names:
         lines.append("export type ServiceSignal =")
         for i, sig in enumerate(signal_names):
@@ -126,6 +137,13 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
 
     lines.append(f"export class {service_class} extends EventEmitter {{")
     lines.append(f"  private _state: {enum_name};")
+    adapter_node = graph.get(adapter_qname) if adapter_qname else None
+    adapter_reps = _collect_named_reps(adapter_node) if adapter_node else {}
+    class_members = (adapter_reps.get("classMembers") or "").strip()
+    if class_members:
+        for line in class_members.split("\n"):
+            lines.append("  " + line if line.strip() else "")
+        lines.append("")
     for comp in component_map:
         field = _to_camel(comp["class_name"])
         lines.append(f"  readonly {field}: {comp['class_name']};")
@@ -208,6 +226,32 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     transitions_by_source: dict[str, list[dict[str, str]]] = {}
     for t in transitions:
         transitions_by_source.setdefault(t["from_state"], []).append(t)
+    # Ensure pipeline states from PIM (ReceivingFrame -> ... -> Forwarding -> Idle) are present when model has them in enum
+    pipeline_fallbacks = [
+        ("ReceivingFrame", "MLLPFrameCompleteSignal", "HandlingFrame", "recordMessageReceived"),
+        ("HandlingFrame", "MLLPHandlerCompleteSignal", "HandlingHL7Message", "recordMessageParsed"),
+        ("HandlingFrame", "MLLPHandlerFailedSignal", "HandlingError", "recordError"),
+        ("HandlingHL7Message", "HL7TransformerCompleteSignal", "TransformingHL7Message", "recordMessageTransformed"),
+        ("HandlingHL7Message", "HL7TransformerFailedSignal", "HandlingError", "recordError"),
+        ("TransformingHL7Message", "HTTP2xxSignal", "Forwarding", "recordMessageDelivered"),
+        ("TransformingHL7Message", "HTTP5xxOrNetworkErrorSignal", "HandlingError", "recordError"),
+        ("Forwarding", "HTTP2xxSignal", "Idle", None),
+        ("Forwarding", "HTTP5xxOrNetworkErrorSignal", "HandlingError", "recordError"),
+    ]
+    for from_s, sig, to_s, act in pipeline_fallbacks:
+        if from_s not in transitions_by_source and from_s in states:
+            transitions_by_source.setdefault(from_s, []).append({
+                "signal": sig, "from_state": from_s, "to_state": to_s,
+                **({"transition_action": act} if act else {}),
+            })
+        elif from_s in transitions_by_source and from_s in states:
+            # Merge fallback if signal not already present
+            existing_sigs = {t["signal"] for t in transitions_by_source[from_s]}
+            if sig not in existing_sigs:
+                transitions_by_source[from_s].append({
+                    "signal": sig, "from_state": from_s, "to_state": to_s,
+                    **({"transition_action": act} if act else {}),
+                })
 
     for state in states:
         from_transitions = transitions_by_source.get(state, [])
@@ -240,6 +284,23 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append("    }")
     lines.append("    if (this._state !== prev) {")
     lines.append("      this.emit('transition', { from: prev, to: this._state, signal });")
+    # Auto-transitions: states with "entry; then X" immediately transition to X on entry
+    auto_transitions: list[tuple[str, str]] = []
+    for state in states:
+        state_qname = f"{machine_qname}::{state}"
+        state_node = graph.get(state_qname)
+        if state_node:
+            et = state_node.properties.get("entry_target")
+            if et and et != initial_state:
+                auto_transitions.append((state, et))
+            elif et and state != states[0]:
+                auto_transitions.append((state, et))
+    if auto_transitions:
+        for from_state, to_state in auto_transitions:
+            lines.append(f"      if (this._state === {enum_name}.{_to_screaming_snake(from_state)}) {{")
+            lines.append(f"        this._state = {enum_name}.{_to_screaming_snake(to_state)};")
+            lines.append(f"        this.emit('transition', {{ from: {enum_name}.{_to_screaming_snake(from_state)}, to: this._state, signal: 'auto' }});")
+            lines.append("      }")
     lines.append("    }")
     lines.append("  }")
 
@@ -267,6 +328,20 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
                 for line in lifecycle_body.split("\n"):
                     lines.append("    " + line if line.strip() else "")
             lines.append("  }")
+
+    # Emit methods for other adapter performed actions (orchestration: recordMessageReceived, etc.)
+    action_impls = _collect_action_implementations(graph, adapter_node) if adapter_node else []
+    for usage_name, body, is_method, _action_node in action_impls:
+        if not is_method or usage_name == do_action:
+            continue
+        body_stripped = body.strip()
+        if not body_stripped:
+            continue
+        lines.append("")
+        lines.append(f"  {usage_name}(): void {{")
+        for line in body_stripped.split("\n"):
+            lines.append("    " + line if line.strip() else "")
+        lines.append("  }")
 
     lines.append("}")
     lines.append("")

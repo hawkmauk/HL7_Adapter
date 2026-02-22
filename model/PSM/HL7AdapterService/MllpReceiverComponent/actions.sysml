@@ -32,6 +32,9 @@ package PSM_MLLPReceiver_Actions {
   if (endIdx < 0) {
     return { success: false, consumed: startIdx };
   }
+  if (buffer.length < endIdx + 2) {
+    return { success: false, consumed: startIdx };
+  }
   if (buffer[endIdx + 1] !== MLLP_END_BYTE_SECOND) {
     return {
       payload: undefined,
@@ -110,6 +113,9 @@ package PSM_MLLPReceiver_Actions {
     return;
   }
   this._server = net.createServer((socket) => {
+    if (this._state === MllpReceiverState.IDLE) {
+      this._dispatch('ListenerStartSignal');
+    }
     console.log(`MLLP connection accepted from ${socket.remoteAddress}:${socket.remotePort}`);
     let buffer = Buffer.alloc(0);
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -123,6 +129,8 @@ package PSM_MLLPReceiver_Actions {
 
     socket.on('data', (chunk: Buffer) => {
       resetIdle();
+      const remote = `${socket.remoteAddress}:${socket.remotePort}`;
+      this._logger.info({ bytes: chunk.length, from: remote }, 'MLLP data received');
       buffer = Buffer.concat([buffer, chunk]);
       for (;;) {
         const s = this._state;
@@ -135,19 +143,24 @@ package PSM_MLLPReceiver_Actions {
         }
         const result = parseMllpFrame(buffer, this._config.maxPayloadSize);
         if (result.error) {
-          this._dispatch('MLLPFrameErrorSignal');
-          try {
-            socket.write(buildNak());
-          } catch {
-            // ignore write errors
+          if (buffer.length > 0) {
+            this._logger.warn({ error: result.error, from: remote, bufferLength: buffer.length }, 'MLLP frame error, sending NAK');
+            this._dispatch('MLLPFrameErrorSignal');
+            try {
+              socket.write(buildNak());
+            } catch {
+              // ignore write errors
+            }
+            socket.destroy();
+            return;
           }
-          socket.destroy();
-          return;
+          break;
         }
         if (!result.success && !result.error) break;
         if (result.payload) {
           this._dispatch('MLLPFrameCompleteSignal');
           this.emit('frameComplete', result.payload);
+          this._logger.info({ from: remote, payloadBytes: result.payload.length }, 'MLLP frame complete, sending ACK');
           try {
             socket.write(buildAck());
           } catch {
@@ -160,6 +173,9 @@ package PSM_MLLPReceiver_Actions {
 
     socket.on('close', () => {
       if (idleTimer) clearTimeout(idleTimer);
+      if (this._state === MllpReceiverState.ERROR) {
+        this._dispatch('ResetComponentSignal');
+      }
     });
 
     socket.on('error', (err) => {

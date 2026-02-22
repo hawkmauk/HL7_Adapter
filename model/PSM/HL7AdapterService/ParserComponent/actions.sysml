@@ -72,6 +72,7 @@ package PSM_Parser_Actions {
 
         rep textualRepresentation language "TypeScript"
         /*
+  this._logger.info({ length: rawMessage.length }, 'Parser: parsing message');
   const jsonResult = parseMessage(
     rawMessage,
     this._config.strictValidation,
@@ -79,9 +80,11 @@ package PSM_Parser_Actions {
   );
   const result = JSON.parse(jsonResult) as ParseResult;
   if (result.success) {
+    this._logger.info('Parser: parse complete');
     this._dispatch('HL7HandlerCompleteSignal');
     this.emit('parseComplete', result.data);
   } else {
+    this._logger.warn({ error: result.error }, 'Parser: parse failed');
     this._dispatch('HL7HandlerFailedSignal');
     this.emit('parseFailed', result.error);
   }

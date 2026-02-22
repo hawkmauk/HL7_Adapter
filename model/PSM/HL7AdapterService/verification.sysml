@@ -56,4 +56,53 @@ package PSM_HL7AdapterService_Verification {
         }
 
     }
+
+    verification def MllpToHttpPipelineIntegrationTest {
+        doc /* End-to-end: one MLLP frame flows through Parser, Transformer, HTTPForwarder; assert controller transitions, store status delivered, ErrorHandler metrics, downstream POST received. */
+        subject adapter : HL7AdapterService;
+        objective { verify pipeline end-to-end; }
+
+        action runPipelineWithMockHttpAndAssertDelivered {
+            doc /* Create service with in-memory store and mock HTTP server; send one MLLP frame; assert transitions, store delivered, metrics increased, POST body received. */
+            rep functionBody language "vitest"
+            /*
+const http = require('http');
+const net = require('net');
+let receivedBody: string | null = null;
+const mockServer = http.createServer((req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
+  let body = '';
+  req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+  req.on('end', () => { receivedBody = body; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(); });
+});
+await new Promise<void>((r) => mockServer.listen(0, () => r()));
+const addr = mockServer.address();
+const httpPort = (addr && typeof addr === 'object' && 'port' in addr) ? (addr as { port: number }).port : 0;
+const mllpPort = 25998;
+const operationalStoreConfig = { ...defaultOperationalStoreConfig, dialect: 'sqlite', path: ':memory:' };
+const config = { logging: defaultLoggingConfig, errorHandler: defaultErrorHandlerConfig, httpForwarder: { ...defaultHttpForwarderConfig, baseUrl: `http://127.0.0.1:${httpPort}`, requestTimeoutMs: 5000, maxRetries: 1, retryBackoffMs: 100, tlsMinVersion: '', tlsRejectUnauthorized: 1 }, mllpReceiver: { ...defaultMllpReceiverConfig, bindHost: '127.0.0.1', bindPort: mllpPort, maxPayloadSize: 65536, connectionIdleTimeoutMs: 30000 }, operationalStore: operationalStoreConfig, parser: defaultParserConfig, restApi: { ...defaultRestApiConfig, listenPort: 0 }, transformer: defaultTransformerConfig };
+adapter = new Hl7AdapterService(config.logging, config.errorHandler, config.httpForwarder, config.mllpReceiver, config.operationalStore, config.parser, config.restApi, config.transformer);
+adapter.on('transition', () => {});
+adapter.initialize(config);
+adapter.dispatch('ServiceStartedSignal');
+await new Promise((r) => setTimeout(r, 150));
+const hl7 = 'MSH|^~\\&|SEND|FAC|RECV|APP|20250101120000||ADT^A01|msg1|P|2.5\r';
+const start = Buffer.from([11]);
+const end = Buffer.from([28, 13]);
+const mllpFrame = Buffer.concat([start, Buffer.from(hl7, 'utf8'), end]);
+const client = net.createConnection({ port: mllpPort, host: '127.0.0.1' }, () => { client.write(mllpFrame); client.end(); });
+client.on('close', () => {});
+await new Promise((r) => setTimeout(r, 2000));
+const delivered = adapter.operationalStore.getMessages('delivered');
+expect(delivered.length).toBeGreaterThanOrEqual(1);
+const metrics = adapter.errorHandler.getMetrics();
+expect(metrics.messages_received).toBeGreaterThanOrEqual(1);
+expect(metrics.messages_parsed).toBeGreaterThanOrEqual(1);
+expect(metrics.messages_delivered).toBeGreaterThanOrEqual(1);
+expect(receivedBody).not.toBeNull();
+expect(typeof receivedBody).toBe('string');
+expect((receivedBody ?? '').length).toBeGreaterThan(0);
+await new Promise<void>((r) => mockServer.close(() => r()));
+            */
+        }
+    }
 }

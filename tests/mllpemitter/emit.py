@@ -90,21 +90,50 @@ def connect_with_retry(
     return (None, last_error)
 
 
-def send_one(sock: socket.socket, data: bytes, verbose: bool) -> None:
-    """Send one MLLP message; optionally read response (ACK/NAK)."""
+def _response_kind(reply: bytes) -> str:
+    """Classify MLLP response as ACK, NAK, or unknown from payload (strip MLLP frame)."""
+    if len(reply) < 4:
+        return "unknown"
+    # Strip 0x0B prefix and 0x1C 0x0D suffix if present
+    start = 1 if reply[0] == MLLP_START else 0
+    if reply[-2:] == bytes([MLLP_END_FIRST, MLLP_END_SECOND]):
+        payload = reply[start:-2]
+    else:
+        payload = reply[start:]
+    try:
+        text = payload.decode("utf-8", errors="replace")
+        if "MSA|AA|" in text or "MSA|AA\r" in text:
+            return "ACK"
+        if "MSA|AE|" in text or "MSA|AE\r" in text:
+            return "NAK"
+    except Exception:
+        pass
+    return "unknown"
+
+
+def send_one(sock: socket.socket, data: bytes, verbose: bool, log_response: bool = True) -> None:
+    """Send one MLLP message; read response (ACK/NAK) and optionally log it."""
     try:
         sock.sendall(data)
-        # Adapter may send back ACK or NAK; read a small buffer to avoid blocking forever
         sock.settimeout(2.0)
         try:
             reply = sock.recv(4096)
+            if log_response or verbose:
+                if reply:
+                    kind = _response_kind(reply)
+                    print(f"[response] {kind} ({len(reply)} bytes)", file=sys.stderr)
+                else:
+                    print("[response] (empty)", file=sys.stderr)
             if verbose and reply:
-                print(f"  <- response: {len(reply)} bytes", file=sys.stderr)
+                print(f"  <- raw: {len(reply)} bytes", file=sys.stderr)
         except socket.timeout:
-            pass
+            if log_response or verbose:
+                print("[response] timeout", file=sys.stderr)
         finally:
             sock.settimeout(10.0)
     except (BrokenPipeError, ConnectionResetError, OSError) as e:
+        if log_response or verbose:
+            print(f"[response] error: {e}", file=sys.stderr)
         if verbose:
             print(f"  send/recv error: {e}", file=sys.stderr)
         raise

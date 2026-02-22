@@ -41,7 +41,7 @@ package PSM_Logging_Actions {
         rep functionBody language "TypeScript"
         /*
   emitter.on('transition', (ev: { from: string; to: string; signal: string }) => {
-    this.getLogger(componentName).info(ev, 'state transition');
+    this.getLogger(componentName).info(ev, `${componentName} state transition`);
   });
         */
     }

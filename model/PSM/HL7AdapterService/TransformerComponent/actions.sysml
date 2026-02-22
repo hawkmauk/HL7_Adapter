@@ -40,15 +40,18 @@ package PSM_Transformer_Actions {
 
         rep textualRepresentation language "TypeScript"
         /*
+  this._logger.info('Transformer: transforming to JSON');
   try {
     const jsonStr = transformPayload(
       parsed,
       this._config.jsonPrettyPrint,
       this._config.schemaValidateOutput,
     );
+    this._logger.info({ length: jsonStr.length }, 'Transformer: transform complete');
     this._dispatch('HL7TransformerCompleteSignal');
     this.emit('transformComplete', jsonStr);
   } catch (err) {
+    this._logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Transformer: transform failed');
     this._dispatch('HL7TransformerFailedSignal');
     this.emit('transformFailed', err instanceof Error ? err.message : String(err));
   }

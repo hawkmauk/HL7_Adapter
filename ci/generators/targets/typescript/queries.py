@@ -675,10 +675,10 @@ def _collect_transitions(graph: ModelGraph, machine_qname: str) -> list[dict[str
     if not machine_node:
         return result
 
-    children = graph.children(machine_qname, kind="state")
-
+    # Include all descendant states so nested states (ReceivingFrame, HandlingFrame, etc.) are covered
+    state_nodes = graph.descendants(machine_qname, kind="state")
     all_edges: list[GraphEdge] = []
-    for child in children:
+    for child in state_nodes:
         all_edges.extend(graph.outgoing(child.qname, "transition"))
     all_edges.extend(graph.outgoing(machine_qname, "transition"))
 
@@ -712,7 +712,13 @@ def get_part_property_for_action(
     """Return the adapter part property name (camelCase) that performs the given action usage, or empty string.
 
     Used by the service generator to emit this.<part>.<actionName>() when a transition has a transition_action.
+    Adapter's own performed actions take precedence (return "" so generator emits this.<actionName>()).
     """
+    adapter_node = graph.get(adapter_qname) if adapter_qname else None
+    if adapter_node:
+        for edge in graph.outgoing(adapter_qname, "performs"):
+            if edge.properties.get("usage_name") == action_usage_name:
+                return ""
     component_map = get_component_map(graph, document=document)
     for comp in component_map:
         part_def_qname = comp.get("part_def_qname")
@@ -721,12 +727,6 @@ def get_part_property_for_action(
         for edge in graph.outgoing(part_def_qname, "performs"):
             if edge.properties.get("usage_name") == action_usage_name:
                 return _to_camel(comp["class_name"])
-    # Adapter itself may perform the action (e.g. initialize); emit this.<actionName>() when part is ""
-    adapter_node = graph.get(adapter_qname)
-    if adapter_node:
-        for edge in graph.outgoing(adapter_qname, "performs"):
-            if edge.properties.get("usage_name") == action_usage_name:
-                return ""
     return ""
 
 
@@ -760,7 +760,8 @@ def _collect_named_reps(node: GraphNode | None) -> dict[str, str]:
 
 def _resolve_action_qname(graph: ModelGraph, type_ref: str, prefer_prefix: str | None) -> str | None:
     """Resolve an action type ref (e.g. Actions::HandleIntegrationError) to an action def qname.
-    Used when edge target is an alias and not a graph node key."""
+    Used when edge target is an alias and not a graph node key.
+    When prefer_prefix is set, prefer a candidate with that prefix; otherwise return first candidate."""
     if type_ref in graph.nodes:
         return type_ref
     last = type_ref.split("::")[-1].strip()
@@ -778,6 +779,10 @@ def _resolve_action_qname(graph: ModelGraph, type_ref: str, prefer_prefix: str |
         for q in candidates:
             if q.startswith(prefer_prefix):
                 return q
+        # No candidate matched prefix (e.g. component part is PSM_X_Component but action is in PSM_X_Actions); use first PSM_ candidate
+        psm_any = [q for q in candidates if q.startswith("PSM_")]
+        if psm_any:
+            return psm_any[0]
     return candidates[0]
 
 
@@ -795,8 +800,9 @@ def _collect_action_implementations(
         return []
     perform_decls = psm_node.properties.get("perform_actions", [])
     performs_edges = graph.outgoing(psm_node.qname, "performs")
+    # Prefer action defs from the same package as the performer (e.g. PSM_HL7AdapterService_Actions over PSM_ErrorHandler_*)
     first_seg = (psm_node.qname or "").split("::")[0]
-    prefer_prefix = (first_seg.split("_")[0] + "_") if first_seg else None
+    prefer_prefix = (first_seg + "_") if first_seg else None
     target_map: dict[str, GraphNode] = {}
     for edge in performs_edges:
         action_qname = edge.target

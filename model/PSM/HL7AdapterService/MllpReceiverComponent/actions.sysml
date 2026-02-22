@@ -112,6 +112,8 @@ start(): void {
     return;
   }
   this._server = net.createServer((socket) => {
+    logger.info({ remote: socket.remoteAddress, remotePort: socket.remotePort }, 'MLLP connection accepted');
+    console.log(`MLLP connection accepted from ${socket.remoteAddress}:${socket.remotePort}`);
     let buffer = Buffer.alloc(0);
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -172,11 +174,14 @@ start(): void {
     resetIdle();
   });
 
-  this._server.listen(this._config.bindPort, this._config.bindHost, () => {
+  const host = (this._config.bindHost && this._config.bindHost.trim()) || '0.0.0.0';
+  const port = this._config.bindPort;
+  this._server.listen(port, host, () => {
     logger.info(
-      { host: this._config.bindHost, port: this._config.bindPort },
+      { host, port },
       'MLLP listener started',
     );
+    console.log(`MLLP receiver initialised and listening on ${host}:${port}`);
     this._dispatch('ListenerStartSignal');
   });
 

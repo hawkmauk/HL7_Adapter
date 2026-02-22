@@ -213,7 +213,13 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lifecycle_body = get_service_run_action_body(graph, document=document)
     if do_action:
         lines.append("")
-        if lifecycle_params and init_calls and constructor_params_spec:
+        # Use the model's do-action body when present (same execution model for initialize/startListeners etc.)
+        if do_action == "initialize" and lifecycle_params and constructor_params_spec and lifecycle_body:
+            lines.append("  initialize(config: ServiceConfig): void {")
+            for line in lifecycle_body.split("\n"):
+                lines.append("    " + line if line.strip() else "")
+            lines.append("  }")
+        elif lifecycle_params and init_calls and constructor_params_spec:
             lines.append("  initialize(config: ServiceConfig): void {")
             for field_name, arg_exprs in init_calls:
                 args_str = ", ".join(arg_exprs)

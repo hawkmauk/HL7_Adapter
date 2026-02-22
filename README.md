@@ -131,6 +131,10 @@ The adapter includes an **operational data store** for message audit (lifecycle,
   ```
   Default path is `./data/store.db` or `STORE_PATH` env. For PostgreSQL, use your migration tool or run the adapter once (schema creation is dialect-aware in the component).
 
+### Demo and testing tools
+
+An **MLLP Emitter** under `tests/mllpemitter/` sends HL7 messages over MLLP to the adapter on a configurable interval, with randomised content and a small fraction of invalid messages to exercise error handling. See [tests/mllpemitter/README.md](tests/mllpemitter/README.md) for how to run it and use it with the adapter for demos.
+
 ### Documentation
 
 - **Generated docs (HTML and PDF)** are published on **GitHub Pages**: [https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/).

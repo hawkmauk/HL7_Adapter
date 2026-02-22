@@ -35,6 +35,12 @@ package PSM_HL7AdapterService_Actions {
     action def <InitializeAdapter> 'Initialize Adapter' :> CIM::Actions::Initialize {
         in config : CIM::Domain::Configuration;
         in :> self : HL7AdapterService;
-        doc /* Bindings and service reference: generator calls each part's initializeFromBinding with config.<part> or this (see RestApi, HttpForwarder, MllpReceiver, etc.). */
+        doc /* Bindings and service reference; then start listeners (MLLP, RestApi) per state machine do action. */
+        rep functionBody language "TypeScript"
+        /*
+  this.operationalStore.initializeFromBinding(config.operationalStore);
+  this.restApi.initializeFromBinding(this);
+  this.mllpReceiver.startReceiver();
+        */
     }
 }

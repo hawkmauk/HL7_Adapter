@@ -15,6 +15,7 @@ from pathlib import Path
 from ...base import GeneratedArtifact, GenerationOptions, GeneratorTarget
 from ...ir import ModelGraph
 from ...registry import register_target
+from ...templates import copy_asset, get_template_dir
 from .service import _build_service_module
 from .components import _build_component_module
 from .config import (
@@ -86,6 +87,16 @@ class TypeScriptGenerator(GeneratorTarget):
         index_path = src_dir / "index.ts"
         index_path.write_text(header + index_source, encoding="utf-8")
         artifacts.append(GeneratedArtifact(path=index_path, artifact_type="ts-module"))
+
+        # Copy .ts template assets (e.g. scripts/init-db.ts) into output, preserving structure
+        template_dir = get_template_dir("typescript")
+        if template_dir.exists():
+            for ts_file in template_dir.rglob("*.ts"):
+                rel = ts_file.relative_to(template_dir)
+                dest_dir = output_dir / rel.parent
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                artifact = copy_asset(ts_file, dest_dir, artifact_type="ts-script")
+                artifacts.append(artifact)
 
         return artifacts
 

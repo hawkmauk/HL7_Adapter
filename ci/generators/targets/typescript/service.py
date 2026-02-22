@@ -8,11 +8,14 @@ from .queries import (
     _find_root_adapter_from_exposed,
     get_adapter_state_machine,
     get_component_map,
+    get_config_provider_for_type,
     get_initialize_from_binding_calls,
+    get_injected_config_attr_names,
     get_part_property_for_action,
     get_service_lifecycle_action_params,
     get_service_lifecycle_initial_do_action,
     get_service_run_action_body,
+    get_type_qname_by_short_name,
     PIM_BEHAVIOR_PKG,
     _collect_states,
     _collect_transitions,
@@ -28,8 +31,10 @@ def get_service_constructor_params(
 
     Each item: {"param_name": str, "config_type": str, "class_name": str, "config_attrs": list}.
     Used by the service generator and by vitest to build service test initialisation.
+    Logging first so config order matches construction order.
     """
     component_map = get_component_map(graph, document=document)
+    component_map = sorted(component_map, key=lambda c: (0 if c["class_name"] == "Logging" else 1, c["part_def_qname"]))
     result: list[dict] = []
     for comp in component_map:
         psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
@@ -69,6 +74,8 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     else:
         adapter_qname, _ = _find_root_adapter_part_def(graph)
     component_map = get_component_map(graph, document=document)
+    # Logging first so it can be used for transition listeners
+    component_map = sorted(component_map, key=lambda c: (0 if c["class_name"] == "Logging" else 1, c["part_def_qname"]))
     service_state_machine = get_adapter_state_machine(graph, document=document)
     if not service_state_machine:
         return ""
@@ -92,9 +99,6 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
             imports.append(f"import {{ {comp['class_name']} }} from './{module}';")
     lines.extend(imports)
     lines.append("import { EventEmitter } from 'events';")
-    lines.append("import pino from 'pino';")
-    lines.append("")
-    lines.append(f"const logger = pino({{ name: '{service_class}' }});")
     lines.append("")
 
     enum_name = "ServiceState"
@@ -145,14 +149,47 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append(f"  constructor({param_str}) {{")
     lines.append("    super();")
     lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(initial_state or 'Idle')};")
+    logger_type_qname = get_type_qname_by_short_name(
+        graph, "Logger", prefer_qname_contains="Logging"
+    )
+    provider_comp, provider_method = (
+        get_config_provider_for_type(graph, component_map, logger_type_qname, document)
+        if logger_type_qname
+        else (None, "")
+    )
+    provider_field = _to_camel(provider_comp["class_name"]) if provider_comp else None
+
     for comp in component_map:
         field = _to_camel(comp["class_name"])
+        config_param = _to_camel(comp["class_name"]) + "Config"
         psm = _find_psm_node(graph, comp["psm_short"], comp.get("part_def_qname"))
         attrs = _get_config_attributes(psm) if psm else []
         if attrs:
-            lines.append(f"    this.{field} = new {comp['class_name']}({_to_camel(comp['class_name'])}Config);")
+            injected_attrs = (
+                get_injected_config_attr_names(graph, psm, logger_type_qname)
+                if (logger_type_qname and psm)
+                else []
+            )
+            if comp is provider_comp or not injected_attrs or not provider_field or not provider_method:
+                lines.append(f"    this.{field} = new {comp['class_name']}({config_param});")
+            else:
+                injections = ", ".join(
+                    f"{attr}: this.{provider_field}.{provider_method}('{comp['class_name']}')"
+                    for attr in injected_attrs
+                )
+                lines.append(f"    this.{field} = new {comp['class_name']}({{ ...{config_param}, {injections} }});")
         else:
             lines.append(f"    this.{field} = new {comp['class_name']}();")
+    # Attach transition logging for all parts and the service (state-transition logging only)
+    has_logging = any(c["class_name"] == "Logging" for c in component_map)
+    if has_logging:
+        for comp in component_map:
+            if comp["class_name"] == "Logging":
+                continue
+            if comp.get("state_machine"):
+                field = _to_camel(comp["class_name"])
+                lines.append(f"    this.logging.attachTo(this.{field}, '{comp['class_name']}');")
+        lines.append("    this.logging.attachTo(this, '" + service_class + "');")
     lines.append("  }")
     lines.append("")
 
@@ -202,7 +239,6 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append("        break;")
     lines.append("    }")
     lines.append("    if (this._state !== prev) {")
-    lines.append("      logger.info({ from: prev, to: this._state, signal }, 'service state transition');")
     lines.append("      this.emit('transition', { from: prev, to: this._state, signal });")
     lines.append("    }")
     lines.append("  }")
@@ -213,7 +249,13 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lifecycle_body = get_service_run_action_body(graph, document=document)
     if do_action:
         lines.append("")
-        if lifecycle_params and init_calls and constructor_params_spec:
+        # Use the model's do-action body when present (same execution model for initialize/startListeners etc.)
+        if do_action == "initialize" and lifecycle_params and constructor_params_spec and lifecycle_body:
+            lines.append("  initialize(config: ServiceConfig): void {")
+            for line in lifecycle_body.split("\n"):
+                lines.append("    " + line if line.strip() else "")
+            lines.append("  }")
+        elif lifecycle_params and init_calls and constructor_params_spec:
             lines.append("  initialize(config: ServiceConfig): void {")
             for field_name, arg_exprs in init_calls:
                 args_str = ", ".join(arg_exprs)

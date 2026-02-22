@@ -6,8 +6,9 @@ package PSM_RestApiComponent_Interface {
     private import PIM::Behavior::*;
 
     part def <RestApiIngressBinding> 'Rest Api Ingress Binding' {
-        doc /* Protocol binding for REST API server. Listen port for health, metrics, admin. */
+        doc /* Protocol binding for REST API server. Listen host and port for health, metrics, admin. */
 
+        attribute listenHost : String [0..1] = "0.0.0.0" { doc /* Bind address (e.g. 127.0.0.1 or 0.0.0.0). */ }
         attribute listenPort : Integer { doc /* Listen port (e.g. 3000). */ }
     }
 

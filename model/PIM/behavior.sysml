@@ -315,6 +315,18 @@ package PIM_Behavior {
     }
 
     /* -----------------------------------------------------------------------
+     * OperationalStore state machine
+     * Persists message lifecycle, delivery attempts, errors; no transitions.
+     * --------------------------------------------------------------------- */
+
+    state def OperationalStoreStates;
+
+    state operationalStore : OperationalStoreStates {
+        entry; then Idle;
+        state Idle;
+    }
+
+    /* -----------------------------------------------------------------------
      * Top-level HL7Adapter controller state machine
      * This state machine is responsible for coordinating the other state machines.
      * --------------------------------------------------------------------- */

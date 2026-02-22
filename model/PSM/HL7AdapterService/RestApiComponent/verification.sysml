@@ -9,11 +9,12 @@ package PSM_RestApi_Verification {
         doc /* Create adapter with RestApi on fixed port, start server, GET /health and /metrics and /unknown. */
         rep functionBody language "vitest"
             /*
-const REST_PORT = 38473;
-const config = { errorHandler: defaultErrorHandlerConfig, httpForwarder: defaultHttpForwarderConfig, mllpReceiver: defaultMllpReceiverConfig, parser: defaultParserConfig, restApi: { ...defaultRestApiConfig, listenPort: REST_PORT }, transformer: defaultTransformerConfig };
-adapter = new Hl7AdapterService(config.errorHandler, config.httpForwarder, config.mllpReceiver, config.parser, config.restApi, config.transformer);
+const operationalStoreConfig = { ...defaultOperationalStoreConfig, dialect: 'sqlite', path: ':memory:' };
+const config = { logging: defaultLoggingConfig, errorHandler: defaultErrorHandlerConfig, httpForwarder: defaultHttpForwarderConfig, mllpReceiver: defaultMllpReceiverConfig, operationalStore: operationalStoreConfig, parser: defaultParserConfig, restApi: { ...defaultRestApiConfig, listenHost: '127.0.0.1', listenPort: 38473 }, transformer: defaultTransformerConfig };
+adapter = new Hl7AdapterService(config.logging, config.errorHandler, config.httpForwarder, config.mllpReceiver, config.operationalStore, config.parser, config.restApi, config.transformer);
 adapter.initialize(config);
-const base = `http://127.0.0.1:${REST_PORT}`;
+const base = `http://${config.restApi.listenHost}:${config.restApi.listenPort}`;
+await new Promise((r) => setTimeout(r, 100));
 const healthRes = await fetch(`${base}/health`);
 const metricsRes = await fetch(`${base}/metrics`);
 expect(healthRes.status).toBe(200);
@@ -49,11 +50,12 @@ expect(notFoundRes.status).toBe(404);
             doc /* Create adapter with RestApi on fixed port, start server, GET /health and /metrics and /unknown. */
             rep functionBody language "vitest"
             /*
-const REST_PORT = 38473;
-const config = { errorHandler: defaultErrorHandlerConfig, httpForwarder: defaultHttpForwarderConfig, mllpReceiver: defaultMllpReceiverConfig, parser: defaultParserConfig, restApi: { ...defaultRestApiConfig, listenPort: REST_PORT }, transformer: defaultTransformerConfig };
-adapter = new Hl7AdapterService(config.errorHandler, config.httpForwarder, config.mllpReceiver, config.parser, config.restApi, config.transformer);
+const operationalStoreConfig = { ...defaultOperationalStoreConfig, dialect: 'sqlite', path: ':memory:' };
+const config = { logging: defaultLoggingConfig, errorHandler: defaultErrorHandlerConfig, httpForwarder: defaultHttpForwarderConfig, mllpReceiver: defaultMllpReceiverConfig, operationalStore: operationalStoreConfig, parser: defaultParserConfig, restApi: { ...defaultRestApiConfig, listenHost: '127.0.0.1', listenPort: 38473 }, transformer: defaultTransformerConfig };
+adapter = new Hl7AdapterService(config.logging, config.errorHandler, config.httpForwarder, config.mllpReceiver, config.operationalStore, config.parser, config.restApi, config.transformer);
 adapter.initialize(config);
-const base = `http://127.0.0.1:${REST_PORT}`;
+const base = `http://${config.restApi.listenHost}:${config.restApi.listenPort}`;
+await new Promise((r) => setTimeout(r, 100));
 const healthRes = await fetch(`${base}/health`);
 const metricsRes = await fetch(`${base}/metrics`);
 expect(healthRes.status).toBe(200);

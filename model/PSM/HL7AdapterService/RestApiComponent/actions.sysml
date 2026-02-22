@@ -62,6 +62,30 @@ package PSM_RestApi_Actions {
         sendJson(res, 200, body);
         return;
       }
+      if (req.method === 'GET' && path.startsWith('/messages/')) {
+        const id = path.slice('/messages/'.length).split('/')[0];
+        if (id) {
+          const one = service.operationalStore.getMessageStatus(id);
+          if (one) { sendJson(res, 200, one); return; }
+          res.writeHead(404); res.end(); return;
+        }
+      }
+      if (req.method === 'GET' && path === '/messages') {
+        const u = new URL(url, 'http://localhost');
+        const status = u.searchParams.get('status') ?? undefined;
+        const since = u.searchParams.get('since') ?? undefined;
+        const list = service.operationalStore.getMessages(status, since);
+        sendJson(res, 200, list);
+        return;
+      }
+      if (req.method === 'GET' && path === '/errors') {
+        const u = new URL(url, 'http://localhost');
+        const since = u.searchParams.get('since') ?? undefined;
+        const messageId = u.searchParams.get('message_id') ?? undefined;
+        const list = service.operationalStore.getErrorHistory(since, messageId);
+        sendJson(res, 200, list);
+        return;
+      }
       res.writeHead(404);
       res.end();
     } catch (err) {
@@ -70,8 +94,9 @@ package PSM_RestApi_Actions {
     }
   });
   const port = this._config.listenPort ?? 3000;
-  server.listen(port, () => {
-    console.log(`REST API listening on port ${port}`);
+  const host = (this._config.listenHost && this._config.listenHost.trim()) || '0.0.0.0';
+  server.listen(port, host, () => {
+    console.log(`REST API listening on ${host}:${port}`);
   });
   this._dispatch('StartServerSignal');
         */

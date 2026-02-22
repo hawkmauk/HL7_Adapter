@@ -95,6 +95,11 @@ The generated adapter reads configuration from a **`config.json`** file in the *
        "maxPayloadSize": 0,
        "connectionIdleTimeoutMs": 0
      },
+     "operationalStore": {
+       "dialect": "sqlite",
+       "path": "",
+       "connectionString": ""
+     },
      "parser": {
        "encodingFallback": "",
        "strictValidation": 0,
@@ -114,6 +119,21 @@ The generated adapter reads configuration from a **`config.json`** file in the *
    Set **`restApi.listenPort`** (e.g. `3000`) for the health and metrics HTTP server. If omitted or `0`, the server may bind to an ephemeral port. Fill in other fields (e.g. `mllpReceiver.bindPort`, `httpForwarder.baseUrl`) for your environment.
 
 4. **Health and metrics:** Once the adapter is running, GET **`/health`** and **`/metrics`** on the configured host/port (e.g. `http://localhost:3000/health`). See **`docs/RestApi_Dashboard_Contract.md`** for the response shapes.
+
+### Operational store and database
+
+The adapter includes an **operational data store** for message audit (lifecycle, delivery attempts, errors). Technology choice is documented in **`model/PSM/technology_selection.sysml`** (trade study: SQLite for local dev, PostgreSQL for production).
+
+- **SQLite (local):** Set `operationalStore.dialect` to `"sqlite"` and optionally `operationalStore.path` (e.g. `"./data/store.db"`). If `path` is omitted or empty, the store uses an in-memory database. Tables are created automatically on first run.
+- **Initialize schema only (SQLite):** The TypeScript generator copies `scripts/init-db.ts` from `ci/generators/templates/typescript/` into the TypeScript output (e.g. `out/typescript/scripts/init-db.ts`). From that output directory, run:
+  ```bash
+  cd out/typescript && npx ts-node scripts/init-db.ts [path]
+  ```
+  Default path is `./data/store.db` or `STORE_PATH` env. For PostgreSQL, use your migration tool or run the adapter once (schema creation is dialect-aware in the component).
+
+### Demo and testing tools
+
+An **MLLP Emitter** under `tests/mllpemitter/` sends HL7 messages over MLLP to the adapter on a configurable interval, with randomised content and a small fraction of invalid messages to exercise error handling. See [tests/mllpemitter/README.md](tests/mllpemitter/README.md) for how to run it and use it with the adapter for demos.
 
 ### Documentation
 

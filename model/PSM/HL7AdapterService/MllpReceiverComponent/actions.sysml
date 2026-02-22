@@ -106,19 +106,17 @@ package PSM_MLLPReceiver_Actions {
 
         rep functionBody language "TypeScript"
         /*
-start(): void {
   if (this._server) {
-    logger.warn('MLLP server already listening');
     return;
   }
   this._server = net.createServer((socket) => {
+    console.log(`MLLP connection accepted from ${socket.remoteAddress}:${socket.remotePort}`);
     let buffer = Buffer.alloc(0);
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const resetIdle = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
-        logger.info({ remote: socket.remoteAddress }, 'connection idle timeout');
         socket.destroy();
       }, this._config.connectionIdleTimeoutMs);
     };
@@ -165,26 +163,22 @@ start(): void {
     });
 
     socket.on('error', (err) => {
-      logger.warn({ err }, 'socket error');
       if (idleTimer) clearTimeout(idleTimer);
     });
 
     resetIdle();
   });
 
-  this._server.listen(this._config.bindPort, this._config.bindHost, () => {
-    logger.info(
-      { host: this._config.bindHost, port: this._config.bindPort },
-      'MLLP listener started',
-    );
+  const host = (this._config.bindHost && this._config.bindHost.trim()) || '0.0.0.0';
+  const port = this._config.bindPort;
+  this._server.listen(port, host, () => {
+    console.log(`MLLP receiver initialised and listening on ${host}:${port}`);
     this._dispatch('ListenerStartSignal');
   });
 
   this._server.on('error', (err) => {
-    logger.error({ err }, 'MLLP server error');
     this._dispatch('MLLPFrameErrorSignal');
   });
-}
         */
     }
 
@@ -194,15 +188,12 @@ start(): void {
 
         rep functionBody language "TypeScript"
         /*
-stop(): void {
   if (!this._server) return;
   const s = this._server;
   this._server = null;
   s.close(() => {
-    logger.info('MLLP listener stopped');
     this._dispatch('ListenerStopSignal');
   });
-}
         */
     }
 

@@ -125,6 +125,7 @@ def _build_package_json() -> str:
             "test:watch": "vitest",
         },
         "dependencies": {
+            "better-sqlite3": "^11.0.0",
             "hl7-standard": "^1.0.0",
             "undici": "^7.0.0",
             "pino": "^9.0.0",

@@ -3,13 +3,15 @@ package PSM_HL7AdapterService {
     alias Action for PSM_HL7AdapterService_Actions;
     alias Interface for PSM_HL7AdapterService_Interfaces;
 
+    alias Logging for PSM_LoggingComponent;
     alias MLLPReceiver for PSM_MllpReceiverComponent;
     alias Parser for PSM_ParserComponent;
     alias Transformer for PSM_TransformerComponent;
     alias HTTPForwarder for PSM_HTTPForwarderComponent;
     alias ErrorHandler for PSM_ErrorHandlerComponent;
     alias RestApi for PSM_RestApiComponent;
-    
+    alias OperationalStore for PSM_OperationalStoreComponent;
+
     alias MLLPIngressPort for MLLPReceiver::Interface::PSM_MLLPIngressPort;
     alias JSONEgressPort for HTTPForwarder::Interface::PSM_JSONEgressPort;
 
@@ -20,12 +22,14 @@ package PSM_HL7AdapterService {
         port :>> fromUpstream : MLLPIngressPort;
         port :>> toDownstream : JSONEgressPort;
 
+        part :>> logging : Logging::Logging;
         part :>> mllpReceiver : MLLPReceiver::MLLPReceiver;
         part :>> parser : Parser::Parser;
         part :>> transformer : Transformer::Transformer;
         part :>> httpForwarder : HTTPForwarder::HTTPForwarder;
         part :>> errorHandler : ErrorHandler::ErrorHandler;
         part :>> restApi : RestApi::RestApi;
+        part :>> operationalStore : OperationalStore::OperationalStore;
 
         perform action initialize : Action::InitializeAdapter;
     }

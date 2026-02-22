@@ -20,4 +20,8 @@ package CIM_Assumptions {
     constraint def <PHIHandlingPolicy> 'PHI Handling Policy' {
         doc /* Patient-related data must be handled in a manner consistent with security and compliance expectations. */
     }
+
+    constraint def <MessageLifecycleAuditInScope> 'Message Lifecycle Audit In Scope' {
+        doc /* Message and frame lifecycle audit (inbound MLLP frames and HL7 messages: received, parsed, transformed, delivered or failed) and queryable delivery/error history are in scope for M3.4.Audit Logging and M4.Operational Transparency. The solution may provide an operational data store to persist and expose this audit trail. */
+    }
 }

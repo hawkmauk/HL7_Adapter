@@ -60,6 +60,7 @@ def build_test_file(
         default_config_lines = [
             f"  {attr['name']}: {_default_config_value_ts(attr['type'])},"
             for attr in config_attrs
+            if not attr.get("optional")
         ]
         lines.append(f"const defaultConfig: {config_type} = {{")
         lines.extend(default_config_lines)
@@ -125,7 +126,7 @@ def build_service_test_file(
         lines.append(f"import {{ {config_type} }} from '../{module_file}';")
     lines.append("")
 
-    # Default config per component (same defaults as component tests).
+    # Default config per component (omit optional/injected attrs so service can inject them).
     for param in service_constructor_params:
         param_class_name = param["class_name"]
         config_type = param["config_type"]
@@ -133,6 +134,7 @@ def build_service_test_file(
         default_lines = [
             f"  {a['name']}: {_default_config_value_ts(a['type'])},"
             for a in config_attrs
+            if not a.get("optional")
         ]
         lines.append(f"const default{param_class_name}Config: {config_type} = {{")
         lines.extend(default_lines)

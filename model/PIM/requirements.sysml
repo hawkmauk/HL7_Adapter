@@ -116,4 +116,24 @@ package PIM_Requirements {
     requirement <SYS4_5> 'SYS4.5.Alerting Hooks' {
         doc /* The adapter shall support integration with alerting workflows (thresholds on error rates, latency, connectivity) for operations engineers. Derives from CIM M4_4. Satisfied by ErrorHandler. */
     }
+
+    /* -----------------------------------------------------------------------
+     * SYS5 — Operational Data Store / Message Audit (PIM)
+     * ----------------------------------------------------------------------- */
+
+    requirement <SYS5> 'SYS5.Operational Data Store' {
+        doc /* The adapter shall persist an audit trail of incoming MLLP frames and HL7 messages (lifecycle status), delivery attempts, and integration errors, and expose queryable APIs for message status and error history (AIM S12.7–12.9). Refines CIM M3_4 and M4. */
+    }
+
+    requirement <SYS5_1> 'SYS5.1.Message Lifecycle Persistence' {
+        doc /* The adapter shall persist message lifecycle state (received, parsed, transformed, delivered, failed) for each ingested frame/message. Derives from CIM M3_4, M4. Satisfied by OperationalStore. */
+    }
+
+    requirement <SYS5_2> 'SYS5.2.Queryable Message Status' {
+        doc /* The adapter shall expose queryable message status and delivery attempt history (e.g. via REST). Derives from CIM M3_4, M4. Satisfied by OperationalStore and RestApi. */
+    }
+
+    requirement <SYS5_3> 'SYS5.3.Queryable Error History' {
+        doc /* The adapter shall expose queryable error history (message_id, error_class, detail, timestamp) for operators. Derives from CIM M4. Satisfied by OperationalStore and RestApi. */
+    }
 }

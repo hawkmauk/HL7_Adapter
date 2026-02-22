@@ -14,6 +14,8 @@ docker pull ghcr.io/hawkmauk/hl7-adapter:latest
 docker run -p 3000:3000 -p 2575:2575 -p 8080:8080 -p 8081:8081 ghcr.io/hawkmauk/hl7-adapter:latest
 ```
 
+Launch the [dashboard](http://localhost:8081)
+
 Ports: adapter REST API **3000**, MLLP **2575**, HTTPS endpoint **8080**, dashboard **8081**. To run from source (without Docker), see [Building](docs/Building.md).
 
 ### How it works

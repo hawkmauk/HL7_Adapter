@@ -24,7 +24,7 @@ echo "=== Starting adapter ==="
 ADAPTER_PID=$!
 
 echo "=== Starting dashboard on port $DASHBOARD_PORT ==="
-(cd /app/dashboard && npx -y serve -l 0.0.0.0:$DASHBOARD_PORT) &
+(cd /app/dashboard && npx -y serve -l tcp://0.0.0.0:$DASHBOARD_PORT) &
 DASH_PID=$!
 echo "  -> Dashboard: http://localhost:$DASHBOARD_PORT"
 

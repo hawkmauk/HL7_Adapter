@@ -24,9 +24,12 @@ package PSM_RestApi_Actions {
       const url = req.url ?? '';
       const path = url.split('?')[0];
       if (req.method === 'GET' && path === '/health') {
+        const errorHandlerStatus = service.errorHandler.getStatus();
+        const status = errorHandlerStatus.status === 'degraded' ? 'degraded' : 'ready';
         const body = {
+          status,
           components: {
-            errorHandler: service.errorHandler.getStatus(),
+            errorHandler: errorHandlerStatus,
             mllpReceiver: service.mllpReceiver.getStatus(),
             parser: service.parser.getStatus(),
             transformer: service.transformer.getStatus(),

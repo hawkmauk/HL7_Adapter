@@ -89,7 +89,5 @@ if [ "$TARGET" == "typescript" ]; then
     npm run build
     echo "Running tests..."
     npm run test
-    echo "Starting server..."
-    npm run start
     echo "Done."
 fi

@@ -59,7 +59,7 @@ package PSM_OperationalStore_Structure {
         attribute received_at : String;
         attribute message_type : String [0..1];
         attribute control_id : String [0..1];
-        attribute 'metadata' : MessageMetadataView [0..1];
+        attribute metadata : MessageMetadataView [0..1];
         attribute demographics : PatientDemographicsView [0..1];
     }
 }

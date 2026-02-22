@@ -45,7 +45,7 @@ package PSM_OperationalStore_Actions {
     action def <UpdateMessageDetail> 'Update Message Detail' {
         in :> self : OperationalStore;
         in messageId : String;
-        in 'metadata' : MessageMetadataView;
+        in metadata : MessageMetadataView;
         in demographics : PatientDemographicsView [0..1];
         doc /* Store metadata and demographics for a message (called after parse). */
         rep functionBody language "TypeScript"

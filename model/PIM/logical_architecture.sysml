@@ -37,6 +37,16 @@ package PIM_LogicalArchitecture {
         exhibit restApi;
     }
 
+    part def <DownstreamAPIOwnerBoundary> 'Downstream API Owner' :> CIM::Stakeholders::DownstreamAPIOwner {
+        doc /* Boundary part: owns the HTTP API that consumes transformed JSON payloads. Port receives payloads from the adapter. */
+        port fromAdapter : JSONIngressPort;
+    }
+
+    part def <RestApiConsumer> 'Rest Api Consumer' {
+        doc /* Boundary part: consumer of REST API (health, metrics, admin). Port receives responses from the adapter. */
+        port fromAdapter : RestApiEgressPort;
+    }
+
     part def HL7AdapterService :> CIM::Context::HL7AdapterService {
         doc /* Adapter at PIM level with boundary ports only. Internal composition of MLLPReceiver, Parser, Transformer, HTTPForwarder, ErrorHandler, RestApi. Exhibits the top-level controller state machine (entry → Initializing do initialize, then Idle). */
         exhibit hl7AdapterController;

@@ -364,7 +364,15 @@ def _build_component_module(
     # --- 6. Private instance attributes (part def attributes whose name starts with '_') ---
     instance_attrs = _get_instance_attributes(psm_node) if psm_node else []
     for attr in instance_attrs:
-        lines.append(f"  private {attr['name']}: {attr['type']} = {attr['default']};")
+        optional = attr.get("optional", False)
+        composite = attr.get("composite", False)
+        if optional:
+            lines.append(f"  private {attr['name']}?: {attr['type']};")
+        elif composite:
+            # Part/interface type: no field initializer; will be set in constructor
+            lines.append(f"  private {attr['name']}: {attr['type']};")
+        else:
+            lines.append(f"  private {attr['name']}: {attr['type']} = {attr['default']};")
 
     # --- 7. classMembers rep (extra field declarations, legacy) ---
     class_members = reps.get("classMembers", "").strip()
@@ -383,6 +391,14 @@ def _build_component_module(
     else:
         first_state = states[0] if states else "UNKNOWN"
         lines.append(f"    this._state = {enum_name}.{_to_screaming_snake(first_state)};")
+    for attr in instance_attrs:
+        if attr.get("optional", False):
+            continue
+        if attr.get("composite", False):
+            # Composite types from the model are emitted as TS interfaces, not classes; use object literal + type assertion
+            lines.append(f"    this.{attr['name']} = {{}} as {attr['type']};")
+        else:
+            lines.append(f"    this.{attr['name']} = {attr['default']};")
     lines.append("  }")
     lines.append("")
 
@@ -464,6 +480,9 @@ def _emit_dispatch(
             seen_signals.add(t["signal"])
             lines.append(f"          case '{t['signal']}':")
             lines.append(f"            this._state = {enum_name}.{_to_screaming_snake(t['to_state'])};")
+            action_name = t.get("transition_action")
+            if action_name:
+                lines.append(f"            this.{action_name}();")
             lines.append("            break;")
         lines.append("          default:")
         lines.append("            break;")

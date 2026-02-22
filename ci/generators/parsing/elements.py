@@ -152,7 +152,7 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
         value_assignments = [float(m.group(1)) for m in ATTR_VALUE_ASSIGN_RE.finditer(body)]
         weight_assignments = [float(m.group(1)) for m in ATTR_WEIGHT_ASSIGN_RE.finditer(body)]
 
-        transitions: list[tuple[str, str, str]] = []
+        transitions: list[tuple[str, str, str, str | None]] = []
         entry_target: str | None = None
         entry_action: str | None = None
         do_action: str | None = None
@@ -163,7 +163,10 @@ def _extract_elements(file_path: Path, text: str) -> list[ModelElement]:
                 if sa_match.group("state_name"):
                     current_state = sa_match.group("state_name")
                 elif sa_match.group("signal") and current_state:
-                    transitions.append((current_state, sa_match.group("signal"), sa_match.group("target")))
+                    action = sa_match.group("transition_action")
+                    transitions.append(
+                        (current_state, sa_match.group("signal"), sa_match.group("target"), action if action else None)
+                    )
             et_match = ENTRY_THEN_RE.search(body)
             if et_match:
                 entry_target = et_match.group("target")

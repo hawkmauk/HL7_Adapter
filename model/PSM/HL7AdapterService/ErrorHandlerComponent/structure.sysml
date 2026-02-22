@@ -35,12 +35,12 @@ package PSM_ErrorHandler_Structure {
 
     part def <MetricsCounters> 'Metrics Counters' {
         doc /* In-memory counters: total errors and per-class counts. */
-        attribute errors_total : Integer;
-        attribute errors_parse_error : Integer;
-        attribute errors_validation_error : Integer;
-        attribute errors_connection_error : Integer;
-        attribute errors_timeout_error : Integer;
-        attribute errors_http_client_error : Integer;
+        attribute errors_total : Integer = 0;
+        attribute errors_parse_error : Integer = 0;
+        attribute errors_validation_error : Integer = 0;
+        attribute errors_connection_error : Integer = 0;
+        attribute errors_timeout_error : Integer = 0;
+        attribute errors_http_client_error : Integer = 0;
         attribute errors_http_server_error : Integer;
     }
 
@@ -52,16 +52,16 @@ package PSM_ErrorHandler_Structure {
 
     part def <ErrorHandlerMetrics> 'Error Handler Metrics' {
         doc /* Snapshot of error and message-flow metrics for health/monitoring. */
-        attribute errors_total : Integer;
-        attribute errors_parse_error : Integer;
-        attribute errors_validation_error : Integer;
-        attribute errors_connection_error : Integer;
-        attribute errors_timeout_error : Integer;
-        attribute errors_http_client_error : Integer;
-        attribute errors_http_server_error : Integer;
-        attribute messages_received : Integer;
-        attribute messages_parsed : Integer;
-        attribute messages_transformed : Integer;
-        attribute messages_delivered : Integer;
+        attribute errors_total : Integer = 0;
+        attribute errors_parse_error : Integer = 0;
+        attribute errors_validation_error : Integer = 0;
+        attribute errors_connection_error : Integer = 0;
+        attribute errors_timeout_error : Integer = 0;
+        attribute errors_http_client_error : Integer = 0;
+        attribute errors_http_server_error : Integer = 0;
+        attribute messages_received : Integer = 0;
+        attribute messages_parsed : Integer = 0;
+        attribute messages_transformed : Integer = 0;
+        attribute messages_delivered : Integer = 0;
     }
 }

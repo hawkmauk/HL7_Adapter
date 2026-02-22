@@ -67,7 +67,20 @@ package PSM_ErrorHandler_Actions {
         doc /* Return a snapshot of error and message-flow metrics for monitoring and tests. */
         rep functionBody language "TypeScript"
         /*
-  return { ...this._metrics };
+  const m = this._metrics;
+  return {
+    errors_total: m?.errors_total ?? 0,
+    errors_parse_error: m?.errors_parse_error ?? 0,
+    errors_validation_error: m?.errors_validation_error ?? 0,
+    errors_connection_error: m?.errors_connection_error ?? 0,
+    errors_timeout_error: m?.errors_timeout_error ?? 0,
+    errors_http_client_error: m?.errors_http_client_error ?? 0,
+    errors_http_server_error: m?.errors_http_server_error ?? 0,
+    messages_received: m?.messages_received ?? 0,
+    messages_parsed: m?.messages_parsed ?? 0,
+    messages_transformed: m?.messages_transformed ?? 0,
+    messages_delivered: m?.messages_delivered ?? 0,
+  };
         */
     }
 
@@ -104,6 +117,15 @@ package PSM_ErrorHandler_Actions {
         rep functionBody language "TypeScript"
         /*
   this._metrics.messages_delivered = (this._metrics.messages_delivered ?? 0) + 1;
+        */
+    }
+
+    action def <RecordError> 'Record Error' {
+        in :> self : ErrorHandler;
+        doc /* Increment errors_total (call when state machine transitions to HandlingError). */
+        rep functionBody language "TypeScript"
+        /*
+  this._metrics.errors_total = (this._metrics.errors_total ?? 0) + 1;
         */
     }
 }

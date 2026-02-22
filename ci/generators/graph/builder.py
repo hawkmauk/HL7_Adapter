@@ -155,19 +155,22 @@ def _add_supertypes(graph: ModelGraph, elem: ModelElement) -> None:
 def _add_transitions(graph: ModelGraph, elem: ModelElement, index: ModelIndex) -> None:
     if elem.kind != "state" or not elem.transitions:
         return
-    for from_state_name, signal_name, target_name in elem.transitions:
+    for from_state_name, signal_name, target_name, transition_action in elem.transitions:
         signal_qname = _resolve_name(graph, elem, signal_name)
         from_qname = _resolve_sibling_state(graph, elem, from_state_name)
         target_qname = _resolve_sibling_state(graph, elem, target_name)
+        props: dict = {
+            "signal": signal_qname or signal_name,
+            "signal_name": signal_name,
+            "machine": elem.qualified_name,
+        }
+        if transition_action:
+            props["transition_action"] = transition_action
         graph.add_edge(GraphEdge(
             source=from_qname or f"{elem.qualified_name}::{from_state_name}",
             target=target_qname or target_name,
             label="transition",
-            properties={
-                "signal": signal_qname or signal_name,
-                "signal_name": signal_name,
-                "machine": elem.qualified_name,
-            },
+            properties=props,
         ))
 
 

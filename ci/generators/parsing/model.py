@@ -39,7 +39,7 @@ class ModelElement:
     constraint_params: list[tuple[str, str]] = field(default_factory=list)  # (name, type) for constraint def
     value_assignments: list[float] = field(default_factory=list)  # attribute ::> value = N (order preserved)
     weight_assignments: list[float] = field(default_factory=list)  # attribute ::> weight = N (order preserved)
-    transitions: list[tuple[str, str, str]] = field(default_factory=list)  # (source_state, signal, target_state)
+    transitions: list[tuple[str, str, str, str | None]] = field(default_factory=list)  # (source_state, signal, target_state, optional transition_action)
     entry_target: str | None = None  # initial state from "entry; then X;"
     entry_action: str | None = None  # "entry actionName { ... }"
     do_action: str | None = None  # "do actionName { ... }"

@@ -303,9 +303,11 @@ package PIM_Behavior {
     state def RestApiStates;
 
     state restApi : RestApiStates {
-        entry; then Idle;
+        entry;then Initializing;
 
-        state Idle;
+        state Initializing {
+            do action initialize : Initialize;
+        }
         accept StartServerSignal
             then Serving;
 
@@ -328,6 +330,7 @@ package PIM_Behavior {
         accept ServiceStartedSignal
             then Idle;
         accept ServiceErrorSignal
+            do action recordError
             then HandlingError;
 
         state Idle;
@@ -340,32 +343,41 @@ package PIM_Behavior {
 
         state ReceivingFrame;
         accept MLLPFrameCompleteSignal
+            do action recordMessageReceived
             then HandlingFrame;
         accept MLLPFrameErrorSignal
+            do action recordError
             then HandlingError;
 
         state HandlingFrame;
         accept MLLPHandlerCompleteSignal
+            do action recordMessageParsed
             then HandlingHL7Message;
         accept MLLPHandlerFailedSignal
+            do action recordError
             then HandlingError;
 
         state HandlingHL7Message;
         accept HL7HandlerCompleteSignal
+            do action recordMessageTransformed
             then TransformingHL7Message;
         accept HL7HandlerFailedSignal
+            do action recordError
             then HandlingError;
 
         state TransformingHL7Message;
         accept HL7TransformerCompleteSignal
+            do action recordMessageDelivered
             then Forwarding;
         accept HL7TransformerFailedSignal
+            do action recordError
             then HandlingError;
 
         state Forwarding;
         accept HTTP2xxSignal
             then Idle;
         accept HTTP5xxOrNetworkErrorSignal
+            do action recordError
             then HandlingError;
 
         state HandlingError;

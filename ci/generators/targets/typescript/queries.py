@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from ...ir import ExposedElement, GraphEdge, GraphNode, ModelGraph
-from .naming import _display_name_to_class_name, _sysml_type_to_ts
+from .naming import _display_name_to_class_name, _sysml_type_to_ts, _to_camel
 
 
 PIM_BEHAVIOR_PKG = "PIM_Behavior"
@@ -433,7 +433,7 @@ def _collect_states(graph: ModelGraph, machine_qname: str) -> list[str]:
 
 
 def _collect_transitions(graph: ModelGraph, machine_qname: str) -> list[dict[str, str]]:
-    """Return unique transitions from a state machine: [{signal, from_state, to_state}]."""
+    """Return unique transitions from a state machine: [{signal, from_state, to_state, transition_action?}]."""
     seen: set[tuple[str, str, str]] = set()
     result: list[dict[str, str]] = []
 
@@ -455,14 +455,45 @@ def _collect_transitions(graph: ModelGraph, machine_qname: str) -> list[dict[str
         key = (signal_name, source_name, target)
         if key not in seen:
             seen.add(key)
-            result.append({
+            t_dict: dict[str, str] = {
                 "signal": signal_name,
                 "from_state": source_name,
                 "to_state": target,
-            })
+            }
+            transition_action = edge.properties.get("transition_action")
+            if transition_action:
+                t_dict["transition_action"] = transition_action
+            result.append(t_dict)
 
     result.sort(key=lambda t: (t["from_state"], t["signal"], t["to_state"]))
     return result
+
+
+def get_part_property_for_action(
+    graph: ModelGraph,
+    adapter_qname: str,
+    action_usage_name: str,
+    document: object | None = None,
+) -> str:
+    """Return the adapter part property name (camelCase) that performs the given action usage, or empty string.
+
+    Used by the service generator to emit this.<part>.<actionName>() when a transition has a transition_action.
+    """
+    component_map = get_component_map(graph, document=document)
+    for comp in component_map:
+        part_def_qname = comp.get("part_def_qname")
+        if not part_def_qname:
+            continue
+        for edge in graph.outgoing(part_def_qname, "performs"):
+            if edge.properties.get("usage_name") == action_usage_name:
+                return _to_camel(comp["class_name"])
+    # Adapter itself may perform the action (e.g. initialize); emit this.<actionName>() when part is ""
+    adapter_node = graph.get(adapter_qname)
+    if adapter_node:
+        for edge in graph.outgoing(adapter_qname, "performs"):
+            if edge.properties.get("usage_name") == action_usage_name:
+                return ""
+    return ""
 
 
 def _find_psm_node(graph: ModelGraph, short_name: str, part_def_qname: str | None = None) -> GraphNode | None:
@@ -605,18 +636,33 @@ def _get_config_attributes(node: GraphNode) -> list[dict[str, str]]:
     return result
 
 
-def _get_instance_attributes(node: GraphNode) -> list[dict[str, str]]:
-    """Extract private instance attributes from a PSM part node (name starts with '_'). Returns name, type (TS), and default literal."""
+def _is_primitive_ts_type(ts_type: str) -> bool:
+    """True if the TypeScript type is a primitive (string, number, boolean) or union with null."""
+    t = ts_type.strip()
+    if t in ("string", "number", "boolean"):
+        return True
+    if "|" in t:
+        left = t.split("|")[0].strip()
+        if left in ("string", "number", "boolean"):
+            return True
+    return False
+
+
+def _get_instance_attributes(node: GraphNode) -> list[dict[str, str | bool]]:
+    """Extract private instance attributes from a PSM part node (name starts with '_'). Returns name (with [*] stripped), type (TS), default, optional flag, and composite (true when type is another part/interface, needs constructor init)."""
     raw = node.properties.get("attributes", [])
-    result = []
+    result: list[dict[str, str | bool]] = []
     for attr in raw:
         name = attr.get("name", "")
         if not name.startswith("_"):
             continue
+        # Strip SysML multiplicity from name so we emit a valid TS identifier (e.g. _metrics[*] -> _metrics)
+        name_clean = name.replace("[*]", "").replace("[0..1]", "").strip()
         raw_type = (attr.get("type") or "").strip()
         type_only = raw_type.split(" [0..1]")[0].strip().split("=")[0].strip()
         ts_type = _sysml_type_to_ts(type_only, pass_through_unknown=True)
-        optional = " [0..1]" in raw_type
+        optional = " [0..1]" in raw_type or "[*]" in name
+        composite = not _is_primitive_ts_type(ts_type)
         if optional and "string" in ts_type.lower():
             ts_type = "string | null"
             default = "null"
@@ -624,5 +670,5 @@ def _get_instance_attributes(node: GraphNode) -> list[dict[str, str]]:
             default = "null"
         else:
             default = "undefined"
-        result.append({"name": name, "type": ts_type, "default": default})
+        result.append({"name": name_clean, "type": ts_type, "default": default, "optional": optional, "composite": composite})
     return result

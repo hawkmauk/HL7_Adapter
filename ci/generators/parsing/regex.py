@@ -70,9 +70,16 @@ ACCEPT_THEN_RE = re.compile(
     r"(?m)^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;"
 )
 
+# Accept with optional "do action ActionName" on transition
+ACCEPT_THEN_DO_ACTION_RE = re.compile(
+    r"(?m)^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*"
+    r"(?:do\s+action\s+(?P<transition_action>[A-Za-z_][A-Za-z0-9_]*)\s*)?;"
+)
+
 STATE_OR_ACCEPT_RE = re.compile(
     r"(?m)(?:^\s*state\s+(?P<state_name>[A-Za-z_][A-Za-z0-9_]*)\s*[;{])"
-    r"|(?:^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*;)"
+    r"|(?:^\s*accept\s+(?P<signal>[A-Za-z_][A-Za-z0-9_]*)\s+then\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s*"
+    r"(?:do\s+action\s+(?P<transition_action>[A-Za-z_][A-Za-z0-9_]*)\s*)?;)"
 )
 
 ENTRY_THEN_RE = re.compile(

@@ -8,6 +8,7 @@ from .queries import (
     _find_root_adapter_from_exposed,
     get_adapter_state_machine,
     get_component_map,
+    get_part_property_for_action,
     get_service_lifecycle_initial_do_action,
     get_service_run_action_body,
     PIM_BEHAVIOR_PKG,
@@ -59,6 +60,12 @@ def _derive_service_class_name(graph: ModelGraph, document: object | None = None
 
 def _build_service_module(graph: ModelGraph, document: object | None = None) -> str:
     """Generate the service.ts orchestrator that wires all components together."""
+    if document is not None and getattr(document, "exposed_elements", None):
+        adapter_qname, _ = _find_root_adapter_from_exposed(graph, document.exposed_elements)
+        if not adapter_qname:
+            adapter_qname, _ = _find_root_adapter_part_def(graph)
+    else:
+        adapter_qname, _ = _find_root_adapter_part_def(graph)
     component_map = get_component_map(graph, document=document)
     service_state_machine = get_adapter_state_machine(graph, document=document)
     if not service_state_machine:
@@ -168,6 +175,13 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
             seen.add(t["signal"])
             lines.append(f"          case '{t['signal']}':")
             lines.append(f"            this._state = {enum_name}.{_to_screaming_snake(t['to_state'])};")
+            action_name = t.get("transition_action")
+            if action_name and adapter_qname:
+                part = get_part_property_for_action(graph, adapter_qname, action_name, document=document)
+                if part:
+                    lines.append(f"            this.{part}.{action_name}();")
+                else:
+                    lines.append(f"            this.{action_name}();")
             lines.append("            break;")
         lines.append("          default:")
         lines.append("            break;")

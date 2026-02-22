@@ -34,7 +34,6 @@ package PSM_HL7AdapterService_Interfaces {
         in item ::> jsonPayload : JSONPayload;
         in attribute ::> payloadReceived : HTTP2xxSignal;
     }
-
     alias PSM_MLLPIngressPort for PSM_HL7AdapterService::MLLPReceiver::Interface::PSM_MLLPIngressPort;
 
     interface def <PSM_UpstreamToAdapter> 'PSM Upstream to Adapter' :> UpstreamToAdapter {
@@ -43,11 +42,21 @@ package PSM_HL7AdapterService_Interfaces {
         end consumerPort : PSM_MLLPIngressPort;
     }
 
-    alias PSM_JSONEgressPort for PSM_HL7AdapterService::HTTPForwarder::Interface::PSM_JSONEgressPort;
+    alias HTTPForwarderOutputPort for PSM_HL7AdapterService::HTTPForwarder::Interface::PSM_JSONEgressPort;
+    alias DownstreamInputPort for PIM::Interfaces::JSONIngressPort;
+
+    alias UserOutputPort for PIM::Interfaces::RestApiEgressPort;
+    alias RestApiInputPort for PSM_HL7AdapterService::RestApi::Interface::PSM_RestApiIngressPort;
 
     interface def <PSM_AdapterToDownstream> 'PSM Adapter to Downstream' :> AdapterToDownstream {
         doc /* Boundary interface with HTTP binding (HTTPS, POST, Content-Type, TLS, auth). */
-        end supplierPort : PSM_JSONEgressPort;
-        end consumerPort : PSM_JSONIngressPort;
+        end supplierPort : HTTPForwarderOutputPort;
+        end consumerPort : DownstreamInputPort;
+    }
+
+    interface def <PSM_AdapterToUser> 'PSM Adapter to User' :> AdapterToUser {
+        doc /* Boundary interface with REST API binding (HTTPS, GET/POST, application/json). */
+        end supplierPort : RestApiInputPort;
+        end consumerPort : UserOutputPort;
     }
 }

@@ -30,7 +30,7 @@ package PSM_HL7AdapterService_Actions {
     alias InitializeErrorHandler for PSM_ErrorHandler_Actions::InitializeErrorHandler;
 
     alias MLLPIngressBinding for PSM_HL7AdapterService_Interfaces::PSM_MLLPIngressPort;
-    alias HTTPEgressBinding for PSM_HL7AdapterService_Interfaces::PSM_JSONEgressPort;
+    alias HTTPEgressBinding for PSM_HL7AdapterService_Interfaces::HTTPForwarderOutputPort;
 
     action def <InitializeAdapter> 'Initialize Adapter' :> CIM::Actions::Initialize {
         in config : CIM::Domain::Configuration;

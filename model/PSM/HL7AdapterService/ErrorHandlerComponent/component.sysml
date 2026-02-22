@@ -14,7 +14,7 @@ package PSM_ErrorHandlerComponent {
         attribute deadLetterPath : String { doc /* File path or queue identifier for messages that cannot be delivered after retries. */ }
         attribute classificationTaxonomy : String { doc /* Name or path of the error classification taxonomy (e.g. ParseError, DeliveryError). */ }
         attribute _metrics : ErrorHandlerMetrics { doc /* In-memory error counters; exposed via getMetrics(). */ }
-        attribute _lastError : String [0..1] { doc /* Last error message text for getStatus() / health. */ }
+        attribute _lastError[*] : String { doc /* Last error message text for getStatus() / health. */ }
 
         perform action initializeFromBinding : Actions::InitializeErrorHandler;
         perform action handleIntegrationError : Actions::HandleIntegrationError;
@@ -24,5 +24,6 @@ package PSM_ErrorHandlerComponent {
         perform action recordMessageParsed : Actions::RecordMessageParsed;
         perform action recordMessageTransformed : Actions::RecordMessageTransformed;
         perform action recordMessageDelivered : Actions::RecordMessageDelivered;
+        perform action recordError : Actions::RecordError;
     }
 }

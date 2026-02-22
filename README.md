@@ -77,6 +77,7 @@ We use **CI** to keep artifacts in sync with the model:
   - Generates **project documents** (ConOps, requirements, interface design, gateway signoff, etc.) from the model and builds **PDF** and **HTML**.
   - **Deploys them to GitHub Pages** so stakeholders always have the latest docs: **[https://hawkmauk.github.io/HL7_Adapter/](https://hawkmauk.github.io/HL7_Adapter/)**.
   - **Builds the demo from the model**: generates the TypeScript adapter from the SysML model, runs tests, and builds a **Docker image** of the adapter (pushed to GitHub Container Registry). So both the project documents and the runnable demo are produced **automatically from the model** on every merge to `main`.
+  - **Generated source code** is uploaded as a **GitHub Actions artifact** (`generated-adapter-source`): a tarball of the TypeScript adapter (without `node_modules`). You can download it from the [Actions](https://github.com/hawkmauk/HL7_Adapter/actions) tab for the latest run of “Build docs”.
 
 No hand-written docs or code are deployed; the **model** is the source of truth, and CI turns it into published docs and a containerised demo.
 

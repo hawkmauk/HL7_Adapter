@@ -1,9 +1,11 @@
 package PSM_HTTPForwarder_Actions {
 
     private import ScalarValues::*;
+    private import PSM_HTTPForwarder_Structure::*;
 
     alias HttpForwarder for PSM_HTTPForwarderComponent::HTTPForwarder;
     alias HTTPEgressBinding for PSM_HTTPForwarderComponent_Interface::HTTPEgressBinding;
+    alias HL7AdapterServiceStatus for PSM_HL7AdapterService_Structure::HL7AdapterServiceStatus;
 
     doc /* HTTP forwarder actions: initialize from binding, send JSON payload with retry and timeout. */
 
@@ -11,6 +13,16 @@ package PSM_HTTPForwarder_Actions {
         in 'binding' : HTTPEgressBinding;
         in :> self : HttpForwarder;
         doc /* Sets this part's attributes from binding and runtimeConfig for use at construction/bootstrap. Maps baseUrl (from binding.baseUrlPattern or runtimeConfig.baseUrl), requestTimeoutMs, maxRetries, retryBackoffMs, tlsMinVersion, tlsRejectUnauthorized from binding/runtimeConfig. */
+    }
+
+    action def <GetHTTPForwarderStatus> 'Get HTTP Forwarder Status' {
+        in :> self : HttpForwarder;
+        out result : HL7AdapterServiceStatus;
+        doc /* Return current component state for health/status endpoints. */
+        rep functionBody language "TypeScript"
+        /*
+  result = { status: this.state };
+        */
     }
 
     action def <SendJSONPayload> 'Send JSON Payload' :> CIM::Actions::SendJSONPayload {
@@ -90,7 +102,7 @@ package PSM_HTTPForwarder_Actions {
   }
   this._dispatch('ForwarderMaxRetriesExceededSignal');
   this.emit('deliveryFailed', { message: lastError?.message ?? 'Max retries exceeded' });
-  return false;
+  success = false;
         */
     }
 }

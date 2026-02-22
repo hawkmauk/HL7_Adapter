@@ -410,6 +410,121 @@ def get_service_run_action_body(
     return ""
 
 
+def get_initialize_from_binding_calls(
+    graph: ModelGraph,
+    document: object | None = None,
+) -> list[tuple[str, list[str]]]:
+    """Return (part_field_name, arg_exprs) for each adapter part that has initializeFromBinding.
+
+    Used to generate service.initialize(config) body: for each part, emit
+    this.<field>.initializeFromBinding(...args). Arg expressions: config.<field> for binding-like
+    params, 'this' for service param. Part field name is camelCase class name (e.g. restApi, httpForwarder).
+    """
+    component_map = get_component_map(graph, document=document)
+    if not component_map:
+        return []
+    adapter_prefix = ""
+    if document is not None and getattr(document, "exposed_elements", None):
+        adapter_qname, _ = _find_root_adapter_from_exposed(graph, document.exposed_elements)
+        if not adapter_qname:
+            adapter_qname, _ = _find_root_adapter_part_def(graph)
+    else:
+        adapter_qname, _ = _find_root_adapter_part_def(graph)
+    if adapter_qname:
+        adapter_prefix = (adapter_qname.split("::")[0] + "_") if "::" in adapter_qname else ""
+
+    result: list[tuple[str, list[str]]] = []
+    for comp in component_map:
+        part_def_qname = comp.get("part_def_qname")
+        if not part_def_qname:
+            continue
+        part_node = graph.get(part_def_qname)
+        if not part_node:
+            continue
+        perform_decls = part_node.properties.get("perform_actions") or []
+        if not isinstance(perform_decls, list):
+            continue
+        init_name = "initializeFromBinding"
+        if not any(
+            (d.get("name") if isinstance(d, dict) else None) == init_name
+            for d in perform_decls
+        ):
+            continue
+        prefer_prefix = (part_def_qname.split("::")[0] + "_") if "::" in part_def_qname else adapter_prefix
+        for edge in graph.outgoing(part_def_qname, "performs"):
+            if edge.properties.get("usage_name") != init_name:
+                continue
+            action_qname = edge.target
+            if action_qname and action_qname not in graph.nodes:
+                action_qname = _resolve_action_qname(graph, edge.target or "", prefer_prefix)
+            action_node = graph.get(action_qname) if action_qname else None
+            if not action_node:
+                break
+            # Only include parts whose initializeFromBinding has an implementation (body)
+            reps = _collect_named_reps(action_node)
+            body = (reps.get("functionBody") or reps.get("textualRepresentation") or "").strip()
+            if not body:
+                break
+            action_params = action_node.properties.get("action_params") or []
+            field_name = _to_camel(comp["class_name"])
+            arg_exprs: list[str] = []
+            for p in action_params:
+                if p.get("dir") != "in":
+                    continue
+                pname = (p.get("name") or "").strip()
+                if pname == "self":
+                    continue
+                if pname == "service":
+                    arg_exprs.append("this")
+                else:
+                    arg_exprs.append(f"config.{field_name}")
+            result.append((field_name, arg_exprs))
+            break
+    return result
+
+
+def get_service_lifecycle_action_params(
+    graph: ModelGraph,
+    document: object | None = None,
+) -> list[dict]:
+    """Return action_params (excluding self) for the service's performed lifecycle action (e.g. InitializeAdapter)."""
+    do_action = get_service_lifecycle_initial_do_action(graph, document=document)
+    if not do_action:
+        return []
+    if document is not None and getattr(document, "exposed_elements", None):
+        adapter_qname, _ = _find_root_adapter_from_exposed(graph, document.exposed_elements)
+        if not adapter_qname:
+            adapter_qname, _ = _find_root_adapter_part_def(graph)
+    else:
+        adapter_qname, _ = _find_root_adapter_part_def(graph)
+    if not adapter_qname:
+        return []
+    adapter_node = graph.get(adapter_qname)
+    if not adapter_node:
+        return []
+    perform_decls = adapter_node.properties.get("perform_actions") or []
+    for decl in perform_decls:
+        if (decl.get("name") if isinstance(decl, dict) else None) != do_action:
+            continue
+        break
+    else:
+        return []
+    first_seg = (adapter_qname or "").split("::")[0]
+    prefer_prefix = (first_seg + "_") if first_seg else None
+    for edge in graph.outgoing(adapter_qname, "performs"):
+        if edge.properties.get("usage_name") != do_action:
+            continue
+        action_qname = edge.target
+        if action_qname and action_qname not in graph.nodes:
+            action_qname = _resolve_action_qname(graph, edge.target or "", prefer_prefix)
+        action_node = graph.get(action_qname) if action_qname else None
+        if not action_node:
+            return []
+        params = action_node.properties.get("action_params") or []
+        return [p for p in params if p.get("dir") == "in" and (p.get("name") or "").strip() != "self"]
+    return []
+
+
 def get_adapter_state_machine(
     graph: ModelGraph,
     document: object | None = None,
@@ -623,16 +738,25 @@ def get_free_function_export_names(graph: ModelGraph, psm_node: GraphNode | None
 
 
 def _get_config_attributes(node: GraphNode) -> list[dict[str, str]]:
-    """Extract config attributes from a PSM part node. Excludes attributes whose name starts with '_' (private instance fields)."""
+    """Extract config attributes from a PSM part node. Excludes attributes whose name starts with '_' (private instance fields).
+    When the model specifies a default (e.g. 'Integer = 3000'), parses it so config.json can use it."""
     raw = node.properties.get("attributes", [])
     result = []
     for attr in raw:
         name = attr.get("name", "")
         if name.startswith("_"):
             continue
-        raw_type = attr.get("type", "")
+        raw_type = (attr.get("type") or "").strip()
+        default: str | None = None
+        if "=" in raw_type:
+            type_part, default_part = raw_type.split("=", 1)
+            raw_type = type_part.strip()
+            default = default_part.strip()
         ts_type = _sysml_type_to_ts(raw_type)
-        result.append({"name": name, "type": ts_type})
+        item: dict[str, str] = {"name": name, "type": ts_type}
+        if default is not None:
+            item["default"] = default
+        result.append(item)
     return result
 
 

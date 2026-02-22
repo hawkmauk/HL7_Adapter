@@ -8,7 +8,9 @@ from .queries import (
     _find_root_adapter_from_exposed,
     get_adapter_state_machine,
     get_component_map,
+    get_initialize_from_binding_calls,
     get_part_property_for_action,
+    get_service_lifecycle_action_params,
     get_service_lifecycle_initial_do_action,
     get_service_run_action_body,
     PIM_BEHAVIOR_PKG,
@@ -110,6 +112,14 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
             lines.append(f"  | '{sig}'{sep}")
         lines.append("")
 
+    constructor_params_spec = get_service_constructor_params(graph, document=document)
+    if constructor_params_spec:
+        lines.append("export interface ServiceConfig {")
+        for p in constructor_params_spec:
+            lines.append(f"  {p['param_name']}: {p['config_type']};")
+        lines.append("}")
+        lines.append("")
+
     lines.append(f"export class {service_class} extends EventEmitter {{")
     lines.append(f"  private _state: {enum_name};")
     for comp in component_map:
@@ -198,14 +208,23 @@ def _build_service_module(graph: ModelGraph, document: object | None = None) -> 
     lines.append("  }")
 
     do_action = get_service_lifecycle_initial_do_action(graph, document=document)
+    lifecycle_params = get_service_lifecycle_action_params(graph, document=document)
+    init_calls = get_initialize_from_binding_calls(graph, document=document)
     lifecycle_body = get_service_run_action_body(graph, document=document)
     if do_action:
         lines.append("")
-        lines.append(f"  {do_action}(): void {{")
-        if lifecycle_body:
-            for line in lifecycle_body.split("\n"):
-                lines.append("    " + line if line.strip() else "")
-        lines.append("  }")
+        if lifecycle_params and init_calls and constructor_params_spec:
+            lines.append("  initialize(config: ServiceConfig): void {")
+            for field_name, arg_exprs in init_calls:
+                args_str = ", ".join(arg_exprs)
+                lines.append(f"    this.{field_name}.initializeFromBinding({args_str});")
+            lines.append("  }")
+        else:
+            lines.append(f"  {do_action}(): void {{")
+            if lifecycle_body:
+                for line in lifecycle_body.split("\n"):
+                    lines.append("    " + line if line.strip() else "")
+            lines.append("  }")
 
     lines.append("}")
     lines.append("")

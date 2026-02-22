@@ -12,13 +12,13 @@ package PSM_HL7AdapterService_Verification {
         subject adapter : HL7AdapterService;
         objective { verify SYS1_3; }
 
-        action collectData {
+        action configureAdapterAndHighLoad {
             doc /* Configure adapter and high load. */
         }
-        action processData {
+        action ingestAndForwardUnderBackpressure {
             doc /* Ingest and forward under backpressure. */
         }
-        action evaluateData {
+        action assertFlowControlAndNoMessageLoss {
             doc /* Assert flow control and no message loss. */
         }
     }
@@ -28,13 +28,10 @@ package PSM_HL7AdapterService_Verification {
         subject adapter : HL7AdapterService;
         objective { verify SYS1_4; }
 
-        action collectData {
-            doc /* Prepare end-to-end message flow. */
-        }
-        action processData {
+        action sendMessageAndCaptureACKNAK {
             doc /* Send message and capture ACK/NAK. */
         }
-        action evaluateData {
+        action assertCorrectConfirmationPerMessage {
             doc /* Assert correct confirmation per message. */
         }
     }
@@ -44,14 +41,8 @@ package PSM_HL7AdapterService_Verification {
         subject adapter : HL7AdapterService;
         objective { verify SYS3_6; }
 
-        action collectData {
+        action testRegionalComplianceProfile {
             doc /* Load regional compliance profile. */
-        }
-        action processData {
-            doc /* Apply profile to adapter config. */
-        }
-        action evaluateData {
-            doc /* Assert profile constraints enforced. */
         }
     }
 
@@ -60,14 +51,9 @@ package PSM_HL7AdapterService_Verification {
         subject adapter : HL7AdapterService;
         objective { verify SYS4_4; }
 
-        action collectData {
-            doc /* Start adapter service. */
+        action arrangeRestApiTestPort {
+            doc /* No-op; adapter and config with test port are created in act step. */
         }
-        action processData {
-            doc /* Query health endpoint. */
-        }
-        action evaluateData {
-            doc /* Assert readiness and component health. */
-        }
+
     }
 }

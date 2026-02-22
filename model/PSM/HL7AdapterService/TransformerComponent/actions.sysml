@@ -4,7 +4,7 @@ package PSM_Transformer_Actions {
 
     private import ScalarValues::*;
     private import PSM::HL7Adapter::Parser::Structure::*;
-
+    private import PSM_HL7AdapterService_Structure::*;
     doc /* Transformer action definitions (transform to JSON, handle request, initialize). */
 
     action def <TransformToJSON> 'Transform To JSON' {
@@ -29,7 +29,7 @@ package PSM_Transformer_Actions {
   if (schemaValidateOutput && !out.messageType && !out.messageControlId) {
     throw new Error('Schema validation failed: messageType or messageControlId required');
   }
-  return jsonPrettyPrint ? JSON.stringify(out, null, 2) : JSON.stringify(out);
+  result = jsonPrettyPrint ? JSON.stringify(out, null, 2) : JSON.stringify(out);
         */
     }
 
@@ -58,5 +58,15 @@ package PSM_Transformer_Actions {
     action def <InitializeTransformer> 'Initialize Transformer' {
         in :> self : Transformer;
         doc /* Sets this part's attributes from runtimeConfig for use at construction/bootstrap. Maps mappingConfigPath, jsonPrettyPrint, schemaValidateOutput from runtimeConfig. */
+    }
+
+    action def <GetStatus> 'Get Status' {
+        in :> self : Transformer;
+        out result : HL7AdapterServiceStatus;
+        doc /* Return current component state for health/status endpoints. */
+        rep functionBody language "TypeScript"
+        /*
+  result = { status: this.state };
+        */
     }
 }

@@ -155,11 +155,12 @@ def build_service_test_file(
         lines.append("  });")
         lines.append("")
 
-        it_title = _it_title(desc)
-        lines.append(f"  it('{it_title}', () => {{")
         for step in desc.get("action_steps", []):
+            step_title = _step_title(step.get("name", "step"))
             step_doc = (step.get("doc") or "").strip()
             ts_body = step.get("ts_body")
+            async_suffix = "async " if ts_body and ("await " in ts_body or "await(" in ts_body) else ""
+            lines.append(f"  it('{step_title}', {async_suffix}() => {{")
             if ts_body:
                 for body_line in ts_body.splitlines():
                     lines.append("    " + body_line)
@@ -169,7 +170,7 @@ def build_service_test_file(
             else:
                 lines.append(f"    // {step['name']}")
                 lines.append("    // TODO: implement step")
-        lines.append("  });")
+            lines.append("  });")
         lines.append("});")
         lines.append("")
 

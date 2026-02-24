@@ -72,12 +72,14 @@
     const el = document.getElementById('metrics');
     if (!el) return;
     const eh = (data && data.components && data.components.errorHandler) ? data.components.errorHandler : {};
+    const storedTotal = typeof data.errors_stored_total === 'number' ? data.errors_stored_total : 0;
     const fields = [
       'messages_received', 'messages_parsed', 'messages_transformed', 'messages_delivered',
       'errors_total', 'errors_parse_error', 'errors_validation_error', 'errors_connection_error',
       'errors_timeout_error', 'errors_http_client_error', 'errors_http_server_error'
     ];
     let html = '<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>';
+    html += '<tr><td>errors_stored_total</td><td>' + storedTotal + '</td></tr>';
     fields.forEach(function (f) {
       const v = typeof eh[f] === 'number' ? eh[f] : 0;
       html += '<tr><td>' + escapeHtml(f) + '</td><td>' + v + '</td></tr>';

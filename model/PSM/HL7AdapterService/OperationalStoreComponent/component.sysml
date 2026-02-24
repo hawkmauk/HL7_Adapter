@@ -25,5 +25,6 @@ package PSM_OperationalStoreComponent {
         perform action getMessageStatus : Actions::GetMessageStatus;
         perform action getMessages : Actions::GetMessages;
         perform action getErrorHistory : Actions::GetErrorHistory;
+        perform action getErrorCount : Actions::GetErrorCount;
     }
 }

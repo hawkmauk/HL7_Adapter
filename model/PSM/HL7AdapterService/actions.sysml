@@ -60,8 +60,12 @@ package PSM_HL7AdapterService_Actions {
     this._currentParsed = data;
     this.dispatch('MLLPHandlerCompleteSignal');
   });
-  this.parser.on('parseFailed', () => {
+  this.parser.on('parseFailed', (err?: { message?: string } | string) => {
     if (this._pendingRespond) { this._pendingRespond(false); this._pendingRespond = undefined; }
+    const detail = (err && typeof err === 'object' && err.message) ? err.message : (typeof err === 'string' ? err : 'Parse failed');
+    const ts = new Date().toISOString();
+    this.operationalStore.recordStoreError(this._currentMessageId, 'ParseError', detail, ts);
+    this.operationalStore.updateMessageStatus(this._currentMessageId, 'failed');
     this.dispatch('MLLPHandlerFailedSignal');
   });
 
@@ -69,7 +73,11 @@ package PSM_HL7AdapterService_Actions {
     this._currentJson = jsonStr;
     this.dispatch('HL7TransformerCompleteSignal');
   });
-  this.transformer.on('transformFailed', () => {
+  this.transformer.on('transformFailed', (err?: string) => {
+    const detail = (err != null && err !== '') ? err : 'Transform failed';
+    const ts = new Date().toISOString();
+    this.operationalStore.recordStoreError(this._currentMessageId, 'ValidationError', detail, ts);
+    this.operationalStore.updateMessageStatus(this._currentMessageId, 'failed');
     this.dispatch('HL7TransformerFailedSignal');
   });
 
@@ -79,7 +87,12 @@ package PSM_HL7AdapterService_Actions {
   this.httpForwarder.on('deliveryFailed', (err?: { message?: string; status?: number }) => {
     const status = err?.status;
     const code = status != null && status >= 400 && status < 500 ? 'HTTP_CLIENT_ERROR' : status != null && status >= 500 ? 'HTTP_SERVER_ERROR' : 'CONNECTION_ERROR';
-    const integrationError = { code, messageText: err?.message ?? 'Delivery failed', isRecoverable: false, occurredAt: new Date().toISOString(), statusCode: status, messageId: this._currentMessageId };
+    const errorClass = status != null && status >= 400 && status < 500 ? 'HTTPClientError' : status != null && status >= 500 ? 'HTTPServerError' : 'ConnectionError';
+    const detail = err?.message ?? 'Delivery failed';
+    const ts = new Date().toISOString();
+    const integrationError = { code, messageText: detail, isRecoverable: false, occurredAt: ts, statusCode: status, messageId: this._currentMessageId };
+    this.operationalStore.recordStoreError(this._currentMessageId, errorClass, detail, ts);
+    this.operationalStore.updateMessageStatus(this._currentMessageId, 'failed');
     this.errorHandler.handleIntegrationError(integrationError);
     this.dispatch('HTTP5xxOrNetworkErrorSignal');
   });

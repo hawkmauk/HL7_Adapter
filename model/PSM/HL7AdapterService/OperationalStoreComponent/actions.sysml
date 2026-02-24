@@ -172,4 +172,16 @@ package PSM_OperationalStore_Actions {
   result = rows.map((r: { id: number; message_id: string; error_class: string; detail: string; timestamp: string }) => ({ id: r.id, message_id: r.message_id, error_class: r.error_class, detail: r.detail, timestamp: r.timestamp }));
         */
     }
+
+    action def <GetErrorCount> 'Get Error Count' {
+        in :> self : OperationalStore;
+        out result : Integer;
+        doc /* Return total number of rows in the errors table (all time). */
+        rep functionBody language "TypeScript"
+        /*
+  const db = this._db as unknown as { prepare: (sql: string) => { get: (...args: unknown[]) => { count: number } } };
+  const row = db.prepare('SELECT COUNT(*) as count FROM errors').get();
+  result = (row as { count: number }).count ?? 0;
+        */
+    }
 }

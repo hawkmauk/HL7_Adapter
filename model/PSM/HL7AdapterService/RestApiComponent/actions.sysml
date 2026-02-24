@@ -52,7 +52,9 @@ package PSM_RestApi_Actions {
       }
       if (req.method === 'GET' && path === '/metrics') {
         const errorHandlerMetrics = service.errorHandler.getMetrics();
+        const errorsStoredTotal = service.operationalStore.getErrorCount();
         const body = {
+          errors_stored_total: errorsStoredTotal,
           components: {
             errorHandler: {
               errors_total: errorHandlerMetrics.errors_total,

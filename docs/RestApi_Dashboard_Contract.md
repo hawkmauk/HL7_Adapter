@@ -71,13 +71,19 @@ Without `jq`, omit `| jq` to see raw JSON.
 
 **Response:** `200 OK`, `Content-Type: application/json`
 
-**Guaranteed structure:** Nested under `components.errorHandler` (and future components as they expose metrics).
+**Guaranteed structure:** Top-level `errors_stored_total` (operational store); nested under `components.errorHandler` for session metrics.
 
-**ErrorHandler metrics (all numbers, default 0):**
+**Top-level:**
+
+| Field                 | Type   | Description |
+|-----------------------|--------|-------------|
+| `errors_stored_total` | number | Total number of error records in the operational store (all time). |
+
+**ErrorHandler metrics (session; all numbers, default 0):**
 
 | Field                        | Type   | Description |
 |-----------------------------|--------|-------------|
-| `errors_total`              | number | Total integration errors. |
+| `errors_total`              | number | Total integration errors this session. |
 | `errors_parse_error`         | number | Count for ParseError. |
 | `errors_validation_error`   | number | Count for ValidationError. |
 | `errors_connection_error`  | number | Count for ConnectionError. |
